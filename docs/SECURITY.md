@@ -65,7 +65,7 @@ Settings live in `packages/core/src/privacy/settings.ts`; implementation in
 | WebRTC local IP protection | WebRTC IP policy | Done (keeps Discord voice working) |
 | Tracker and telemetry blocking | Shields trackers | Starter list; filter lists in 3.5 |
 | Ad blocking | Shields ads | 3.6 |
-| Third-party cookie blocking | Cookie blocking | 3.3 |
+| Third-party cookie blocking | Cookie blocking | Done for HTTP cookies (3.3); script-set cookies in cross-site frames: Backlog |
 | Fingerprint randomization | Farbling | 3.4 |
 | Discord telemetry endpoints | n/a | Done (`/api/v*/science`, `/metrics`) |
 

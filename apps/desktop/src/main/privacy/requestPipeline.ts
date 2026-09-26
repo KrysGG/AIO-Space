@@ -1,6 +1,7 @@
 import type {
   OnBeforeRequestListenerDetails,
   OnBeforeSendHeadersListenerDetails,
+  OnHeadersReceivedListenerDetails,
   Session,
 } from 'electron';
 
@@ -22,6 +23,11 @@ export interface RequestFilter {
     details: OnBeforeSendHeadersListenerDetails,
     headers: Record<string, string>,
   ): Record<string, string>;
+  /** Response headers; return them (possibly modified). Must not throw. */
+  onHeadersReceived?(
+    details: OnHeadersReceivedListenerDetails,
+    headers: Record<string, string[]>,
+  ): Record<string, string[]>;
 }
 
 /**
@@ -58,5 +64,17 @@ export function installRequestPipeline(
     callback({ requestHeaders: headers });
   });
 
-  // TODO(ROADMAP 3.3): onHeadersReceived for third-party Set-Cookie stripping.
+  ses.webRequest.onHeadersReceived((details, callback) => {
+    const original = details.responseHeaders ?? {};
+    let headers = original;
+    for (const f of filters) {
+      try {
+        if (f.onHeadersReceived) headers = f.onHeadersReceived(details, headers);
+      } catch (err) {
+        console.error(`[pipeline] ${f.name} onHeadersReceived failed`, err);
+      }
+    }
+    // Only replace the headers when a filter changed them.
+    callback(headers === original ? {} : { responseHeaders: headers });
+  });
 }

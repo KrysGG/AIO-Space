@@ -435,6 +435,10 @@ Add items found while working on other steps here, with the step where they were
   CI without a reproducible cause (d7a6221; the rerun passed). Serve test pages from a local server
   (or intercept with `protocol.handle` in a test-only session) so CI doesn't depend on outside sites.
   CI failures now show up as readable annotations (89f73fd).
+- (3.3) Third-party cookie blocking strips HTTP `Cookie`/`Set-Cookie` only. Cookies that scripts in a
+  cross-site frame set with `document.cookie` still work. Look at Chromium's own third-party cookie
+  setting (content settings / `--test-third-party-cookie-phaseout`) or partitioned cookies.
+- (3.3) Not ticked until the owner confirms every built-in app still logs in with blocking on.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

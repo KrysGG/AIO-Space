@@ -1,5 +1,6 @@
 import { stripTrackingParams, type PrivacySettings } from '@aio/core';
 import type { RequestFilter } from './requestPipeline';
+import { siteOfUrl } from './sites';
 
 /**
  * Brave-style "Shields". Filters read settings through a getter on every request,
@@ -41,8 +42,57 @@ export interface HttpsOptions {
 
 const NO_HTTPS_OPTIONS: HttpsOptions = { httpAllowed: () => false, onUpgrade: () => {} };
 
-export function buildShieldFilters(getPrivacy: () => PrivacySettings, https: HttpsOptions = NO_HTTPS_OPTIONS): RequestFilter[] {
+export interface CookieOptions {
+  /** The app's own sites (never third-party for it); null for the Browser tile. */
+  appSites: Set<string> | null;
+  /** The top-level page URL of the tab a request belongs to. */
+  topUrl(webContentsId: number): string | undefined;
+}
+
+const NO_COOKIE_OPTIONS: CookieOptions = { appSites: null, topUrl: () => undefined };
+
+/**
+ * Third-party (ROADMAP 3.3): the request's site is neither the top-level page's site nor one of the
+ * app's own sites. Page loads themselves are first-party. Unknown top page: not treated as third
+ * party (fail open, rather than log the user out of the app).
+ */
+function isThirdParty(
+  d: { url: string; resourceType: string; webContentsId?: number },
+  cookies: CookieOptions,
+): boolean {
+  if (d.resourceType === 'mainFrame' || d.webContentsId === undefined) return false;
+  const top = cookies.topUrl(d.webContentsId);
+  const reqSite = siteOfUrl(d.url);
+  const topSite = top ? siteOfUrl(top) : null;
+  if (!reqSite || !topSite || reqSite === topSite) return false;
+  return !cookies.appSites?.has(reqSite);
+}
+
+function withoutHeader<T extends string | string[]>(headers: Record<string, T>, name: string): Record<string, T> {
+  const key = Object.keys(headers).find((k) => k.toLowerCase() === name);
+  if (!key) return headers;
+  const out = { ...headers };
+  delete out[key];
+  return out;
+}
+
+export function buildShieldFilters(
+  getPrivacy: () => PrivacySettings,
+  https: HttpsOptions = NO_HTTPS_OPTIONS,
+  cookies: CookieOptions = NO_COOKIE_OPTIONS,
+): RequestFilter[] {
   return [
+    {
+      name: 'third-party-cookies',
+      onBeforeSendHeaders(d, headers) {
+        if (!getPrivacy().blockThirdPartyCookies || !isThirdParty(d, cookies)) return headers;
+        return withoutHeader(headers, 'cookie');
+      },
+      onHeadersReceived(d, headers) {
+        if (!getPrivacy().blockThirdPartyCookies || !isThirdParty(d, cookies)) return headers;
+        return withoutHeader(headers, 'set-cookie');
+      },
+    },
     {
       name: 'https-only',
       onBeforeRequest(d) {

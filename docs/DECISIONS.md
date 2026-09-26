@@ -234,3 +234,14 @@ in-memory list that bridges the gap until the save lands; every save clears that
 the menu take effect at once. An allowed site covers its subdomains. Verified with a local http-only
 server at 127.0.0.1.nip.io (neverssl.com is unreliable as a test: its https sometimes works and it
 hops between random subdomains).
+
+**D-030: Third-party cookie blocking in the request pipeline, with `tldts` for sites.**
+`tldts` (MIT, tiny, public-suffix aware) turns hosts into sites in main (`privacy/sites.ts`); core
+stays dependency-free. The pipeline gained an `onHeadersReceived` stage. The `third-party-cookies`
+filter strips `Cookie` (out) and `Set-Cookie` (in) when a request's site is neither the top-level page's
+site nor one of the app's own sites (sites of its `allowedHosts` + `popupHosts`, so Discord <->
+discordapp.com, YouTube <-> google.com and "Sign in with Google" keep working); the Browser tile gets
+the strict rule. Page loads are first-party; an unknown top page fails open. Tested with a page on
+localhost embedding 127.0.0.1 with `SameSite=None; Secure` cookies (Chromium's Lax default already
+blocks plain cookies, so the test must use what real trackers use). Limitation: cookies that scripts
+inside a cross-site frame set via `document.cookie` are not covered (Backlog).
