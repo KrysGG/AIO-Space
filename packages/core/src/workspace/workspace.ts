@@ -1,6 +1,6 @@
 import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
 import type { WebAppDef } from '../catalog/apps';
-import { createLeaf, listLeaves, newInstanceId } from '../layout/tree';
+import { createLeaf, DEFAULT_PROFILE, listLeaves, newInstanceId } from '../layout/tree';
 import { newId } from '../util/id';
 import type { LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 6;
+export const WORKSPACE_VERSION = 7;
 
 export interface Space {
   id: string;
@@ -46,6 +46,13 @@ export interface Workspace {
   performance: PerformanceSettings;
   /** Zoom factor per app id; missing means 100%. Added in version 6 (ROADMAP 2.10). */
   zoom: Record<string, number>;
+  /** Extra accounts per app id (the first, 'default', is implicit). Added in version 7 (ROADMAP 2.12). */
+  profiles: Record<string, AppProfile[]>;
+}
+
+export interface AppProfile {
+  id: string;
+  name: string;
 }
 
 export function defaultWorkspace(): Workspace {
@@ -60,6 +67,7 @@ export function defaultWorkspace(): Workspace {
     customApps: [],
     performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER },
     zoom: {},
+    profiles: {},
   };
 }
 
@@ -102,6 +110,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (w['version'] === 3) w = { ...w, version: 4, customApps: [] };
   if (w['version'] === 4) w = { ...w, version: 5, performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER } };
   if (w['version'] === 5) w = { ...w, version: 6, zoom: {} };
+  if (w['version'] === 6) w = { ...w, version: 7, profiles: {} };
   return w as unknown as Workspace;
 }
 
@@ -160,4 +169,24 @@ export function removeSpace(ws: Workspace, spaceId: string): Workspace {
   const spaces = ws.spaces.filter((s) => s.id !== spaceId);
   const activeSpaceId = ws.activeSpaceId === spaceId ? spaces[Math.min(i, spaces.length - 1)]!.id : ws.activeSpaceId;
   return { ...ws, spaces, activeSpaceId };
+}
+
+/* ---- Accounts per app (ROADMAP 2.12) ------------------------------------------------------- */
+
+export const MAX_PROFILES_PER_APP = 8;
+
+/** Every account of an app, the implicit first one included. */
+export function profilesOf(ws: Workspace, appId: string): AppProfile[] {
+  return [{ id: DEFAULT_PROFILE, name: 'Account 1' }, ...(ws.profiles[appId] ?? [])];
+}
+
+/** Add an account ("Account N") to an app; returns its id (null at the limit). */
+export function addProfile(ws: Workspace, appId: string): { ws: Workspace; profileId: string | null } {
+  const all = profilesOf(ws, appId);
+  if (all.length >= MAX_PROFILES_PER_APP) return { ws, profileId: null };
+  const ids = new Set(all.map((p) => p.id));
+  let n = 2;
+  while (ids.has(`p${n}`)) n++;
+  const profile: AppProfile = { id: `p${n}`, name: `Account ${n}` };
+  return { ws: { ...ws, profiles: { ...ws.profiles, [appId]: [...(ws.profiles[appId] ?? []), profile] } }, profileId: profile.id };
 }

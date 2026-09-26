@@ -29,6 +29,8 @@ export interface ViewPlacement {
   /** The running app instance; views follow it when tiles are swapped. */
   instanceId: string;
   appId: string;
+  /** Account of the app (ROADMAP 2.12): picks the session partition. */
+  profile: string;
   bounds: Rect;
 }
 

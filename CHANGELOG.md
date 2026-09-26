@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.12] Several accounts per app: account dropdown in the tile header (+ Add account), each account with its own session; workspace v7.
 - [2.10] Zoom per app with Ctrl +/-/0 or Ctrl+wheel, remembered across restarts; a badge in the tile header shows and resets it.
 - [2.9] Apps hidden in other spaces sleep after a set time (default 30 min) and reload where they were; audible, call/mic and notifying apps stay awake.
 - [2.8] Menu panel from the rail: spaces (create, rename, switch, delete) whose apps keep running in the background, and settings (search engine).

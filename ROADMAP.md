@@ -208,7 +208,7 @@ built from `desktopCapturer`. On Wayland this goes through the xdg-desktop-porta
 picker; verify on KDE and GNOME.
 **Done when:** Screen share works in a Discord call on CachyOS Wayland.
 
-### - [ ] 2.12 Multiple accounts per app
+### - [x] 2.12 Multiple accounts per app
 Profiles per app (`partitionFor(appId, profile)`), picker in the tile header.
 **Done when:** Two Discord accounts can run side by side in two tiles.
 
@@ -429,6 +429,10 @@ Add items found while working on other steps here, with the step where they were
   ticked: confirm with a real Discord message in a background tile (notification + rail/tile badge +
   tray dot). Also check the notification's app name; in dev it is likely "@aio/desktop" (see the 0.2
   userData/app-name item).
+- (2.12) Rename and remove accounts (and clear an account's data) belong with 3.9. The owner can
+  confirm two real Discord logins side by side when convenient (mechanism verified with Browser).
+- (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
+  test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a
   second window. On mobile they should probably become a redirect in the same WebView (or the system
   browser, see 7.4) rather than a second window. Owner's request.

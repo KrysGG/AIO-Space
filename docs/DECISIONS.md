@@ -194,3 +194,13 @@ the app and sends `app:zoom`; the UI stores it in `workspace.zoom` (v6; 100% = n
 re-applies the saved factor on each `did-navigate`. View states carry the current zoom for display
 only, never for saving, so a page reporting 100% while loading can't wipe a saved zoom. Tiles show a
 "125%" badge when not at 100% (click to reset).
+
+**D-026: Several accounts per app, one session each.**
+A tile's leaf has an optional `profile` (missing = `default`, where existing logins live); extra
+accounts per app are named in `workspace.profiles` (v7; "Account 2", ids p2..p8, up to 8 per app).
+Each account uses its own partition, `persist:app-<appId>-<profile>` (D-007), so logins, cookies and
+storage never mix. `setProfile` gives the tile a fresh instance (new view in the other session);
+`swapApps` moves the account with the app; `assignApp` resets to the first account. The tile header
+shows an account dropdown on the focused tile, or on any tile whose app has several accounts, with
+"+ Add account". Verified with two Browser tiles on example.com: separate partitions and cookies.
+Renaming/removing accounts and clearing their data come with 3.9.

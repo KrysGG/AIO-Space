@@ -20,6 +20,11 @@ export interface LeafNode {
    * swapped, so the page isn't reloaded; a new id means a fresh view. Null when the tile is empty.
    */
   instanceId: string | null;
+  /**
+   * Which account of the app runs here (ROADMAP 2.12); each has its own session. Missing means
+   * the first account, 'default'.
+   */
+  profile?: string;
 }
 
 export interface SplitNode {
@@ -50,7 +55,7 @@ export interface DividerRect {
 }
 
 export interface ComputedLayout {
-  tiles: Array<{ leafId: string; appId: string | null; instanceId: string | null; rect: Rect }>;
+  tiles: Array<{ leafId: string; appId: string | null; instanceId: string | null; profile: string; rect: Rect }>;
   dividers: DividerRect[];
 }
 

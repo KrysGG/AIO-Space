@@ -79,7 +79,7 @@ describe('LayoutSchema', () => {
 });
 
 describe('PlacementsSchema', () => {
-  const placement = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'discord', bounds: { x: 62, y: 40, width: 800, height: 600 } };
+  const placement = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'discord', profile: 'default', bounds: { x: 62, y: 40, width: 800, height: 600 } };
 
   it('accepts integer bounds within range', () => {
     expect(PlacementsSchema.safeParse([placement]).success).toBe(true);
@@ -189,7 +189,7 @@ describe('CustomAppSchema', () => {
 });
 
 describe('ViewsSyncSchema', () => {
-  const placement = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'discord', bounds: { x: 0, y: 0, width: 10, height: 10 } };
+  const placement = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'discord', profile: 'default', bounds: { x: 0, y: 0, width: 10, height: 10 } };
   it('takes placements plus instance ids to keep running', () => {
     expect(ViewsSyncSchema.safeParse({ placements: [placement], keep: ['app_2', 'app_3'] }).success).toBe(true);
     expect(ViewsSyncSchema.safeParse({ placements: [], keep: [] }).success).toBe(true);
@@ -217,5 +217,21 @@ describe('zoom', () => {
     expect(WorkspaceSchema.safeParse({ ...ws, zoom: { youtube: 0.1 } }).success).toBe(false);
     expect(WorkspaceSchema.safeParse({ ...ws, zoom: { '../x': 1.1 } }).success).toBe(false);
     expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1', command: 'zoom-in' }).success).toBe(true);
+  });
+});
+
+describe('accounts', () => {
+  const placement = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'discord', profile: 'p2', bounds: { x: 0, y: 0, width: 10, height: 10 } };
+  it('placements carry a known account id', () => {
+    expect(PlacementsSchema.safeParse([placement]).success).toBe(true);
+    for (const profile of ['', 'P2', 'p100', '../x', 'default2']) expect(PlacementsSchema.safeParse([{ ...placement, profile }]).success).toBe(false);
+  });
+  it('the workspace names extra accounts per app, never redefining the first', () => {
+    const ws = defaultWorkspace();
+    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'p2', name: 'Work' }] } }).success).toBe(true);
+    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'default', name: 'Hijack' }] } }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'p2', name: '' }] } }).success).toBe(false);
+    const many = Array.from({ length: 8 }, (_, i) => ({ id: `p${i + 2}`, name: `A${i}` }));
+    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: many } }).success).toBe(false);
   });
 });

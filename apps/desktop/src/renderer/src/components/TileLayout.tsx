@@ -6,6 +6,7 @@ import {
   zoomLabel,
   unreadFromTitle,
   type DividerRect,
+  type AppProfile,
   type LayoutNode,
   type SearchEngineId,
   type SplitDirection,
@@ -41,6 +42,10 @@ interface Props {
   onClear(leafId: string): void;
   /** A tile header was dragged onto another tile. */
   onSwap(fromLeafId: string, toLeafId: string): void;
+  /** Accounts of an app (ROADMAP 2.12), the first one included. */
+  accountsOf(appId: string): AppProfile[];
+  /** Pick an account for a tile, or '+add' to create one. */
+  onAccount(leafId: string, profile: string): void;
   /** "Add app" in an empty tile's launcher: the new app opens in that tile. */
   onAddApp(leafId: string): void;
   onRemoveApp(appId: string): void;
@@ -96,6 +101,7 @@ export function TileLayout(props: Props) {
         leafId: t.leafId,
         instanceId: t.instanceId,
         appId: t.appId,
+        profile: t.profile,
         bounds: {
           x: Math.round(origin.left + t.rect.x),
           y: Math.round(origin.top + t.rect.y + HEADER),
@@ -257,6 +263,22 @@ export function TileLayout(props: Props) {
                 </span>
               )}
               <div className="tile-tools">
+                {t.appId && (isFocused || props.accountsOf(t.appId).length > 1) && (
+                  <select
+                    className="account-select"
+                    aria-label="Account"
+                    title="Account: each has its own login"
+                    value={t.profile}
+                    onChange={(e) => props.onAccount(t.leafId, e.target.value)}
+                  >
+                    {props.accountsOf(t.appId).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                    <option value="+add">+ Add account</option>
+                  </select>
+                )}
                 {t.appId && state && Math.abs(state.zoom - 1) > 0.001 && (
                   <button className="zoom-badge" title="Reset zoom (Ctrl+0)" aria-label={`Zoom ${zoomLabel(state.zoom)}, reset`} onClick={() => window.aio.viewCommand(t.leafId, 'zoom-reset')}>
                     {zoomLabel(state.zoom)}

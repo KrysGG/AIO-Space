@@ -4,6 +4,7 @@ import {
   isWebUrl,
   listLeaves,
   MAX_CUSTOM_APPS,
+  MAX_PROFILES_PER_APP,
   MAX_SPACES,
   MAX_TILES,
   MAX_ZOOM,
@@ -25,8 +26,11 @@ export const SearchEngineSchema = z.enum(Object.keys(SEARCH_ENGINES) as [SearchE
 const Id = z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/);
 export { MAX_TILES };
 
+/** Account ids: the first is 'default', then p2, p3... (ROADMAP 2.12). */
+const ProfileId = z.string().regex(/^(default|p[0-9]{1,2})$/);
+
 const LeafSchema = z
-  .object({ type: z.literal('leaf'), id: Id, appId: Id.nullable(), instanceId: Id.nullable() })
+  .object({ type: z.literal('leaf'), id: Id, appId: Id.nullable(), instanceId: Id.nullable(), profile: ProfileId.optional() })
   .refine((l) => (l.appId === null) === (l.instanceId === null), 'a tile has an instance exactly when it has an app');
 
 export const LayoutSchema: z.ZodType<LayoutNode> = z.lazy(() =>
@@ -107,6 +111,12 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   zoom: z
     .record(z.string().regex(/^[a-z0-9-]{1,64}$/), z.number().min(MIN_ZOOM).max(MAX_ZOOM))
     .refine((z) => Object.keys(z).length <= 200, 'too many zoom entries'),
+  profiles: z
+    .record(
+      z.string().regex(/^[a-z0-9-]{1,64}$/),
+      z.array(z.object({ id: ProfileId.refine((p) => p !== 'default'), name: z.string().trim().min(1).max(30) })).max(MAX_PROFILES_PER_APP - 1),
+    )
+    .refine((p) => Object.keys(p).length <= 100, 'too many apps with accounts'),
   customApps: z
     .array(CustomAppSchema)
     .max(MAX_CUSTOM_APPS)
@@ -121,6 +131,7 @@ export const PlacementsSchema = z
       leafId: Id,
       instanceId: Id,
       appId: Id,
+      profile: ProfileId,
       bounds: z.object({ x: Bound, y: Bound, width: Bound, height: Bound }),
     }),
   )

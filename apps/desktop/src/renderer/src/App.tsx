@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   activeSpace,
+  addProfile,
   addSpace,
   addressToUrl,
   assignApp,
@@ -11,9 +12,11 @@ import {
   listLeaves,
   MAX_TILES,
   neighborTile,
+  profilesOf,
   removeLeaf,
   removeSpace,
   renameSpace,
+  setProfile,
   setRatio,
   splitLeaf,
   sumUnread,
@@ -276,6 +279,18 @@ export function App() {
     remove: (id: string): void => edit((w) => removeSpace(w, id)),
   };
 
+  // Accounts (ROADMAP 2.12): pick one for a tile, or add one and switch the tile to it.
+  const setAccount = (leafId: string, profile: string): void =>
+    edit((w) => {
+      const appId = findLeaf(activeSpace(w).layout, leafId)?.appId;
+      if (!appId) return w;
+      if (profile !== '+add') return updateActiveSpace(w, (s) => ({ ...s, layout: setProfile(s.layout, leafId, profile) }));
+      const added = addProfile(w, appId);
+      if (!added.profileId) return w;
+      const id = added.profileId;
+      return updateActiveSpace(added.ws, (s) => ({ ...s, layout: setProfile(s.layout, leafId, id) }));
+    });
+
   const setSearchEngine = (leafId: string, searchEngine: SearchEngineId): void => {
     edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
     // Make the switch visible: a tile showing a search engine moves to the new one (same search).
@@ -323,6 +338,8 @@ export function App() {
         onClose={close}
         onClear={clear}
         onSwap={swap}
+        accountsOf={(appId) => profilesOf(ws, appId)}
+        onAccount={setAccount}
         onAddApp={(leafId) => setAdding({ leafId })}
         onRemoveApp={removeApp}
       />

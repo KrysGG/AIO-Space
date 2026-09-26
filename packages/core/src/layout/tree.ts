@@ -10,6 +10,9 @@ import {
   type SplitDirection,
 } from './types';
 
+/** The first account of every app. Existing logins live in this one. */
+export const DEFAULT_PROFILE = 'default';
+
 /** All functions here are pure: they return a new tree and never mutate the input. */
 
 export function createLeaf(appId: string | null = null): LeafNode {
@@ -89,12 +92,35 @@ export function setRatio(root: LayoutNode, splitId: string, ratio: number): Layo
   );
 }
 
-/** Put an app in a tile. The same app keeps its running instance; a different one starts fresh. */
+/**
+ * Put an app in a tile. The same app keeps its running instance; a different one starts fresh on
+ * its first account.
+ */
 export function assignApp(root: LayoutNode, leafId: string, appId: string | null): LayoutNode {
   return mapTree(root, (n) => {
     if (n.type !== 'leaf' || n.id !== leafId || n.appId === appId) return n;
-    return { ...n, appId, instanceId: appId ? newInstanceId() : null };
+    const { profile: _dropped, ...rest } = n;
+    void _dropped;
+    return { ...rest, appId, instanceId: appId ? newInstanceId() : null };
   });
+}
+
+/** Switch a tile's app to another account (ROADMAP 2.12): a fresh instance in that account's session. */
+export function setProfile(root: LayoutNode, leafId: string, profile: string): LayoutNode {
+  return mapTree(root, (n) => {
+    if (n.type !== 'leaf' || n.id !== leafId || !n.appId || (n.profile ?? DEFAULT_PROFILE) === profile) return n;
+    const { profile: _old, ...rest } = n;
+    void _old;
+    return profile === DEFAULT_PROFILE ? { ...rest, instanceId: newInstanceId() } : { ...rest, instanceId: newInstanceId(), profile };
+  });
+}
+
+/** `leaf` showing `from`'s app, instance and account. */
+function withApp(leaf: LeafNode, from: LeafNode): LeafNode {
+  const { profile: _p, ...rest } = leaf;
+  void _p;
+  const next: LeafNode = { ...rest, appId: from.appId, instanceId: from.instanceId };
+  return from.profile ? { ...next, profile: from.profile } : next;
 }
 
 /**
@@ -107,8 +133,8 @@ export function swapApps(root: LayoutNode, a: string, b: string): LayoutNode {
   if (!la || !lb || a === b) return root;
   return mapTree(root, (n) => {
     if (n.type !== 'leaf') return n;
-    if (n.id === a) return { ...n, appId: lb.appId, instanceId: lb.instanceId };
-    if (n.id === b) return { ...n, appId: la.appId, instanceId: la.instanceId };
+    if (n.id === a) return withApp(n, lb);
+    if (n.id === b) return withApp(n, la);
     return n;
   });
 }
@@ -121,7 +147,7 @@ export function computeLayout(root: LayoutNode, area: Rect, gutter = 6): Compute
   const out: ComputedLayout = { tiles: [], dividers: [] };
   const walk = (n: LayoutNode, r: Rect): void => {
     if (n.type === 'leaf') {
-      out.tiles.push({ leafId: n.id, appId: n.appId, instanceId: n.instanceId, rect: roundRect(r) });
+      out.tiles.push({ leafId: n.id, appId: n.appId, instanceId: n.instanceId, profile: n.profile ?? DEFAULT_PROFILE, rect: roundRect(r) });
       return;
     }
     const horizontal = n.direction === 'row';

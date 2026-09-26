@@ -38,6 +38,8 @@ const WHEEL_ZOOM_MS = 150;
 interface Entry {
   /** The tile the view currently sits in. Changes when tiles are swapped; the view doesn't. */
   leafId: string;
+  /** Account of the app (ROADMAP 2.12); a different account needs a different session, so a new view. */
+  profile: string;
   /** When the view was last hidden in another space (ms), or undefined while it's on screen. */
   hiddenSince?: number;
   /** Re-sends this view's state to the UI (set up in wireState). */
@@ -104,11 +106,11 @@ export class ViewManager {
     }
     for (const p of placements) {
       let entry = this.views.get(p.instanceId);
-      if (entry && entry.appId !== p.appId) {
+      if (entry && (entry.appId !== p.appId || entry.profile !== p.profile)) {
         this.destroy(p.instanceId);
         entry = undefined;
       }
-      entry ??= this.create(p.leafId, p.instanceId, p.appId, this.wake(p.instanceId, p.appId));
+      entry ??= this.create(p.leafId, p.instanceId, p.appId, p.profile, this.wake(p.instanceId, p.appId));
       if (!entry) continue;
       entry.leafId = p.leafId;
       entry.view.setBounds(p.bounds);
@@ -222,10 +224,10 @@ export class ViewManager {
     }
   }
 
-  private create(leafId: string, instanceId: string, appId: string, wakeUrl?: string): Entry | undefined {
+  private create(leafId: string, instanceId: string, appId: string, profile: string, wakeUrl?: string): Entry | undefined {
     const def = getApp(appId, this.store.catalog());
     if (!def) return undefined;
-    const ses = getAppSession(def, () => this.store.privacyFor(appId));
+    const ses = getAppSession(def, profile, () => this.store.privacyFor(appId));
     this.downloads.attach(ses);
 
     const view = new WebContentsView({
@@ -246,7 +248,7 @@ export class ViewManager {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
-    const entry: Entry = { leafId, appId, def, view };
+    const entry: Entry = { leafId, profile, appId, def, view };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));

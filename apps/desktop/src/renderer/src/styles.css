@@ -395,3 +395,18 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .zoom-badge:hover { color: var(--text); border-color: var(--muted); }
+
+.account-select {
+  height: 22px;
+  max-width: 104px;
+  margin-right: 4px;
+  padding: 0 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.account-select:hover { color: var(--text); border-color: var(--muted); }

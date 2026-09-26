@@ -13,11 +13,11 @@ export function hasUsedMedia(wc: WebContents): boolean {
 }
 
 /**
- * One persistent, isolated session per app (per profile later).
+ * One persistent, isolated session per app and account (ROADMAP 2.12).
  * Configured exactly once: UA, permissions, and the privacy request pipeline.
  */
-export function getAppSession(def: WebAppDef, getPrivacy: () => PrivacySettings): Session {
-  const partition = partitionFor(def.id);
+export function getAppSession(def: WebAppDef, profile: string, getPrivacy: () => PrivacySettings): Session {
+  const partition = partitionFor(def.id, profile);
   const existing = configured.get(partition);
   if (existing) return existing;
 
