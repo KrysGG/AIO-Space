@@ -26,6 +26,8 @@ export type ViewCommand = 'back' | 'forward' | 'reload' | 'home';
 
 export interface ViewState {
   leafId: string;
+  /** App the view was showing. The UI ignores states whose app no longer matches the tile. */
+  appId: string;
   url: string;
   title: string;
   loading: boolean;

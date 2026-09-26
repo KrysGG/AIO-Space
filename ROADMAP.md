@@ -74,7 +74,7 @@ filling gaps, not writing it from scratch.
 
 ## Phase 1: Working skeleton
 
-### - [ ] 1.1 Open an app in a tile
+### - [x] 1.1 Open an app in a tile
 **Goal:** Picking an app in the launcher or rail loads it into the tile.
 **Files:** `renderer/src/App.tsx`, `renderer/src/components/TileLayout.tsx`, `main/views/ViewManager.ts`
 **Done when:**

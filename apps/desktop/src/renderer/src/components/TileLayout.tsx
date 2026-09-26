@@ -100,7 +100,9 @@ export function TileLayout(props: Props) {
   return (
     <main className={`tiles${dragging ? ' is-dragging' : ''}`} ref={containerRef}>
       {computed.tiles.map((t) => {
-        const state = viewStates[t.leafId];
+        // A state from the tile's previous app (or a view being destroyed) must not show.
+        const raw = viewStates[t.leafId];
+        const state = raw && raw.appId === t.appId ? raw : undefined;
         const isFocused = t.leafId === focusedLeafId;
         return (
           <section

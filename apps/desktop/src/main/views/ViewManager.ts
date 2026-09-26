@@ -79,7 +79,7 @@ export class ViewManager {
     const wc = view.webContents;
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
     this.guardNavigation(def, view);
-    this.wireState(leafId, view);
+    this.wireState(leafId, appId, view);
 
     this.win.contentView.addChildView(view);
     void wc.loadURL(def.url);
@@ -149,12 +149,13 @@ export class ViewManager {
     });
   }
 
-  private wireState(leafId: string, view: WebContentsView): void {
+  private wireState(leafId: string, appId: string, view: WebContentsView): void {
     const wc = view.webContents;
     const emit = (crashed = false): void => {
       if (this.win.isDestroyed() || wc.isDestroyed()) return;
       const state: ViewState = {
         leafId,
+        appId,
         url: wc.getURL(),
         title: wc.getTitle(),
         loading: wc.isLoading(),
