@@ -249,3 +249,22 @@ button { font: inherit; color: inherit; }
 .is-moving-tile, .is-moving-tile .tile-head { cursor: grabbing; }
 .tile.is-drag-source { opacity: 0.55; }
 .tile.is-drop-target { box-shadow: 0 0 0 2px var(--focus); outline: 2px dashed var(--focus); outline-offset: -8px; }
+
+/* ---- Unread badges -------------------------------------------------------- */
+.unread {
+  flex: none;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #e53e3e;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+.unread-dot { min-width: 8px; width: 8px; height: 8px; padding: 0; }
+.rail-btn { position: relative; }
+.rail-badge { position: absolute; top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--rail); }
+.unread-dot.rail-badge { top: 0; right: 0; }

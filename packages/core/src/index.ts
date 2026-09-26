@@ -1,5 +1,6 @@
 export * from './layout/types';
 export * from './layout/tree';
+export * from './apps/unread';
 export * from './browser/address';
 export * from './catalog/apps';
 export * from './privacy/settings';

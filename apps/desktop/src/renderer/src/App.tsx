@@ -12,11 +12,14 @@ import {
   removeLeaf,
   setRatio,
   splitLeaf,
+  sumUnread,
   swapApps,
+  unreadFromTitle,
   updateActiveSpace,
   urlAfterEngineSwitch,
   type SearchEngineId,
   type SplitDirection,
+  type Unread,
   type WebAppDef,
   type Workspace,
 } from '@aio/core';
@@ -157,6 +160,13 @@ export function App() {
   const space = activeSpace(ws);
   const focused = space.focusedLeafId;
 
+  // Unread per app for the rail, from every tile's page title (all spaces: they all run).
+  const unreadByApp: Record<string, Unread> = {};
+  for (const leaf of ws.spaces.flatMap((sp) => listLeaves(sp.layout))) {
+    const title = leaf.instanceId ? viewStates[leaf.instanceId]?.title : undefined;
+    if (leaf.appId && title) unreadByApp[leaf.appId] = sumUnread([unreadByApp[leaf.appId] ?? null, unreadFromTitle(title)]);
+  }
+
   const openApp = (appId: string, leafId = focused): void => {
     if (!leafId) return;
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: assignApp(s.layout, leafId, appId), focusedLeafId: leafId })));
@@ -197,6 +207,7 @@ export function App() {
     <div className={`shell${menuOpen ? ' menu-open' : ''}`}>
       <Sidebar
         catalog={catalog}
+        unread={unreadByApp}
         onOpen={(id) => openApp(id)}
         onSplit={(dir) => focused && split(focused, dir)}
         canSplit={Boolean(focused)}

@@ -425,6 +425,10 @@ Add items found while working on other steps here, with the step where they were
   (`userData/Dictionaries/en-US-*.bdic`) from Google's CDN by default. No user data is sent, but it is
   an outside connection the user didn't ask for. Bundle the dictionaries or set
   `session.setSpellCheckerDictionaryDownloadURL` to a host we control; mention it in SECURITY.md.
+- (2.5) Built and tested with simulated titles (badges, tray, notification permissions), but not yet
+  ticked: confirm with a real Discord message in a background tile (notification + rail/tile badge +
+  tray dot). Also check the notification's app name; in dev it is likely "@aio/desktop" (see the 0.2
+  userData/app-name item).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a
   second window. On mobile they should probably become a redirect in the same WebView (or the system
   browser, see 7.4) rather than a second window. Owner's request.

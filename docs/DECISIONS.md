@@ -136,3 +136,12 @@ Electron. `ViewManager` shows it with `Menu.popup` from the view's `context-menu
 Wayland, D-016). Only http(s) links/images can be opened (new Browser tile via `view:open-in-new-tile`,
 or the system browser). "Search … for" uses the chosen engine in a new Browser tile. "Inspect" only in
 dev builds (`!app.isPackaged`).
+
+**D-020: Unread state comes from page titles; tray icon is drawn in code.**
+Web apps put unread counts in their title ("(3) Discord", "(99+) Reddit", Discord's "• " dot).
+`unreadFromTitle` / `sumUnread` in core parse and total them; the UI shows badges on rail icons (per
+app, over all tiles) and tile headers (title shown without the prefix). `ViewManager` recounts on
+`page-title-updated` and drives the tray: red dot + "N unread" tooltip, and `app.setBadgeCount` where
+the desktop supports it. The tray icon is rendered to a bitmap in `main/tray.ts` (2x2 tiles, amber
+focus) so no image assets are needed until packaging (5.1). Web notifications are Chromium's own,
+shown via the desktop; only apps with `notifications` in their catalog permissions can send them.

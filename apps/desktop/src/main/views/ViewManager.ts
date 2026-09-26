@@ -9,7 +9,17 @@ import {
   type ContextMenuParams,
   type WebContents,
 } from 'electron';
-import { getApp, hostMatches, isWebUrl, MAX_TILES, SEARCH_ENGINES, type WebAppDef } from '@aio/core';
+import {
+  getApp,
+  hostMatches,
+  isWebUrl,
+  MAX_TILES,
+  SEARCH_ENGINES,
+  sumUnread,
+  unreadFromTitle,
+  type Unread,
+  type WebAppDef,
+} from '@aio/core';
 import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import { getAppSession } from '../sessions/appSession';
 import { followSignInUserAgent } from '../sessions/userAgent';
@@ -40,6 +50,10 @@ export class ViewManager {
   /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
   private readonly pendingUrl = new Map<string, string>();
   private pendingFocus: string | null = null;
+  private lastUnread = '';
+
+  /** Total unread across all views changed (from page titles like "(3) Discord"). */
+  onUnreadChange: (unread: Unread) => void = () => {};
 
   constructor(
     private readonly win: BrowserWindow,
@@ -194,12 +208,22 @@ export class ViewManager {
     return undefined;
   }
 
+  /** Recount unread from every view's title; notify only when the total changes. */
+  private updateUnread(): void {
+    const total = sumUnread([...this.views.values()].map((e) => unreadFromTitle(e.view.webContents.getTitle())));
+    const key = JSON.stringify(total);
+    if (key === this.lastUnread) return;
+    this.lastUnread = key;
+    this.onUnreadChange(total);
+  }
+
   private destroy(instanceId: string): void {
     const entry = this.views.get(instanceId);
     if (!entry) return;
     this.views.delete(instanceId);
     if (!this.win.isDestroyed()) this.win.contentView.removeChildView(entry.view);
     if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
+    this.updateUnread();
   }
 
   /** Keep each app inside its own sites; everything else opens in the system browser. */
@@ -285,7 +309,10 @@ export class ViewManager {
     wc.on('did-stop-loading', () => emit());
     wc.on('did-navigate', () => emit());
     wc.on('did-navigate-in-page', () => emit());
-    wc.on('page-title-updated', () => emit());
+    wc.on('page-title-updated', () => {
+      emit();
+      this.updateUnread();
+    });
     wc.on('render-process-gone', () => emit(true));
     wc.on('focus', () => {
       // entry.leafId, read now: the view may have moved tiles since it was created.

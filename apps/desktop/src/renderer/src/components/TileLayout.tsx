@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   computeLayout,
   ratioFromPointer,
+  titleWithoutUnread,
+  unreadFromTitle,
   type DividerRect,
   type LayoutNode,
   type SearchEngineId,
@@ -11,6 +13,7 @@ import {
 import type { ViewPlacement, ViewState } from '../../../shared/ipc';
 import { AddressBar } from './AddressBar';
 import { AppIcon } from './AppIcon';
+import { UnreadBadge } from './UnreadBadge';
 import { Launcher } from './Launcher';
 
 const GUTTER = 6;
@@ -238,7 +241,8 @@ export function TileLayout(props: Props) {
                   ) : (
                     appOf(t.appId) && <AppIcon app={appOf(t.appId)!} size={14} />
                   )}
-                  <span className="tile-title-text">{state?.title || appName(t.appId)}</span>
+                  <span className="tile-title-text">{state?.title ? titleWithoutUnread(state.title) : appName(t.appId)}</span>
+                  <UnreadBadge unread={state ? unreadFromTitle(state.title) : null} />
                 </span>
               )}
               <div className="tile-tools">

@@ -4,6 +4,7 @@ import { registerIpc } from './ipc/handlers';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { cleanUserAgent } from './sessions/userAgent';
 import { WorkspaceStore } from './store/workspaceStore';
+import { createTray } from './tray';
 import { ViewManager } from './views/ViewManager';
 import { createMainWindow } from './window';
 
@@ -41,6 +42,8 @@ app.whenReady().then(async () => {
   const win = createMainWindow();
   const views = new ViewManager(win, store);
   registerIpc(win, store, views);
+  const tray = createTray(win);
+  views.onUnreadChange = (unread) => tray.setUnread(unread);
 
   app.on('second-instance', () => {
     if (win.isMinimized()) win.restore();

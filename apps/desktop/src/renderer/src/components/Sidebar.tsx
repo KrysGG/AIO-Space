@@ -1,8 +1,11 @@
-import type { SplitDirection, WebAppDef } from '@aio/core';
+import type { SplitDirection, Unread, WebAppDef } from '@aio/core';
 import { AppIcon } from './AppIcon';
+import { UnreadBadge } from './UnreadBadge';
 
 interface Props {
   catalog: WebAppDef[];
+  /** Unread per app id, summed over its tiles. */
+  unread: Record<string, Unread>;
   onOpen(appId: string): void;
   onSplit(dir: SplitDirection): void;
   canSplit: boolean;
@@ -13,7 +16,7 @@ interface Props {
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, onOpen, onSplit, canSplit, onMenu, menuOpen, onHelp, helpOpen }: Props) {
+export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, onHelp, helpOpen }: Props) {
   return (
     <nav className="rail" aria-label="Apps">
       {/* TODO(ROADMAP 2.8): menu with spaces, settings, shields panel */}
@@ -33,6 +36,7 @@ export function Sidebar({ catalog, onOpen, onSplit, canSplit, onMenu, menuOpen, 
             onClick={() => onOpen(app.id)}
           >
             <AppIcon app={app} size={20} />
+            <UnreadBadge unread={unread[app.id] ?? null} className="rail-badge" />
           </button>
         ))}
       </div>
