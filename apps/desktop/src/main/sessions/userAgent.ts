@@ -1,4 +1,5 @@
 import type { WebContents } from 'electron';
+import type { RequestFilter } from '../privacy/requestPipeline';
 
 /** Remove Electron and app-name tokens from a UA string, leaving a normal Chrome UA. */
 export function cleanUserAgent(ua: string, appName: string): string {
@@ -44,3 +45,19 @@ export function followSignInUserAgent(wc: WebContents): void {
     if (wc.getUserAgent() !== want) wc.setUserAgent(want);
   });
 }
+
+/** Request-side half of the Google sign-in fix: Firefox UA and no Chromium client hints. */
+export const googleSignInFilter: RequestFilter = {
+  name: 'google-sign-in-ua',
+  onBeforeSendHeaders(details, headers) {
+    if (!isGoogleSignIn(details.url)) return headers;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(headers)) {
+      const key = k.toLowerCase();
+      if (key === 'user-agent' || key.startsWith('sec-ch-ua')) continue;
+      out[k] = v;
+    }
+    out['User-Agent'] = SIGN_IN_USER_AGENT;
+    return out;
+  },
+};

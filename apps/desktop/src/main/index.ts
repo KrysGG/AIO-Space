@@ -10,6 +10,11 @@ import { createMainWindow } from './window';
 // ---- Before ready -----------------------------------------------------------
 app.enableSandbox();
 
+// Tests run against a throwaway profile so they never touch the real workspace or logins.
+// Must come before the single-instance lock, which is tied to the userData path.
+const userDataOverride = process.env['AIO_USER_DATA_DIR'];
+if (userDataOverride) app.setPath('userData', userDataOverride);
+
 if (process.platform === 'linux') {
   // Native Wayland on CachyOS/KDE/GNOME. Recent Electron defaults to this; if it doesn't
   // take effect on your version, launch with --ozone-platform-hint=auto (ROADMAP 0.4).

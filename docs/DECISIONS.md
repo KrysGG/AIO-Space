@@ -65,3 +65,11 @@ sign-in popups switch `navigator.userAgent` to the same Firefox UA while their m
 host (`followSignInUserAgent`). Every other page keeps the normal Chrome UA. The Firefox major is
 derived from Electron's Chrome major + 1 so it stays current across Electron upgrades. Verified with
 YouTube sign-in on Electron 44. If Google starts rejecting it, revisit here first.
+
+**D-013: Desktop tests with vitest and `playwright-core`.**
+Unit tests (`apps/desktop/test/*.test.ts`) use vitest, like core. The Electron smoke test uses
+`playwright-core`'s `_electron` API from inside vitest, so there is one runner and no browser
+downloads (`@playwright/test` would add a second runner). `pnpm test` builds the app first, then runs
+both. The smoke test sets `AIO_USER_DATA_DIR` to a temp folder; main honours it (before the
+single-instance lock) so tests never touch real logins or layouts. CI runs tests under `xvfb-run` and
+re-enables unprivileged user namespaces, which Ubuntu 24.04 blocks and Electron's sandbox needs.

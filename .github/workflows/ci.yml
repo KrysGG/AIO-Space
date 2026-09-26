@@ -20,5 +20,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Electron's sandbox needs.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # The desktop smoke test launches Electron, which needs a display.
+      - run: xvfb-run -a pnpm test
       - run: pnpm lint

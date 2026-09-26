@@ -1,24 +1,8 @@
 import { app, session, type Session } from 'electron';
 import { partitionFor, type AppPermission, type PrivacySettings, type WebAppDef } from '@aio/core';
-import { installRequestPipeline, type RequestFilter } from '../privacy/requestPipeline';
+import { installRequestPipeline } from '../privacy/requestPipeline';
 import { buildShieldFilters } from '../privacy/shields';
-import { cleanUserAgent, isGoogleSignIn, SIGN_IN_USER_AGENT } from './userAgent';
-
-/** Request-side half of the Google sign-in fix: Firefox UA and no Chromium client hints. */
-const googleSignInFilter: RequestFilter = {
-  name: 'google-sign-in-ua',
-  onBeforeSendHeaders(details, headers) {
-    if (!isGoogleSignIn(details.url)) return headers;
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(headers)) {
-      const key = k.toLowerCase();
-      if (key === 'user-agent' || key.startsWith('sec-ch-ua')) continue;
-      out[k] = v;
-    }
-    out['User-Agent'] = SIGN_IN_USER_AGENT;
-    return out;
-  },
-};
+import { cleanUserAgent, googleSignInFilter } from './userAgent';
 
 const configured = new Map<string, Session>();
 
