@@ -320,3 +320,15 @@ but can't be used (tested: with `--password-store=gnome-libsecret` and no daemon
 reads `gnome_libsecret` while encryption is unavailable). New IPC `security:storage`. The menu's
 Settings show a warning with how to fix it, and the menu button a small dot, until "Got it"; the
 dismissal is stored in `workspace.dismissedNotices` (v10, a general list for later one-time notices).
+
+**D-037: Clearing app data: clear the session now, delete the partition folder at the next start.**
+ROADMAP 3.9. Chromium's databases keep deleted bytes until they compact, and a partition folder
+can't be deleted while its session is open. So "Clear data" (per app account, in the Shields panel)
+and "Clear data for all apps" (menu) call `clearStorageData`, `clearCache`, `clearAuthCache`,
+`clearCodeCaches` and `clearHostResolverCache` at once (the account is logged out; its open views
+restart at the app's home page) and add the partitions to `userData/wipe.json`. At the next start,
+before any app session exists, those folders are deleted (`store/siteData.ts`; the list only accepts
+`persist:app-*` names). "Forget when AIO Space closes" (`workspace.forgetOnClose`, v11, per app and
+all its accounts) clears on quit (at most 3 s) and always deletes the folders at start, which also
+covers a crash. Verified end to end: a token found in the partition's files before clearing is gone
+from every file after the restart. New IPC `data:clear` (`{appId, profile}` or `{all: true}`).

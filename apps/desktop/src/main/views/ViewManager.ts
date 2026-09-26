@@ -15,6 +15,7 @@ import {
   isWebUrl,
   MAX_TILES,
   nextZoom,
+  partitionFor,
   SEARCH_ENGINES,
   sumUnread,
   unreadFromTitle,
@@ -514,6 +515,21 @@ export class ViewManager {
       wc.reload();
     }
     if (replaced) this.sync(this.lastPlacements, this.lastKeep);
+  }
+
+  /** After an app's data was cleared (ROADMAP 3.9): its open views start over at the app's home page. */
+  restartPartitions(partitions: Set<string>): void {
+    for (const entry of this.views.values()) {
+      const wc = entry.view.webContents;
+      if (wc.isDestroyed() || !partitions.has(partitionFor(entry.appId, entry.profile))) continue;
+      void wc.loadURL(this.homeOf(entry.def));
+    }
+    // Slept apps of these partitions wake at their home page, not the page they were on. (Sleeping
+    // entries don't record the account, so any account of a cleared app forgets its page.)
+    const appIds = new Set([...partitions].map((p) => p.replace(/^persist:app-/, '')));
+    for (const [instanceId, slept] of [...this.sleeping]) {
+      if ([...appIds].some((a) => a.startsWith(`${slept.appId}-`))) this.sleeping.delete(instanceId);
+    }
   }
 
   private leafOf(wc: WebContents): string | undefined {

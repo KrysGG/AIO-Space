@@ -30,6 +30,7 @@ interface Props {
   /** Logins aren't protected by a system keyring (ROADMAP 3.8), and the user hasn't dismissed it. */
   keyringNotice: boolean;
   onDismissKeyring(): void;
+  onClearAll(): Promise<void>;
   onClose(): void;
   onClosed(): void;
 }
@@ -38,9 +39,15 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
+  const clearAll = (): void => {
+    if (!window.confirm('Clear data for every app? You’ll be logged out everywhere, and all cookies, site storage and caches are deleted. Your tiles and settings stay.')) return;
+    setClearedAll('busy');
+    void onClearAll().then(() => setClearedAll('done'));
+  };
 
   useEffect(() => {
     window.aio.setViewsHidden(true);
@@ -219,6 +226,12 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
             </select>
           </label>
           <FilterListStatus />
+          <div className="site-data-row">
+            <button className="btn btn-danger" onClick={clearAll} disabled={clearedAll === 'busy'}>
+              {clearedAll === 'busy' ? 'Clearing…' : 'Clear data for all apps…'}
+            </button>
+            {clearedAll === 'done' && <small role="status">Cleared. Every app starts fresh.</small>}
+          </div>
           {ws.httpAllowedHosts.length > 0 && (
             <div className="http-allowed">
               <span>Sites allowed without HTTPS</span>

@@ -10,6 +10,7 @@ import {
   computeLayout,
   disallowHttpHost,
   dismissNotice,
+  setForgetOnClose,
   ensureFocus,
   findLeaf,
   listLeaves,
@@ -395,6 +396,7 @@ export function App() {
           onDisallowHttp={(host) => edit((w) => disallowHttpHost(w, host))}
           keyringNotice={keyringNotice}
           onDismissKeyring={() => edit((w) => dismissNotice(w, 'weak-keyring'))}
+          onClearAll={() => window.aio.clearData({ all: true })}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}
@@ -407,6 +409,10 @@ export function App() {
           blocked={(shieldsLeafNode.instanceId && viewStates[shieldsLeafNode.instanceId]?.blocked) || 0}
           onSet={(key, value) => setAppShield(shieldsApp.id, key, value)}
           onReset={() => resetAppShields(shieldsApp.id)}
+          profile={profilesOf(ws, shieldsApp.id).find((p) => p.id === (shieldsLeafNode.profile ?? 'default')) ?? profilesOf(ws, shieldsApp.id)[0]!}
+          accounts={profilesOf(ws, shieldsApp.id).length}
+          onForget={(forget) => edit((w) => setForgetOnClose(w, shieldsApp.id, forget))}
+          onClearData={(profile) => window.aio.clearData({ appId: shieldsApp.id, profile })}
           onClose={closeShields}
           onClosed={refocusTile}
         />

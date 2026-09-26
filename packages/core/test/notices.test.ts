@@ -19,3 +19,21 @@ describe('dismissed notices (ROADMAP 3.8)', () => {
     expect(out.dismissedNotices).toEqual([]);
   });
 });
+
+describe('forget on close (ROADMAP 3.9)', () => {
+  it('turns on and off per app, purely', async () => {
+    const { setForgetOnClose } = await import('../src/workspace/workspace');
+    const ws = defaultWorkspace();
+    const on = setForgetOnClose(ws, 'reddit', true);
+    expect(on.forgetOnClose).toEqual(['reddit']);
+    expect(setForgetOnClose(on, 'reddit', true)).toBe(on);
+    expect(setForgetOnClose(on, 'reddit', false).forgetOnClose).toEqual([]);
+    expect(ws.forgetOnClose).toEqual([]);
+  });
+
+  it('migrates a v10 workspace', () => {
+    const v10: Record<string, unknown> = { ...defaultWorkspace(), version: 10 };
+    delete v10['forgetOnClose'];
+    expect(migrateWorkspace(v10).forgetOnClose).toEqual([]);
+  });
+});

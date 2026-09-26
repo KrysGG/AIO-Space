@@ -529,3 +529,11 @@ button { font: inherit; color: inherit; }
 .notice p { margin: 0; color: var(--text); line-height: 1.5; }
 .notice code { font-size: 11px; padding: 0 3px; border-radius: 4px; background: rgb(0 0 0 / 0.25); }
 .rail-notice { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #e8793b; box-shadow: 0 0 0 2px var(--rail); }
+
+/* ---- Site data (ROADMAP 3.9) ----------------------------------------------- */
+.site-data { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.site-data-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.site-data-row small { color: var(--muted); font-size: 11px; }
+.btn-danger { border-color: rgb(240 138 138 / 0.5); color: #f3a0a0; }
+.btn-danger:hover:not(:disabled) { border-color: #f08a8a; background: rgb(240 138 138 / 0.12); }
+.btn:disabled { opacity: 0.6; cursor: default; }

@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 10;
+export const WORKSPACE_VERSION = 11;
 
 export interface Space {
   id: string;
@@ -55,6 +55,8 @@ export interface Workspace {
   httpAllowedHosts: string[];
   /** One-time notices the user dismissed (ROADMAP 3.8). Added in version 10. */
   dismissedNotices: NoticeId[];
+  /** Apps whose data (every account) is cleared when AIO Space closes (ROADMAP 3.9). Added in version 11. */
+  forgetOnClose: string[];
 }
 
 /** Notices shown until dismissed, e.g. 'weak-keyring': logins stored without the system keyring. */
@@ -63,6 +65,13 @@ export type NoticeId = (typeof NOTICE_IDS)[number];
 
 export function dismissNotice(ws: Workspace, id: NoticeId): Workspace {
   return ws.dismissedNotices.includes(id) ? ws : { ...ws, dismissedNotices: [...ws.dismissedNotices, id] };
+}
+
+/** Turn "forget when AIO Space closes" on or off for an app (ROADMAP 3.9). */
+export function setForgetOnClose(ws: Workspace, appId: string, forget: boolean): Workspace {
+  const has = ws.forgetOnClose.includes(appId);
+  if (forget === has) return ws;
+  return { ...ws, forgetOnClose: forget ? [...ws.forgetOnClose, appId] : ws.forgetOnClose.filter((id) => id !== appId) };
 }
 
 export interface AppProfile {
@@ -85,6 +94,7 @@ export function defaultWorkspace(): Workspace {
     profiles: {},
     httpAllowedHosts: [],
     dismissedNotices: [],
+    forgetOnClose: [],
   };
 }
 
@@ -134,6 +144,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   }
   if (w['version'] === 8) w = { ...w, version: 9, httpAllowedHosts: [] };
   if (w['version'] === 9) w = { ...w, version: 10, dismissedNotices: [] };
+  if (w['version'] === 10) w = { ...w, version: 11, forgetOnClose: [] };
   return w as unknown as Workspace;
 }
 

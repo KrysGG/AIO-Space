@@ -1,13 +1,15 @@
-import { ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { BUILTIN_APPS } from '@aio/core';
+import { app, ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { BUILTIN_APPS, partitionFor } from '@aio/core';
 import { IPC } from '../../shared/ipc';
 import { clearHttpAllowedThisRun } from '../privacy/httpsFallback';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
 import { storageStatus } from '../security/keyring';
+import { allAppPartitions, clearPartitions } from '../store/siteData';
 import type { ViewManager } from '../views/ViewManager';
 import {
+  ClearDataSchema,
   DownloadActionSchema,
   NoPayloadSchema,
   ViewsSyncSchema,
@@ -100,6 +102,15 @@ export function registerIpc(
     NoPayloadSchema.parse(raw);
     await filterLists.update();
     return filterLists.status();
+  });
+
+  ipcMain.handle(IPC.dataClear, async (e, raw: unknown) => {
+    guard(e);
+    const target = ClearDataSchema.parse(raw);
+    const ws = store.get();
+    const partitions = 'all' in target ? allAppPartitions(ws) : [partitionFor(target.appId, target.profile)];
+    await clearPartitions(app.getPath('userData'), partitions);
+    views.restartPartitions(new Set(partitions));
   });
 
   ipcMain.handle(IPC.securityStorage, (e, raw: unknown) => {

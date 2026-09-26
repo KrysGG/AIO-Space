@@ -280,7 +280,7 @@ basic fallback is available (`safeStorage.getSelectedStorageBackend()`) and warn
 settings with how to fix it.
 **Done when:** Warning appears on a system without a keyring and not on a normal KDE/GNOME setup.
 
-### - [ ] 3.9 Clear data and forget mode
+### - [x] 3.9 Clear data and forget mode
 Per app: clear cookies/cache/storage. Optional "forget on close" (clear on quit). Global "clear all".
 **Done when:** Clearing an app logs it out and removes its data from disk.
 
@@ -426,7 +426,7 @@ Add items found while working on other steps here, with the step where they were
   ticked: confirm with a real Discord message in a background tile (notification + rail/tile badge +
   tray dot). Also check the notification's app name; in dev it is likely "@aio/desktop" (see the 0.2
   userData/app-name item).
-- (2.12) Rename and remove accounts (and clear an account's data) belong with 3.9. The owner can
+- (2.12) Rename and remove accounts are still missing (clearing an account's data came with 3.9). The owner can
   confirm two real Discord logins side by side when convenient (mechanism verified with Browser).
 - (2.12) The smoke test loads real sites (example.com, DuckDuckGo, Brave Search) and failed once in
   CI without a reproducible cause (d7a6221; the rerun passed). Serve test pages from a local server

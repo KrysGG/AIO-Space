@@ -25,7 +25,11 @@ export const IPC = {
   filtersStatus: 'filters:status',
   filtersUpdate: 'filters:update',
   securityStorage: 'security:storage',
+  dataClear: 'data:clear',
 } as const;
+
+/** What to clear (ROADMAP 3.9): one account of an app, or every app. */
+export type ClearDataTarget = { appId: string; profile: string } | { all: true };
 
 /** How logins are encrypted on disk (ROADMAP 3.8). */
 export interface StorageStatus {
@@ -164,4 +168,6 @@ export interface AioApi {
   /** Download the filter lists now; resolves with the new status when done. */
   updateFilterLists(): Promise<FilterListStatus>;
   getStorageStatus(): Promise<StorageStatus>;
+  /** Log out and delete cookies, storage and cache; the files are removed at the next start. */
+  clearData(target: ClearDataTarget): Promise<void>;
 }

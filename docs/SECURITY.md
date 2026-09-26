@@ -104,6 +104,12 @@ Cookies and logins are encrypted with a key from the system keyring (KWallet or 
 libsecret on Linux). Without one, Chromium falls back to a fixed key; AIO Space detects this
 (`main/security/keyring.ts`) and warns once in the menu with how to fix it.
 
+## Clearing data (ROADMAP 3.9)
+
+Per app account (Shields panel) or for all apps (menu): the session is cleared at once and its
+partition folder is deleted at the next start, before any session opens. Apps set to "forget when AIO
+Space closes" are cleared on quit and deleted at every start (D-037).
+
 ## Privacy features ("Shields")
 
 Settings live in `packages/core/src/privacy/settings.ts`; implementation in

@@ -6,6 +6,7 @@ import { FilterLists } from './privacy/filterLists';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { handleUiScheme, registerUiScheme } from './security/uiProtocol';
 import { cleanUserAgent } from './sessions/userAgent';
+import { clearPartitionNow, partitionsOfApp, wipeAtStartup } from './store/siteData';
 import { WorkspaceStore } from './store/workspaceStore';
 import { createTray } from './tray';
 import { ViewManager } from './views/ViewManager';
@@ -43,6 +44,8 @@ app.whenReady().then(async () => {
 
   const store = new WorkspaceStore(join(app.getPath('userData'), 'workspace.json'));
   await store.load();
+  // Before any app session exists: delete cleared accounts and "forget on close" apps (ROADMAP 3.9).
+  await wipeAtStartup(app.getPath('userData'), store.get());
 
   const win = createMainWindow();
   const downloads = new DownloadManager(win);
@@ -52,6 +55,19 @@ app.whenReady().then(async () => {
   registerIpc(win, store, views, downloads, filterLists);
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);
+
+  // "Forget when AIO Space closes" (ROADMAP 3.9): clear those apps before quitting (their folders
+  // are deleted at the next start). Once, and at most a few seconds.
+  let forgotten = false;
+  app.on('before-quit', (e) => {
+    const ws = store.get();
+    const partitions = ws.forgetOnClose.flatMap((id) => partitionsOfApp(ws, id));
+    if (forgotten || partitions.length === 0) return;
+    e.preventDefault();
+    forgotten = true;
+    const timeout = new Promise((r) => setTimeout(r, 3000));
+    void Promise.race([Promise.all(partitions.map((p) => clearPartitionNow(p))), timeout]).finally(() => app.quit());
+  });
 
   app.on('second-instance', () => {
     if (win.isMinimized()) win.restore();

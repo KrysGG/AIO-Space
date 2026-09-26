@@ -51,7 +51,11 @@ export function FilterListStatus() {
         ))}
       </ul>
       {status.error && !updating && (
-        <p className="form-error">Couldn’t update the lists ({status.error}). The previous lists stay in use; try again later.</p>
+        <p className="form-error">
+          {status.lists.some((l) => l.updatedAt)
+            ? `Couldn’t update the lists (${status.error}). The previous lists stay in use; try again later.`
+            : `Couldn’t download the lists (${status.error}). Only the built-in tracker list is active; AIO Space tries again every hour.`}
+        </p>
       )}
       <button className="text-btn" onClick={update} disabled={updating}>
         {updating ? 'Updating…' : 'Update now'}
