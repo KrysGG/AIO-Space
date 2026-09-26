@@ -40,6 +40,7 @@ export function registerIpc(
     const ws = WorkspaceSchema.parse(raw);
     await store.save(ws);
     views.refresh(); // a custom app added just now can get its view
+    views.applyPrivacy(); // WebRTC policy changes need a reload
   });
 
   ipcMain.handle(IPC.catalogGet, (e) => {

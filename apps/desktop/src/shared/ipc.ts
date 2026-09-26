@@ -51,6 +51,8 @@ export interface ViewState {
   crashed: boolean;
   /** Page zoom factor (1 = 100%). The UI saves it per app (ROADMAP 2.10). */
   zoom: number;
+  /** Requests Shields blocked on the current page (ROADMAP 3.1). */
+  blocked: number;
 }
 
 /** A Browser tile link asked for a new tab. `background` = middle-click / Ctrl+click: keep focus where it is. */

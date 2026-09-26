@@ -24,11 +24,20 @@ export interface RequestFilter {
   ): Record<string, string>;
 }
 
-export function installRequestPipeline(ses: Session, filters: RequestFilter[]): void {
+/**
+ * `onBlocked` is told about every cancelled request with the page it came from, for the Shields
+ * count in the tile header (ROADMAP 3.1).
+ */
+export function installRequestPipeline(
+  ses: Session,
+  filters: RequestFilter[],
+  onBlocked: (webContentsId: number) => void = () => {},
+): void {
   ses.webRequest.onBeforeRequest((details, callback) => {
     for (const f of filters) {
       try {
         const d = f.onBeforeRequest?.(details);
+        if (d?.cancel && details.webContentsId !== undefined) onBlocked(details.webContentsId);
         if (d?.cancel || d?.redirectURL) return callback(d);
       } catch (err) {
         console.error(`[pipeline] ${f.name} onBeforeRequest failed`, err);

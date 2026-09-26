@@ -48,6 +48,9 @@ interface Props {
   accountsOf(appId: string): AppProfile[];
   /** Pick an account for a tile, or '+add' to create one. */
   onAccount(leafId: string, profile: string): void;
+  /** Whether Shields are up for an app (ROADMAP 3.1). */
+  shieldsUp(appId: string): boolean;
+  onShields(leafId: string): void;
   /** "Add app" in an empty tile's launcher: the new app opens in that tile. */
   onAddApp(leafId: string): void;
   onRemoveApp(appId: string): void;
@@ -280,6 +283,20 @@ export function TileLayout(props: Props) {
                     ))}
                     <option value="+add">+ Add account</option>
                   </select>
+                )}
+                {t.appId && (
+                  <button
+                    className={`shield-btn${props.shieldsUp(t.appId) ? '' : ' is-down'}`}
+                    title={props.shieldsUp(t.appId) ? `Shields: ${state?.blocked ?? 0} blocked on this page` : 'Shields are down for this app'}
+                    aria-label={props.shieldsUp(t.appId) ? `Shields, ${state?.blocked ?? 0} blocked` : 'Shields down'}
+                    onClick={() => props.onShields(t.leafId)}
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden>
+                      <path d="M10 2.5 4 5v4.5c0 3.8 2.6 6.6 6 8 3.4-1.4 6-4.2 6-8V5z" />
+                      {!props.shieldsUp(t.appId) && <path d="m4 4 12 12" />}
+                    </svg>
+                    {props.shieldsUp(t.appId) && (state?.blocked ?? 0) > 0 && <span>{state!.blocked > 99 ? '99+' : state!.blocked}</span>}
+                  </button>
                 )}
                 {t.appId && state && Math.abs(state.zoom - 1) > 0.001 && (
                   <button className="zoom-badge" title="Reset zoom (Ctrl+0)" aria-label={`Zoom ${zoomLabel(state.zoom)}, reset`} onClick={() => window.aio.viewCommand(t.leafId, 'zoom-reset')}>

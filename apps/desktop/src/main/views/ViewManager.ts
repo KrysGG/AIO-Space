@@ -46,6 +46,10 @@ interface Entry {
   hiddenSince?: number;
   /** Re-sends this view's state to the UI (set up in wireState). */
   emit?: () => void;
+  /** Requests Shields blocked on the current page; reset on each navigation. */
+  blocked: number;
+  /** Pending throttled state update for the blocked count. */
+  blockedTimer?: NodeJS.Timeout;
   appId: string;
   def: WebAppDef;
   view: WebContentsView;
@@ -267,7 +271,7 @@ export class ViewManager {
   private create(leafId: string, instanceId: string, appId: string, profile: string, wakeUrl?: string): Entry | undefined {
     const def = getApp(appId, this.store.catalog());
     if (!def) return undefined;
-    const ses = getAppSession(def, profile, () => this.store.privacyFor(appId));
+    const ses = getAppSession(def, profile, () => this.store.privacyFor(appId), (id) => this.countBlocked(id));
     this.downloads.attach(ses);
 
     const view = new WebContentsView({
@@ -288,7 +292,7 @@ export class ViewManager {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
-    const entry: Entry = { leafId, profile, appId, def, view };
+    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0 };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
@@ -359,6 +363,34 @@ export class ViewManager {
       inspect: app.isPackaged ? undefined : (x, y) => wc.inspectElement(x, y),
     });
     Menu.buildFromTemplate(template).popup({ window: this.win });
+  }
+
+  /** A request from this page was blocked: count it, and tell the UI at most every 250 ms. */
+  private countBlocked(webContentsId: number): void {
+    for (const entry of this.views.values()) {
+      if (entry.view.webContents.id !== webContentsId) continue;
+      entry.blocked++;
+      entry.blockedTimer ??= setTimeout(() => {
+        entry.blockedTimer = undefined;
+        entry.emit?.();
+      }, 250);
+      return;
+    }
+  }
+
+  /**
+   * After settings are saved: an app whose WebRTC policy changed gets it, and its pages reload
+   * (the policy only fully applies to new connections). Other Shields settings apply per request.
+   */
+  applyPrivacy(): void {
+    for (const entry of this.views.values()) {
+      const wc = entry.view.webContents;
+      if (wc.isDestroyed()) continue;
+      const policy = this.store.privacyFor(entry.appId).webrtcPolicy;
+      if (wc.getWebRTCIPHandlingPolicy() === policy) continue;
+      wc.setWebRTCIPHandlingPolicy(policy);
+      wc.reload();
+    }
   }
 
   private leafOf(wc: WebContents): string | undefined {
@@ -461,13 +493,18 @@ export class ViewManager {
         canGoForward: wc.navigationHistory.canGoForward(),
         crashed,
         zoom: wc.getZoomFactor(),
+        blocked: entry.blocked,
       };
       this.win.webContents.send(IPC.viewState, state);
     };
     entry.emit = () => emit();
     wc.on('did-start-loading', () => emit());
     wc.on('did-stop-loading', () => emit());
-    wc.on('did-navigate', () => emit());
+    // A new page starts a new blocked count (same-document navigations keep it).
+    wc.on('did-navigate', () => {
+      entry.blocked = 0;
+      emit();
+    });
     wc.on('did-navigate-in-page', () => emit());
     wc.on('page-title-updated', () => {
       emit();

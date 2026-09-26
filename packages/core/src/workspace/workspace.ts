@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 7;
+export const WORKSPACE_VERSION = 8;
 
 export interface Space {
   id: string;
@@ -111,6 +111,10 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (w['version'] === 4) w = { ...w, version: 5, performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER } };
   if (w['version'] === 5) w = { ...w, version: 6, zoom: {} };
   if (w['version'] === 6) w = { ...w, version: 7, profiles: {} };
+  if (w['version'] === 7) {
+    const privacy = (w['privacy'] && typeof w['privacy'] === 'object' ? w['privacy'] : {}) as Record<string, unknown>;
+    w = { ...w, version: 8, privacy: { ...privacy, shields: true } };
+  }
   return w as unknown as Workspace;
 }
 

@@ -221,7 +221,7 @@ in the placeholder so the layout doesn't flash empty.
 
 ## Phase 3: Shields and security (Brave-level privacy)
 
-### - [ ] 3.1 Shields panel
+### - [x] 3.1 Shields panel
 UI for the settings in `packages/core/src/privacy/settings.ts`: global defaults plus per-app
 overrides (stored in `privacyOverrides`). Shield icon in each tile header showing blocked count
 for the current page. Changes apply live (filters already read settings per request); WebRTC

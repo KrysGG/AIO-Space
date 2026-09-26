@@ -4,7 +4,10 @@ import {
   MAX_SPACE_NAME,
   MAX_SPACES,
   SEARCH_ENGINES,
+  SHIELD_SWITCHES,
   SLEEP_CHOICES,
+  WEBRTC_CHOICES,
+  type PrivacySettings,
   type SearchEngineId,
   type SleepAfterMinutes,
   type Workspace,
@@ -18,6 +21,8 @@ interface Props {
   onRemove(spaceId: string): void;
   onSearchEngine(engine: SearchEngineId): void;
   onSleepAfter(minutes: SleepAfterMinutes): void;
+  /** Change a Shields default for all apps (apps with their own setting keep it). */
+  onShieldDefault<K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -26,7 +31,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
@@ -156,7 +161,30 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
             Sleeping apps free memory and reload when you open their space. Apps that play audio, use your camera or microphone, or can send
             notifications stay awake.
           </p>
-          {/* TODO(ROADMAP 3.1): Shields settings (global and per app) go here. */}
+        </section>
+
+        <section>
+          <h2 className="popover-title">Shields defaults</h2>
+          <p className="popover-hint">For every app. Use the shield in a tile to change one app, or turn its Shields off.</p>
+          {SHIELD_SWITCHES.map((s) => (
+            <label key={s.key} className="shield-switch">
+              <span>
+                {s.label}
+                <small>{s.hint}</small>
+              </span>
+              <input type="checkbox" checked={ws.privacy[s.key]} onChange={(e) => onShieldDefault(s.key, e.target.checked)} />
+            </label>
+          ))}
+          <label className="shield-switch">
+            <span>WebRTC IP protection</span>
+            <select value={ws.privacy.webrtcPolicy} onChange={(e) => onShieldDefault('webrtcPolicy', e.target.value as PrivacySettings['webrtcPolicy'])}>
+              {WEBRTC_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </section>
       </div>
     </div>

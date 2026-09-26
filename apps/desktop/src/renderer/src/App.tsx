@@ -15,7 +15,9 @@ import {
   profilesOf,
   removeLeaf,
   removeSpace,
+  resolvePrivacy,
   renameSpace,
+  setPrivacyOverride,
   setProfile,
   setRatio,
   splitLeaf,
@@ -25,6 +27,7 @@ import {
   unreadFromTitle,
   updateActiveSpace,
   urlAfterEngineSwitch,
+  type PrivacySettings,
   type SearchEngineId,
   type SplitDirection,
   type Unread,
@@ -35,6 +38,7 @@ import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../
 import { AddAppDialog } from './components/AddAppDialog';
 import { DownloadsPanel } from './components/DownloadsPanel';
 import { MenuPanel } from './components/MenuPanel';
+import { ShieldsPanel } from './components/ShieldsPanel';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
 import { TileLayout } from './components/TileLayout';
@@ -58,6 +62,8 @@ export function App() {
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   // Open "Add app" dialog; leafId = the empty tile it was opened from (the new app opens there).
   const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
+  // Tile whose Shields panel is open (ROADMAP 3.1).
+  const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
@@ -123,6 +129,7 @@ export function App() {
   const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
   const closeAdding = useCallback(() => setAdding(null), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeShields = useCallback(() => setShieldsLeaf(null), []);
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
   const refocusTile = useCallback(() => window.aio.focusView(focusedRef.current), []);
 
@@ -295,6 +302,20 @@ export function App() {
       return updateActiveSpace(added.ws, (s) => ({ ...s, layout: setProfile(s.layout, leafId, id) }));
     });
 
+  // Shields: per-app overrides (only differences from the defaults are stored), and the defaults.
+  const setAppShield = <K extends keyof PrivacySettings>(appId: string, key: K, value: PrivacySettings[K]): void =>
+    edit((w) => ({ ...w, privacyOverrides: setPrivacyOverride(w.privacy, w.privacyOverrides, appId, key, value) }));
+  const resetAppShields = (appId: string): void =>
+    edit((w) => {
+      const privacyOverrides = { ...w.privacyOverrides };
+      delete privacyOverrides[appId];
+      return { ...w, privacyOverrides };
+    });
+  const setShieldDefault = <K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]): void =>
+    edit((w) => ({ ...w, privacy: { ...w.privacy, [key]: value } }));
+  const shieldsLeafNode = shieldsLeaf ? findLeaf(space.layout, shieldsLeaf) : null;
+  const shieldsApp = shieldsLeafNode?.appId ? catalog.find((a) => a.id === shieldsLeafNode.appId) : undefined;
+
   const setSearchEngine = (leafId: string, searchEngine: SearchEngineId): void => {
     edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
     // Make the switch visible: a tile showing a search engine moves to the new one (same search).
@@ -345,6 +366,8 @@ export function App() {
         onSwap={swap}
         accountsOf={(appId) => profilesOf(ws, appId)}
         onAccount={setAccount}
+        shieldsUp={(appId) => resolvePrivacy(ws.privacy, ws.privacyOverrides[appId]).shields}
+        onShields={setShieldsLeaf}
         onAddApp={(leafId) => setAdding({ leafId })}
         onRemoveApp={removeApp}
       />
@@ -357,8 +380,20 @@ export function App() {
           onRename={spaces.rename}
           onRemove={spaces.remove}
           onSearchEngine={(engine) => edit((w) => ({ ...w, browser: { ...w.browser, searchEngine: engine } }))}
+          onShieldDefault={setShieldDefault}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
+          onClosed={refocusTile}
+        />
+      )}
+      {shieldsApp && shieldsLeafNode && (
+        <ShieldsPanel
+          ws={ws}
+          app={shieldsApp}
+          blocked={(shieldsLeafNode.instanceId && viewStates[shieldsLeafNode.instanceId]?.blocked) || 0}
+          onSet={(key, value) => setAppShield(shieldsApp.id, key, value)}
+          onReset={() => resetAppShields(shieldsApp.id)}
+          onClose={closeShields}
           onClosed={refocusTile}
         />
       )}

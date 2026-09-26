@@ -212,3 +212,14 @@ KB; 150 ms limit per page, a slow page just shows the plain placeholder), sends 
 top-left) during divider drags, tile drags and popovers. Showing again makes the views visible first,
 then sends `{}` so the UI drops the snapshots, which avoids a blank flash. A show that arrives while
 snapshots are being taken cancels the pending hide. Measured: views hide ~50 ms after a drag starts.
+
+**D-028: Shields panel: a master switch plus per-app overrides of the defaults.**
+`PrivacySettings.shields` (workspace v8) is a master switch; `resolvePrivacy` turns every protection
+off when it's false (`SHIELDS_DOWN`), so filters need no extra check. Per-app changes are stored in
+`privacyOverrides` only where they differ from the defaults (`setPrivacyOverride`), so apps follow
+later default changes. Filters read settings per request, so changes apply as soon as the workspace
+is saved (~300 ms); a changed WebRTC policy is set on the app's pages and they reload. The request
+pipeline reports cancelled requests per page (`onBlocked`); the tile header shows the count, reset on
+each navigation. The panel lists only protections that exist today (ads, third-party cookies and
+fingerprinting join with 3.6, 3.3 and 3.4). Verified: with Shields down for YouTube, a tracker request
+from YouTube went through while the same request from the Browser tile stayed blocked.

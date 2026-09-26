@@ -72,6 +72,7 @@ export const CustomAppSchema: z.ZodType<WebAppDef> = z.object({
 });
 
 export const PrivacySchema = z.object({
+  shields: z.boolean(),
   blockAds: z.boolean(),
   blockTrackers: z.boolean(),
   stripTrackingParams: z.boolean(),

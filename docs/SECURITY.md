@@ -69,4 +69,5 @@ Settings live in `packages/core/src/privacy/settings.ts`; implementation in
 | Fingerprint randomization | Farbling | 3.4 |
 | Discord telemetry endpoints | n/a | Done (`/api/v*/science`, `/metrics`) |
 
-Blocking breaks sites sometimes. Every feature needs a per-app off switch (ROADMAP 3.1).
+Blocking breaks sites sometimes, so every app has a Shields panel (shield in its tile header, ROADMAP 3.1):
+a master off switch and per-feature switches, stored as per-app overrides of the defaults in the menu.
