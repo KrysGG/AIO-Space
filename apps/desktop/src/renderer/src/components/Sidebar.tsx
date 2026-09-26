@@ -5,14 +5,16 @@ interface Props {
   onOpen(appId: string): void;
   onSplit(dir: SplitDirection): void;
   canSplit: boolean;
+  onMenu(): void;
+  menuOpen: boolean;
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, onOpen, onSplit, canSplit }: Props) {
+export function Sidebar({ catalog, onOpen, onSplit, canSplit, onMenu, menuOpen }: Props) {
   return (
     <nav className="rail" aria-label="Apps">
       {/* TODO(ROADMAP 2.8): menu with spaces, settings, shields panel */}
-      <button className="rail-btn rail-menu" title="Menu" aria-label="Menu">
+      <button className="rail-btn rail-menu" title="Menu" aria-label="Menu" aria-expanded={menuOpen} onClick={onMenu}>
         <span />
         <span />
         <span />

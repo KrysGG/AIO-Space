@@ -22,6 +22,7 @@ export function App() {
   const [catalog, setCatalog] = useState<WebAppDef[]>([]);
   const [viewStates, setViewStates] = useState<Record<string, ViewState>>({});
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const saveTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -80,12 +81,14 @@ export function App() {
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: assignApp(s.layout, leafId, null) })));
 
   return (
-    <div className="shell">
+    <div className={`shell${menuOpen ? ' menu-open' : ''}`}>
       <Sidebar
         catalog={catalog}
         onOpen={(id) => openApp(id)}
         onSplit={(dir) => focused && split(focused, dir)}
         canSplit={Boolean(focused)}
+        onMenu={() => setMenuOpen(!menuOpen)}
+        menuOpen={menuOpen}
       />
       <TileLayout
         layout={space.layout}
