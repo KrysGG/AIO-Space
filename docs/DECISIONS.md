@@ -245,3 +245,14 @@ the strict rule. Page loads are first-party; an unknown top page fails open. Tes
 localhost embedding 127.0.0.1 with `SameSite=None; Secure` cookies (Chromium's Lax default already
 blocks plain cookies, so the test must use what real trackers use). Limitation: cookies that scripts
 inside a cross-site frame set via `document.cookie` are not covered (Backlog).
+
+**D-031: Frosted-glass tile snapshots; force-repaint on window focus.**
+Following user reports after live-testing 3.1–3.3: (1) growing a tile mid-drag scales its D-027
+snapshot up from its captured resolution, which looked like "dragged out"/pixelated content; fixed
+with a CSS treatment on `.tile-snapshot` (blur + slight scale-up + a translucent `--ink` tint) that
+turns the unavoidable softness of an upscaled still into a deliberate frosted-glass look, covering
+divider drags, tile-swap drags and every popover uniformly (one shared class). (2) Content dragged
+over the window by another app could leave a smeared/stale frame on a view (a Wayland/Chromium
+compositor damage-tracking quirk external to our code, distinct from D-024's own hide/show cycle):
+`ViewManager` now invalidates every visible view when the window regains focus, forcing a clean
+repaint at the next natural opportunity to notice.

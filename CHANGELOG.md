@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.13 fix] Frosted-glass look for tile snapshots while resizing/dragging (hides upscale blur instead of looking pixelated); views force-repaint on window focus to clear smeared frames left by other apps dragged over ours.
 - [3.2] When the HTTPS upgrade fails, the tile offers "Continue with HTTP (not secure)" and remembers the site (removable in the menu); workspace v9.
 - [3.1] Shields panel per app (shield in the tile header with blocked count; master switch and per-feature switches) and Shields defaults in the menu; workspace v8.
 - [2.13] Tiles show a snapshot of their page while views are hidden (drags, popovers), so layouts no longer flash empty.

@@ -413,7 +413,29 @@ button { font: inherit; color: inherit; }
 
 /* ---- Page snapshots while views are hidden (ROADMAP 2.13) ----------------- */
 .tile-placeholder:has(.tile-snapshot) { padding: 0; }
-.tile-snapshot { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; pointer-events: none; }
+/*
+ * The snapshot is a still image at its capture resolution; growing the tile mid-drag scales it up,
+ * which would look blurry/pixelated at 100% clarity ("dragged out" pixels). A frosted-glass blur
+ * turns that unavoidable softness into a deliberate look instead of a rendering glitch. The slight
+ * scale-up keeps blurred edges from showing past the tile's rounded corners (.tile has overflow: hidden).
+ */
+.tile-snapshot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  pointer-events: none;
+  filter: blur(9px) saturate(1.05) brightness(0.9);
+  transform: scale(1.08);
+}
+.tile-placeholder:has(.tile-snapshot)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(22 27 38 / 0.28); /* --ink, translucent: the glass tint */
+  border: 1px solid rgb(255 255 255 / 0.06);
+}
 
 /* ---- Shields (ROADMAP 3.1) -------------------------------------------------- */
 .shield-btn {

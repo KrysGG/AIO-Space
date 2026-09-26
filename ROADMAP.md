@@ -439,6 +439,14 @@ Add items found while working on other steps here, with the step where they were
   cross-site frame set with `document.cookie` still work. Look at Chromium's own third-party cookie
   setting (content settings / `--test-third-party-cookie-phaseout`) or partitioned cookies.
 - (3.3) Not ticked until the owner confirms every built-in app still logs in with blocking on.
+- (3.3) The owner reported Discord logs them out after an app restart. Reproduced on a *copy* of
+  their real Discord partition, but it still happened with `blockThirdPartyCookies` off and with
+  Shields fully off for the app, so 3.3's cookie code is very likely not the cause. Cookies (incl.
+  Cloudflare's `cf_clearance`) decrypt fine and aren't wiped; Discord's own session data isn't a
+  plain cookie, so couldn't be inspected the same way (Discord's page blocks `executeJavaScript`
+  entirely, even unrelated scripts). Needs the owner to reproduce with DevTools open (or describe
+  exactly what's shown: a plain email/password form, a "Continue as ..." button, or a Cloudflare
+  challenge) before guessing further at a real session.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

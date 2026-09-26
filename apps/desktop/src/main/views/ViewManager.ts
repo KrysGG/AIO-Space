@@ -89,6 +89,18 @@ export class ViewManager {
     private readonly downloads: DownloadManager,
   ) {
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
+    // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
+    // dragged over ours and away again (a compositor damage-tracking quirk, not our layout code).
+    // Regaining focus is the reliable moment to force a clean repaint of what's on screen.
+    this.win.on('focus', () => this.invalidateVisible());
+  }
+
+  /** Force every currently-visible view to repaint (see the focus handler above). */
+  private invalidateVisible(): void {
+    for (const entry of this.views.values()) {
+      if (!entry.view.getVisible() || entry.view.webContents.isDestroyed()) continue;
+      entry.view.webContents.invalidate();
+    }
   }
 
   /**
