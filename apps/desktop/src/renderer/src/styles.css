@@ -63,7 +63,7 @@ button { font: inherit; color: inherit; }
 .rail-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .rail-menu { display: flex; flex-direction: column; gap: 3px; }
 .rail-menu span { display: block; width: 16px; height: 1.5px; background: var(--muted); }
-.app-glyph { font-weight: 650; font-size: 12px; letter-spacing: 0.02em; background: var(--tile); }
+.app-glyph { font-weight: 650; font-size: 12px; letter-spacing: 0.02em; background: var(--tile); color: var(--text); }
 
 /* ---- Tiles --------------------------------------------------------------- */
 .tiles { position: relative; flex: 1; margin: 6px; }
@@ -236,3 +236,8 @@ button { font: inherit; color: inherit; }
 .address-input::placeholder { color: var(--muted); }
 .address-input:focus { outline: none; border-color: var(--focus); }
 .tile-title-browser { flex: 1; font-weight: 400; }
+
+/* ---- App icons ------------------------------------------------------------ */
+.app-icon { display: block; flex: none; }
+.app-icon-glyph { font-weight: 650; font-size: 12px; }
+.tile-title-text { overflow: hidden; text-overflow: ellipsis; }

@@ -1,4 +1,5 @@
 import type { SplitDirection, WebAppDef } from '@aio/core';
+import { AppIcon } from './AppIcon';
 
 interface Props {
   catalog: WebAppDef[];
@@ -31,7 +32,7 @@ export function Sidebar({ catalog, onOpen, onSplit, canSplit, onMenu, menuOpen, 
             aria-label={`Open ${app.name}`}
             onClick={() => onOpen(app.id)}
           >
-            {app.glyph}
+            <AppIcon app={app} size={20} />
           </button>
         ))}
       </div>

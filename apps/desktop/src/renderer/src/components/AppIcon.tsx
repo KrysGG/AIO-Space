@@ -1,0 +1,43 @@
+import { siDiscord, siInstagram, siReddit, siX, siYoutube } from 'simple-icons';
+import type { WebAppDef } from '@aio/core';
+
+/**
+ * Brand marks from Simple Icons (CC0 SVG paths; the logos remain their owners' trademarks), shown
+ * in brand colour. X's brand colour is black, so it uses the text colour to stay visible on the
+ * dark UI. Apps without an icon fall back to their text glyph.
+ * TODO(ROADMAP 4.2): favicons for custom apps (2.7), fetched once through the app's own session.
+ */
+const BRAND: Record<string, { path: string; color: string }> = {
+  discord: { path: siDiscord.path, color: `#${siDiscord.hex}` },
+  youtube: { path: siYoutube.path, color: `#${siYoutube.hex}` },
+  reddit: { path: siReddit.path, color: `#${siReddit.hex}` },
+  x: { path: siX.path, color: 'currentColor' },
+  instagram: { path: siInstagram.path, color: `#${siInstagram.hex}` },
+};
+
+export function AppIcon({ app, size = 20 }: { app: Pick<WebAppDef, 'id' | 'glyph' | 'kind'>; size?: number }) {
+  const brand = BRAND[app.id];
+  if (brand) {
+    return (
+      // Inline style, not attributes: rules like `.rail-btn svg { fill: none }` would override attributes.
+      <svg className="app-icon" viewBox="0 0 24 24" aria-hidden style={{ width: size, height: size, fill: brand.color, stroke: 'none' }}>
+        <path d={brand.path} />
+      </svg>
+    );
+  }
+  if (app.kind === 'browser') {
+    // A plain globe: the Browser tile is ours, not a brand.
+    return (
+      <svg
+        className="app-icon"
+        viewBox="0 0 24 24"
+        aria-hidden
+        style={{ width: size, height: size, fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }}
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9M12 3C9.5 5.6 8.2 8.6 8.2 12s1.3 6.4 3.8 9" />
+      </svg>
+    );
+  }
+  return <span className="app-icon-glyph">{app.glyph}</span>;
+}

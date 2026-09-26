@@ -10,6 +10,7 @@ import {
 } from '@aio/core';
 import type { ViewPlacement, ViewState } from '../../../shared/ipc';
 import { AddressBar } from './AddressBar';
+import { AppIcon } from './AppIcon';
 import { Launcher } from './Launcher';
 
 const GUTTER = 6;
@@ -108,8 +109,9 @@ export function TileLayout(props: Props) {
     };
   }, [dragging]);
 
-  const appName = (id: string | null): string => catalog.find((a) => a.id === id)?.name ?? 'Empty tile';
-  const isBrowser = (id: string | null): boolean => catalog.find((a) => a.id === id)?.kind === 'browser';
+  const appName = (id: string | null): string => appOf(id)?.name ?? 'Empty tile';
+  const appOf = (id: string | null): WebAppDef | undefined => catalog.find((a) => a.id === id);
+  const isBrowser = (id: string | null): boolean => appOf(id)?.kind === 'browser';
 
   return (
     <main className={`tiles${dragging ? ' is-dragging' : ''}`} ref={containerRef}>
@@ -140,8 +142,12 @@ export function TileLayout(props: Props) {
                 </div>
               ) : (
                 <span className="tile-title">
-                  {state?.loading && <span className="tile-spinner" aria-label="Loading" />}
-                  {state?.title || appName(t.appId)}
+                  {state?.loading ? (
+                    <span className="tile-spinner" aria-label="Loading" />
+                  ) : (
+                    appOf(t.appId) && <AppIcon app={appOf(t.appId)!} size={14} />
+                  )}
+                  <span className="tile-title-text">{state?.title || appName(t.appId)}</span>
                 </span>
               )}
               <div className="tile-tools">

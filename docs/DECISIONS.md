@@ -108,3 +108,12 @@ so check it on KDE when building the 2.4 context menu. Lesson from 2.2: the engi
 the setting; it only looked broken because the open page didn't move, which is why switching engine
 now moves an engine page (D-015). When a UI test changes a value from code, also check what the user
 would see change.
+
+**D-017: Built-in app icons from Simple Icons.**
+`simple-icons` (CC0 SVG paths; the logos stay their owners' trademarks) provides the Discord, YouTube,
+Reddit, X and Instagram marks, drawn in brand colour by `AppIcon.tsx` (X uses the text colour: its
+brand black is invisible on the dark UI). It is a desktop devDependency: named imports are
+tree-shaken, adding ~18 kB to the renderer bundle. The Browser tile uses our own globe. Apps without
+an icon keep their text glyph. Colours are set with inline styles because stylesheet rules such as
+`.rail-btn svg { fill: none }` override SVG attributes. Done ahead of order at the owner's request;
+favicons for custom apps wait for 2.7 (TODO(ROADMAP 4.2) in `AppIcon.tsx`).
