@@ -131,7 +131,7 @@ filling gaps, not writing it from scratch.
   audio works through PipeWire both ways.
 - Browser tile is denied microphone access (not in its permissions).
 
-### - [ ] 1.8 Desktop unit tests
+### - [x] 1.8 Desktop unit tests
 **Goal:** Main-process logic is covered without launching Electron.
 **Files:** `apps/desktop/vitest.config.ts` (new), `apps/desktop/test/*`
 **Tasks:**
