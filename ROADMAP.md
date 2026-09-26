@@ -160,7 +160,7 @@ Address bar in the Browser tile header (URL or search), new-tab links open a new
 New IPC: `view:navigate` (follow the IPC checklist in AGENTS.md; only http(s) allowed).
 **Done when:** You can browse normally in the Browser tile, including opening links in new tiles.
 
-### - [ ] 2.3 Keep views alive when rearranging; drag tiles to swap
+### - [x] 2.3 Keep views alive when rearranging; drag tiles to swap
 Today views are keyed by tile id, so moving an app reloads it. Key views by an app instance id
 stored on the leaf instead. Add drag-and-drop of tile headers to swap two tiles (`swapApps` in core).
 **Done when:** Swapping Discord and YouTube keeps both pages loaded (video keeps playing).

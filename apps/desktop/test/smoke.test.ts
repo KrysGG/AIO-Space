@@ -66,6 +66,32 @@ describe('desktop smoke test', () => {
       .toBe(true);
   });
 
+  it('drags a tile onto another to swap them without reloading the page', async () => {
+    const viewIds = () =>
+      app.evaluate(({ BaseWindow }) =>
+        BaseWindow.getAllWindows()[0]!.contentView.children.map((v) => (v as Electron.WebContentsView).webContents.id),
+      );
+    const before = await viewIds();
+    await tiles().first().getByRole('button', { name: 'Split right' }).click();
+    await expect.poll(() => tiles().count()).toBe(2);
+
+    // Grab the app icon at the start of the header (the Browser header is otherwise address bar and buttons).
+    const handle = await tiles().first().locator('.tile-head .app-icon, .tile-head .tile-spinner').first().boundingBox();
+    const to = await tiles().nth(1).boundingBox();
+    const start = { x: handle!.x + handle!.width / 2, y: handle!.y + handle!.height / 2 };
+    await ui.mouse.move(start.x, start.y);
+    await ui.mouse.down();
+    await ui.mouse.move(start.x + 20, start.y + 10, { steps: 3 });
+    await ui.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2, { steps: 8 });
+    await expect.poll(() => tiles().nth(1).getAttribute('class')).toContain('is-drop-target');
+    await ui.mouse.up();
+
+    await expect.poll(async () => [await tiles().first().getAttribute('aria-label'), await tiles().nth(1).getAttribute('aria-label')]).toEqual(['Empty tile', 'Browser']);
+    expect(await viewIds()).toEqual(before); // same view, just moved: the page didn't reload
+    await tiles().first().getByRole('button', { name: 'Close tile' }).click();
+    await expect.poll(() => tiles().count()).toBe(1);
+  });
+
   it('splits the tile, then closes both tiles back to one empty tile', async () => {
     await tiles().first().getByRole('button', { name: 'Split right' }).click();
     await expect.poll(() => tiles().count()).toBe(2);

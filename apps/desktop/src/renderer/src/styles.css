@@ -241,3 +241,11 @@ button { font: inherit; color: inherit; }
 .app-icon { display: block; flex: none; }
 .app-icon-glyph { font-weight: 650; font-size: 12px; }
 .tile-title-text { overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Drag a tile onto another to swap them -------------------------------- */
+.tile-head { cursor: grab; }
+.tile-head :is(button, input, select) { cursor: auto; }
+.tile-head button { cursor: pointer; }
+.is-moving-tile, .is-moving-tile .tile-head { cursor: grabbing; }
+.tile.is-drag-source { opacity: 0.55; }
+.tile.is-drop-target { box-shadow: 0 0 0 2px var(--focus); outline: 2px dashed var(--focus); outline-offset: -8px; }

@@ -20,6 +20,7 @@ interface Props {
   layout: LayoutNode;
   catalog: WebAppDef[];
   focusedLeafId: string | null;
+  /** Keyed by instance id. */
   viewStates: Record<string, ViewState>;
   searchEngine: SearchEngineId;
   /** Engine picked in a Browser tile's header; the tile follows if it's showing a search engine. */
@@ -32,6 +33,18 @@ interface Props {
   onSplit(leafId: string, dir: SplitDirection): void;
   onClose(leafId: string): void;
   onClear(leafId: string): void;
+  /** A tile header was dragged onto another tile. */
+  onSwap(fromLeafId: string, toLeafId: string): void;
+}
+
+/** Pointer travel before a header press becomes a tile drag (so clicks still work). */
+const DRAG_THRESHOLD = 6;
+
+interface TileDrag {
+  from: string;
+  start: { x: number; y: number };
+  active: boolean;
+  over: string | null;
 }
 
 export function TileLayout(props: Props) {
@@ -39,6 +52,10 @@ export function TileLayout(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<DividerRect | null>(null);
+  const [tileDrag, setTileDrag] = useState<TileDrag | null>(null);
+  // The live drag for the pointer listeners; `tileDrag` is its rendered copy.
+  const tileDragRef = useRef<TileDrag | null>(null);
+  const tileDragFrom = tileDrag?.from ?? null;
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -62,9 +79,10 @@ export function TileLayout(props: Props) {
     if (!el || size.width === 0) return;
     const origin = el.getBoundingClientRect();
     const placements: ViewPlacement[] = computed.tiles
-      .filter((t): t is typeof t & { appId: string } => t.appId !== null)
+      .filter((t): t is typeof t & { appId: string; instanceId: string } => t.appId !== null && t.instanceId !== null)
       .map((t) => ({
         leafId: t.leafId,
+        instanceId: t.instanceId,
         appId: t.appId,
         bounds: {
           x: Math.round(origin.left + t.rect.x),
@@ -109,29 +127,102 @@ export function TileLayout(props: Props) {
     };
   }, [dragging]);
 
+  // Latest onSwap for the tile-drag listeners (same reason as onResizeRef).
+  const onSwapRef = useRef(props.onSwap);
+  useLayoutEffect(() => {
+    onSwapRef.current = props.onSwap;
+  });
+
+  // Tile drag: press a header, move past the threshold, drop on another tile to swap their apps.
+  // Views hide once the drag starts; they would swallow the pointer (like divider drags, D-006).
+  useEffect(() => {
+    if (!tileDragFrom) return;
+    let activated = false; // views were hidden by this drag and must come back
+    const update = (next: TileDrag | null): void => {
+      tileDragRef.current = next;
+      setTileDrag(next);
+    };
+    const tileAt = (e: PointerEvent): string | null =>
+      (document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-leaf-id]') as HTMLElement | null)?.dataset['leafId'] ?? null;
+    const move = (e: PointerEvent): void => {
+      const d = tileDragRef.current;
+      if (!d) return;
+      if (!d.active && Math.hypot(e.clientX - d.start.x, e.clientY - d.start.y) < DRAG_THRESHOLD) return;
+      if (!d.active) {
+        activated = true;
+        window.aio.setViewsHidden(true);
+      }
+      const over = tileAt(e);
+      if (d.active && over === d.over) return;
+      update({ ...d, active: true, over });
+    };
+    const drop = (e: PointerEvent): void => {
+      const d = tileDragRef.current;
+      if (d?.active) {
+        const target = tileAt(e);
+        if (target && target !== d.from) onSwapRef.current(d.from, target);
+      }
+      update(null);
+    };
+    const cancel = (): void => update(null);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', drop);
+    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('blur', cancel);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', drop);
+      window.removeEventListener('pointercancel', cancel);
+      window.removeEventListener('blur', cancel);
+      if (activated) window.aio.setViewsHidden(false);
+    };
+  }, [tileDragFrom]);
+
   const appName = (id: string | null): string => appOf(id)?.name ?? 'Empty tile';
   const appOf = (id: string | null): WebAppDef | undefined => catalog.find((a) => a.id === id);
   const isBrowser = (id: string | null): boolean => appOf(id)?.kind === 'browser';
 
   return (
-    <main className={`tiles${dragging ? ' is-dragging' : ''}`} ref={containerRef}>
+    <main className={`tiles${dragging ? ' is-dragging' : ''}${tileDrag?.active ? ' is-moving-tile' : ''}`} ref={containerRef}>
       {computed.tiles.map((t) => {
-        // A state from the tile's previous app (or a view being destroyed) must not show.
-        const raw = viewStates[t.leafId];
-        const state = raw && raw.appId === t.appId ? raw : undefined;
+        // States are keyed by running instance, so they follow an app when tiles are swapped.
+        const state = t.instanceId ? viewStates[t.instanceId] : undefined;
         const isFocused = t.leafId === focusedLeafId;
         return (
           <section
             key={t.leafId}
-            className={`tile${isFocused ? ' is-focused' : ''}`}
+            data-leaf-id={t.leafId}
+            className={[
+              'tile',
+              isFocused && 'is-focused',
+              tileDrag?.active && tileDrag.from === t.leafId && 'is-drag-source',
+              tileDrag?.active && tileDrag.over === t.leafId && tileDrag.from !== t.leafId && 'is-drop-target',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             style={{ left: t.rect.x, top: t.rect.y, width: t.rect.width, height: t.rect.height }}
             onPointerDown={() => props.onFocus(t.leafId)}
             aria-label={appName(t.appId)}
           >
-            <header className="tile-head" style={{ height: HEADER }}>
+            <header
+              className="tile-head"
+              style={{ height: HEADER }}
+              title="Drag onto another tile to swap them"
+              onPointerDown={(e) => {
+                // Buttons, the address bar and the engine dropdown keep their own clicks.
+                if (e.button !== 0 || (e.target as HTMLElement).closest('button, input, select')) return;
+                tileDragRef.current = { from: t.leafId, start: { x: e.clientX, y: e.clientY }, active: false, over: null };
+                setTileDrag(tileDragRef.current);
+              }}
+            >
               {isBrowser(t.appId) ? (
                 <div className="tile-title tile-title-browser" title={state?.title}>
-                  {state?.loading && <span className="tile-spinner" aria-label="Loading" />}
+                  {/* Icon doubles as the drag handle: the rest of this header is address bar and buttons. */}
+                  {state?.loading ? (
+                    <span className="tile-spinner" aria-label="Loading" />
+                  ) : (
+                    appOf(t.appId) && <AppIcon app={appOf(t.appId)!} size={14} />
+                  )}
                   <AddressBar
                     leafId={t.leafId}
                     url={state?.url ?? ''}

@@ -78,6 +78,20 @@ describe('migrateWorkspace', () => {
     expect(out.spaces).toEqual(current.spaces);
   });
 
+  it('upgrades version 2 by giving every app tile an instance id', () => {
+    const leaf = (id: string, appId: string | null) => ({ type: 'leaf', id, appId });
+    const v2 = {
+      ...defaultWorkspace(),
+      version: 2,
+      spaces: [{ id: 'space_main', name: 'Main', focusedLeafId: 'leaf_a', layout: { type: 'split', id: 'split_1', direction: 'row', ratio: 0.5, first: leaf('leaf_a', 'discord'), second: leaf('leaf_b', null) } }],
+    };
+    const out = migrateWorkspace(v2);
+    expect(out.version).toBe(3);
+    const layout = out.spaces[0]!.layout as { first: { instanceId: string | null }; second: { instanceId: string | null } };
+    expect(layout.first.instanceId).toMatch(/^app_[a-z0-9]+$/);
+    expect(layout.second.instanceId).toBeNull();
+  });
+
   it('falls back to defaults for unknown or future versions', () => {
     expect(migrateWorkspace({ version: 99 }).spaces).toHaveLength(1);
     expect(migrateWorkspace({ foo: 1 }).version).toBe(WORKSPACE_VERSION);

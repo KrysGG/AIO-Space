@@ -69,6 +69,40 @@ describe('layout tree', () => {
   });
 });
 
+describe('running instances', () => {
+  it('gives apps an instance and empty tiles none', () => {
+    expect(createLeaf('discord').instanceId).toMatch(/^app_/);
+    expect(createLeaf().instanceId).toBeNull();
+  });
+
+  it('keeps the instance when the same app is assigned again, starts fresh for a new app', () => {
+    const a = createLeaf('discord');
+    expect(assignApp(a, a.id, 'discord')).toEqual(a);
+    const other = assignApp(a, a.id, 'youtube') as typeof a;
+    expect(other.appId).toBe('youtube');
+    expect(other.instanceId).not.toBe(a.instanceId);
+    expect((assignApp(a, a.id, null) as typeof a).instanceId).toBeNull();
+  });
+
+  it('moves instances with their apps when tiles are swapped', () => {
+    const a = createLeaf('discord');
+    const { root, newLeafId } = splitLeaf(a, a.id, 'row', 'youtube');
+    const before = listLeaves(root).map((l) => [l.appId, l.instanceId]);
+    const after = listLeaves(swapApps(root, a.id, newLeafId!)).map((l) => [l.appId, l.instanceId]);
+    expect(after).toEqual([before[1], before[0]]);
+  });
+
+  it('swaps an app into an empty tile, and ignores unknown or identical tiles', () => {
+    const a = createLeaf('discord');
+    const { root, newLeafId } = splitLeaf(a, a.id, 'row', null);
+    const moved = listLeaves(swapApps(root, a.id, newLeafId!));
+    expect(moved.map((l) => l.appId)).toEqual([null, 'discord']);
+    expect(moved[1]!.instanceId).toBe(a.instanceId);
+    expect(swapApps(root, a.id, 'nope')).toBe(root);
+    expect(swapApps(root, a.id, a.id)).toBe(root);
+  });
+});
+
 describe('neighborTile', () => {
   // [A | [B / C]] : A on the left, B top-right, C bottom-right.
   const a = createLeaf('a');

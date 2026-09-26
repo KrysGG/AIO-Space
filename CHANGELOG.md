@@ -2,6 +2,8 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.3] Views follow running app instances (workspace v3), so swapping tiles keeps pages loaded; drag a tile header onto another tile to swap.
+- [4.2 partial] Brand icons for built-in apps in the rail, launcher and tile headers (custom-app favicons wait for 2.7).
 - [2.2] Browser tile: address bar (Ctrl+L), search engine picker (DuckDuckGo, Brave, Startpage), new-tab links open in a new tile; workspace v2 with migration.
 - [2.1] Keyboard shortcuts (focus by arrow or number, split, close, reload, help) work from any tile or page; help popover in the rail (Ctrl+/).
 - [1.6] Verified navigation rules (outside links to system browser, no javascript:/file:, Browser tile goes anywhere) and Google sign-in in tiles and popups via a Firefox UA on accounts.google.com (D-012).

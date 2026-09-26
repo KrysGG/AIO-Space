@@ -15,6 +15,11 @@ export interface LeafNode {
   id: string;
   /** Catalog app id, or null for an empty tile that shows the launcher. */
   appId: string | null;
+  /**
+   * The running app in this tile (one native web view). Moves with the app when tiles are
+   * swapped, so the page isn't reloaded; a new id means a fresh view. Null when the tile is empty.
+   */
+  instanceId: string | null;
 }
 
 export interface SplitNode {
@@ -45,7 +50,7 @@ export interface DividerRect {
 }
 
 export interface ComputedLayout {
-  tiles: Array<{ leafId: string; appId: string | null; rect: Rect }>;
+  tiles: Array<{ leafId: string; appId: string | null; instanceId: string | null; rect: Rect }>;
   dividers: DividerRect[];
 }
 

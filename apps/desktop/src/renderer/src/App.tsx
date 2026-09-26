@@ -12,6 +12,7 @@ import {
   removeLeaf,
   setRatio,
   splitLeaf,
+  swapApps,
   updateActiveSpace,
   urlAfterEngineSwitch,
   type SearchEngineId,
@@ -31,6 +32,7 @@ const UNIT_AREA = { x: 0, y: 0, width: 1000, height: 1000 };
 export function App() {
   const [ws, setWs] = useState<Workspace | null>(null);
   const [catalog, setCatalog] = useState<WebAppDef[]>([]);
+  // Keyed by instance id, so a page's title and state follow it when tiles are swapped.
   const [viewStates, setViewStates] = useState<Record<string, ViewState>>({});
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,7 +50,7 @@ export function App() {
         setCatalog(c);
       })
       .catch((e: unknown) => setError(String(e)));
-    const offState = window.aio.onViewState((s) => setViewStates((prev) => ({ ...prev, [s.leafId]: s })));
+    const offState = window.aio.onViewState((s) => setViewStates((prev) => ({ ...prev, [s.instanceId]: s })));
     const offFocus = window.aio.onViewFocused((leafId) =>
       setWs((prev) => (prev ? updateActiveSpace(prev, (s) => ({ ...s, focusedLeafId: leafId })) : prev)),
     );
@@ -174,10 +176,15 @@ export function App() {
   const clear = (leafId: string): void =>
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: assignApp(s.layout, leafId, null) })));
 
+  // Focus follows the app you dragged. Views are keyed by instance, so neither page reloads.
+  const swap = (from: string, to: string): void =>
+    edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: swapApps(s.layout, from, to), focusedLeafId: to })));
+
   const setSearchEngine = (leafId: string, searchEngine: SearchEngineId): void => {
     edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
     // Make the switch visible: a tile showing a search engine moves to the new one (same search).
-    const next = urlAfterEngineSwitch(viewStates[leafId]?.url ?? '', searchEngine);
+    const instanceId = findLeaf(space.layout, leafId)?.instanceId;
+    const next = urlAfterEngineSwitch((instanceId && viewStates[instanceId]?.url) || '', searchEngine);
     if (next) window.aio.navigate(leafId, next);
   };
 
@@ -212,6 +219,7 @@ export function App() {
         onSplit={split}
         onClose={close}
         onClear={clear}
+        onSwap={swap}
       />
       {helpOpen && <ShortcutsHelp onClose={closeHelp} onClosed={refocusTile} />}
     </div>

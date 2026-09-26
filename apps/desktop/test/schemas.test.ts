@@ -53,6 +53,19 @@ describe('WorkspaceSchema', () => {
   });
 });
 
+describe('instances in the saved layout', () => {
+  it('requires an instance exactly when a tile has an app, and no duplicates', () => {
+    const leaf = (id: string, appId: string | null, instanceId: string | null) => ({ type: 'leaf' as const, id, appId, instanceId });
+    const split = (a: LayoutNode, b: LayoutNode): LayoutNode => ({ type: 'split', id: 'split_1', direction: 'row', ratio: 0.5, first: a, second: b });
+    const ok = (layout: LayoutNode) => WorkspaceSchema.safeParse(workspaceWith(layout)).success;
+    expect(ok(split(leaf('leaf_a', 'discord', 'app_1'), leaf('leaf_b', null, null)))).toBe(true);
+    expect(ok(leaf('leaf_a', 'discord', null))).toBe(false);
+    expect(ok(leaf('leaf_a', null, 'app_1'))).toBe(false);
+    expect(ok(split(leaf('leaf_a', 'discord', 'app_1'), leaf('leaf_b', 'youtube', 'app_1')))).toBe(false);
+    expect(ok(split(leaf('leaf_a', 'discord', 'app_1'), leaf('leaf_a', 'youtube', 'app_2')))).toBe(false);
+  });
+});
+
 describe('LayoutSchema', () => {
   it('rejects ratios outside 0..1 and unknown node types', () => {
     const split = layoutWithTiles(2);
@@ -63,7 +76,7 @@ describe('LayoutSchema', () => {
 });
 
 describe('PlacementsSchema', () => {
-  const placement = { leafId: 'leaf_1', appId: 'discord', bounds: { x: 62, y: 40, width: 800, height: 600 } };
+  const placement = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'discord', bounds: { x: 62, y: 40, width: 800, height: 600 } };
 
   it('accepts integer bounds within range', () => {
     expect(PlacementsSchema.safeParse([placement]).success).toBe(true);
@@ -75,7 +88,18 @@ describe('PlacementsSchema', () => {
     expect(PlacementsSchema.safeParse(withBounds({ width: 10.5 })).success).toBe(false);
     expect(PlacementsSchema.safeParse(withBounds({ height: 20001 })).success).toBe(false);
     expect(PlacementsSchema.safeParse([{ ...placement, appId: 'disc ord' }]).success).toBe(false);
-    expect(PlacementsSchema.safeParse(Array(MAX_TILES + 1).fill(placement)).success).toBe(false);
+    const many = Array.from({ length: MAX_TILES + 1 }, (_, i) => ({ ...placement, leafId: `leaf_${i}`, instanceId: `app_${i}` }));
+    expect(PlacementsSchema.safeParse(many.slice(0, MAX_TILES)).success).toBe(true);
+    expect(PlacementsSchema.safeParse(many).success).toBe(false);
+  });
+
+  it('rejects a missing instance and duplicate tiles or instances', () => {
+    const { instanceId: _i, ...noInstance } = placement;
+    void _i;
+    expect(PlacementsSchema.safeParse([noInstance]).success).toBe(false);
+    expect(PlacementsSchema.safeParse([placement, { ...placement, leafId: 'leaf_2' }]).success).toBe(false);
+    expect(PlacementsSchema.safeParse([placement, { ...placement, instanceId: 'app_2' }]).success).toBe(false);
+    expect(PlacementsSchema.safeParse([placement, { ...placement, leafId: 'leaf_2', instanceId: 'app_2' }]).success).toBe(true);
   });
 });
 

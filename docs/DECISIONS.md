@@ -117,3 +117,13 @@ tree-shaken, adding ~18 kB to the renderer bundle. The Browser tile uses our own
 an icon keep their text glyph. Colours are set with inline styles because stylesheet rules such as
 `.rail-btn svg { fill: none }` override SVG attributes. Done ahead of order at the owner's request;
 favicons for custom apps wait for 2.7 (TODO(ROADMAP 4.2) in `AppIcon.tsx`).
+
+**D-018: Views belong to running app instances, not tiles (workspace v3).**
+Each tile with an app stores an `instanceId` (core `LeafNode`), added in `WORKSPACE_VERSION` 3 with a
+v2 migration. `ViewManager` keys views by instance id and tracks which tile each one is in, so
+`swapApps` (which moves `appId` and `instanceId` together) only moves views; pages keep running
+(verified: a YouTube video played through a swap). `assignApp` keeps the instance when the same app
+is assigned again and starts a new one for a different app. View states are keyed by instance in the
+UI so titles follow the app. Schemas require an instance exactly when a tile has an app, and reject
+duplicate tile or instance ids. Tile headers are drag handles for swapping (6 px threshold so clicks
+still work; views hide during the drag as in D-006); Browser tiles use their header icon as the handle.

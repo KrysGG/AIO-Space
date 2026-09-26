@@ -22,6 +22,8 @@ export const IPC = {
 /** Where a native web view should sit, in window content coordinates (DIP). */
 export interface ViewPlacement {
   leafId: string;
+  /** The running app instance; views follow it when tiles are swapped. */
+  instanceId: string;
   appId: string;
   bounds: Rect;
 }
@@ -29,8 +31,10 @@ export interface ViewPlacement {
 export type ViewCommand = 'back' | 'forward' | 'reload' | 'home';
 
 export interface ViewState {
+  /** The running app instance this state belongs to. The UI keys states by it, so they follow swaps. */
+  instanceId: string;
+  /** Tile the view was in when the state was sent. */
   leafId: string;
-  /** App the view was showing. The UI ignores states whose app no longer matches the tile. */
   appId: string;
   url: string;
   title: string;

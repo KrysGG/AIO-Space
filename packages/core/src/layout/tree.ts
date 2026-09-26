@@ -13,7 +13,12 @@ import {
 /** All functions here are pure: they return a new tree and never mutate the input. */
 
 export function createLeaf(appId: string | null = null): LeafNode {
-  return { type: 'leaf', id: newId('leaf'), appId };
+  return { type: 'leaf', id: newId('leaf'), appId, instanceId: appId ? newInstanceId() : null };
+}
+
+/** Id for a newly started app (a new native view). */
+export function newInstanceId(): string {
+  return newId('app');
 }
 
 export function clampRatio(r: number): number {
@@ -84,16 +89,28 @@ export function setRatio(root: LayoutNode, splitId: string, ratio: number): Layo
   );
 }
 
+/** Put an app in a tile. The same app keeps its running instance; a different one starts fresh. */
 export function assignApp(root: LayoutNode, leafId: string, appId: string | null): LayoutNode {
-  return mapTree(root, (n) => (n.type === 'leaf' && n.id === leafId ? { ...n, appId } : n));
+  return mapTree(root, (n) => {
+    if (n.type !== 'leaf' || n.id !== leafId || n.appId === appId) return n;
+    return { ...n, appId, instanceId: appId ? newInstanceId() : null };
+  });
 }
 
-/** Swap the apps of two tiles (used for drag-to-rearrange). */
+/**
+ * Swap the apps of two tiles (drag-to-rearrange). Running instances move with their apps,
+ * so both pages stay loaded.
+ */
 export function swapApps(root: LayoutNode, a: string, b: string): LayoutNode {
   const la = findLeaf(root, a);
   const lb = findLeaf(root, b);
-  if (!la || !lb) return root;
-  return assignApp(assignApp(root, a, lb.appId), b, la.appId);
+  if (!la || !lb || a === b) return root;
+  return mapTree(root, (n) => {
+    if (n.type !== 'leaf') return n;
+    if (n.id === a) return { ...n, appId: lb.appId, instanceId: lb.instanceId };
+    if (n.id === b) return { ...n, appId: la.appId, instanceId: la.instanceId };
+    return n;
+  });
 }
 
 /**
@@ -104,7 +121,7 @@ export function computeLayout(root: LayoutNode, area: Rect, gutter = 6): Compute
   const out: ComputedLayout = { tiles: [], dividers: [] };
   const walk = (n: LayoutNode, r: Rect): void => {
     if (n.type === 'leaf') {
-      out.tiles.push({ leafId: n.id, appId: n.appId, rect: roundRect(r) });
+      out.tiles.push({ leafId: n.id, appId: n.appId, instanceId: n.instanceId, rect: roundRect(r) });
       return;
     }
     const horizontal = n.direction === 'row';

@@ -1,5 +1,5 @@
 import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
-import { createLeaf, listLeaves } from '../layout/tree';
+import { createLeaf, listLeaves, newInstanceId } from '../layout/tree';
 import type { LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
 
@@ -7,7 +7,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 2;
+export const WORKSPACE_VERSION = 3;
 
 export interface Space {
   id: string;
@@ -73,5 +73,21 @@ export function migrateWorkspace(raw: unknown): Workspace {
   let w = raw as Record<string, unknown>;
   if (!isSupportedWorkspaceVersion(w['version'])) return defaultWorkspace();
   if (w['version'] === 1) w = { ...w, version: 2, browser: { searchEngine: DEFAULT_SEARCH_ENGINE } };
+  if (w['version'] === 2) w = { ...w, version: 3, spaces: addInstanceIds(w['spaces']) };
   return w as unknown as Workspace;
+}
+
+/** v2 -> v3: every tile with an app gets a running-instance id. Leaves bad shapes for validation. */
+function addInstanceIds(spaces: unknown): unknown {
+  if (!Array.isArray(spaces)) return spaces;
+  const walk = (n: unknown): unknown => {
+    if (!n || typeof n !== 'object') return n;
+    const node = n as Record<string, unknown>;
+    if (node['type'] === 'leaf') return { ...node, instanceId: node['appId'] ? newInstanceId() : null };
+    if (node['type'] === 'split') return { ...node, first: walk(node['first']), second: walk(node['second']) };
+    return n;
+  };
+  return spaces.map((s: unknown) =>
+    s && typeof s === 'object' ? { ...(s as Record<string, unknown>), layout: walk((s as Record<string, unknown>)['layout']) } : s,
+  );
 }

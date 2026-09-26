@@ -13,6 +13,8 @@ import { forwardShortcuts } from '../shortcuts';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
 interface Entry {
+  /** The tile the view currently sits in. Changes when tiles are swapped; the view doesn't. */
+  leafId: string;
   appId: string;
   def: WebAppDef;
   view: WebContentsView;
@@ -20,12 +22,14 @@ interface Entry {
 
 /**
  * Owns every native web view. The renderer tells us where tiles are (sync);
- * we create, move, and destroy WebContentsViews to match.
+ * we create, move, and destroy WebContentsViews to match. Views are keyed by the tile's running
+ * instance id, not the tile, so an app moved to another tile keeps its page (ROADMAP 2.3).
  *
  * Views are drawn ON TOP of the UI page. Anything the UI must show over a tile
  * (menus, dialogs, divider drags) has to call setHidden(true) first.
  */
 export class ViewManager {
+  /** Keyed by instance id. */
   private readonly views = new Map<string, Entry>();
   private hidden = false;
   /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
@@ -38,21 +42,27 @@ export class ViewManager {
   ) {}
 
   sync(placements: ViewPlacement[]): void {
-    const wanted = new Set(placements.map((p) => p.leafId));
-    for (const leafId of [...this.views.keys()]) {
-      if (!wanted.has(leafId)) this.destroy(leafId);
+    const wanted = new Set(placements.map((p) => p.instanceId));
+    for (const instanceId of [...this.views.keys()]) {
+      if (!wanted.has(instanceId)) this.destroy(instanceId);
     }
     for (const p of placements) {
-      let entry = this.views.get(p.leafId);
+      let entry = this.views.get(p.instanceId);
       if (entry && entry.appId !== p.appId) {
-        this.destroy(p.leafId);
+        this.destroy(p.instanceId);
         entry = undefined;
       }
-      entry ??= this.create(p.leafId, p.appId);
+      entry ??= this.create(p.leafId, p.instanceId, p.appId);
       if (!entry) continue;
+      entry.leafId = p.leafId;
       entry.view.setBounds(p.bounds);
       entry.view.setVisible(!this.hidden);
     }
+  }
+
+  private byLeaf(leafId: string): Entry | undefined {
+    for (const entry of this.views.values()) if (entry.leafId === leafId) return entry;
+    return undefined;
   }
 
   setHidden(hidden: boolean): void {
@@ -68,7 +78,7 @@ export class ViewManager {
   /** Keyboard focus to a tile's view; the UI page when the tile is empty or `leafId` is null. */
   focus(leafId: string | null): void {
     if (this.win.isDestroyed()) return;
-    const entry = leafId ? this.views.get(leafId) : undefined;
+    const entry = leafId ? this.byLeaf(leafId) : undefined;
     // A tile whose view is about to be created (pending URL) gets focus once it exists.
     this.pendingFocus = !entry && leafId && this.pendingUrl.has(leafId) ? leafId : null;
     if (entry && !this.hidden) entry.view.webContents.focus();
@@ -78,7 +88,7 @@ export class ViewManager {
   /** Address bar and new tiles from links. Browser tiles only, http(s) only (also checked by the schema). */
   navigate(leafId: string, url: string): void {
     if (!isWebUrl(url)) return;
-    const entry = this.views.get(leafId);
+    const entry = this.byLeaf(leafId);
     if (entry) {
       if (entry.def.kind === 'browser') void entry.view.webContents.loadURL(url);
       return;
@@ -88,7 +98,7 @@ export class ViewManager {
   }
 
   command(leafId: string, cmd: ViewCommand): void {
-    const entry = this.views.get(leafId);
+    const entry = this.byLeaf(leafId);
     if (!entry) return;
     const wc = entry.view.webContents;
     const nav = wc.navigationHistory;
@@ -103,7 +113,7 @@ export class ViewManager {
     return def.kind === 'browser' ? SEARCH_ENGINES[this.store.get().browser.searchEngine].home : def.url;
   }
 
-  private create(leafId: string, appId: string): Entry | undefined {
+  private create(leafId: string, instanceId: string, appId: string): Entry | undefined {
     const def = getApp(appId);
     if (!def) return undefined;
     const ses = getAppSession(def, () => this.store.privacyFor(appId));
@@ -126,8 +136,9 @@ export class ViewManager {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
+    const entry: Entry = { leafId, appId, def, view };
     this.guardNavigation(def, view);
-    this.wireState(leafId, appId, view);
+    this.wireState(entry, instanceId);
 
     this.win.contentView.addChildView(view);
     const startUrl = def.kind === 'browser' ? this.pendingUrl.get(leafId) : undefined;
@@ -138,20 +149,19 @@ export class ViewManager {
       wc.focus();
     }
 
-    const entry: Entry = { appId, def, view };
-    this.views.set(leafId, entry);
+    this.views.set(instanceId, entry);
     return entry;
   }
 
   private leafOf(wc: WebContents): string | undefined {
-    for (const [leafId, entry] of this.views) if (entry.view.webContents === wc) return leafId;
+    for (const entry of this.views.values()) if (entry.view.webContents === wc) return entry.leafId;
     return undefined;
   }
 
-  private destroy(leafId: string): void {
-    const entry = this.views.get(leafId);
+  private destroy(instanceId: string): void {
+    const entry = this.views.get(instanceId);
     if (!entry) return;
-    this.views.delete(leafId);
+    this.views.delete(instanceId);
     if (!this.win.isDestroyed()) this.win.contentView.removeChildView(entry.view);
     if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
   }
@@ -218,13 +228,14 @@ export class ViewManager {
     });
   }
 
-  private wireState(leafId: string, appId: string, view: WebContentsView): void {
-    const wc = view.webContents;
+  private wireState(entry: Entry, instanceId: string): void {
+    const wc = entry.view.webContents;
     const emit = (crashed = false): void => {
       if (this.win.isDestroyed() || wc.isDestroyed()) return;
       const state: ViewState = {
-        leafId,
-        appId,
+        instanceId,
+        leafId: entry.leafId,
+        appId: entry.appId,
         url: wc.getURL(),
         title: wc.getTitle(),
         loading: wc.isLoading(),
@@ -241,7 +252,8 @@ export class ViewManager {
     wc.on('page-title-updated', () => emit());
     wc.on('render-process-gone', () => emit(true));
     wc.on('focus', () => {
-      if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewFocused, leafId);
+      // entry.leafId, read now: the view may have moved tiles since it was created.
+      if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewFocused, entry.leafId);
     });
   }
 }
