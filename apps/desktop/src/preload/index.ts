@@ -4,7 +4,14 @@
  * Never expose ipcRenderer itself or any generic "send anything" function.
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type AioApi, type OpenInNewTile, type ShortcutAction, type ViewState } from '../shared/ipc';
+import {
+  IPC,
+  type AioApi,
+  type DownloadInfo,
+  type OpenInNewTile,
+  type ShortcutAction,
+  type ViewState,
+} from '../shared/ipc';
 
 const api: AioApi = {
   getWorkspace: () => ipcRenderer.invoke(IPC.workspaceGet),
@@ -15,6 +22,7 @@ const api: AioApi = {
   viewCommand: (leafId, command) => ipcRenderer.send(IPC.viewCommand, { leafId, command }),
   focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
   navigate: (leafId, url) => ipcRenderer.send(IPC.viewNavigate, { leafId, url }),
+  downloadAction: (id, action) => ipcRenderer.send(IPC.downloadsAction, { id, action }),
   onViewState: (cb) => {
     const listener = (_e: IpcRendererEvent, s: ViewState): void => cb(s);
     ipcRenderer.on(IPC.viewState, listener);
@@ -34,6 +42,11 @@ const api: AioApi = {
     const listener = (_e: IpcRendererEvent, request: OpenInNewTile): void => cb(request);
     ipcRenderer.on(IPC.openInNewTile, listener);
     return () => ipcRenderer.removeListener(IPC.openInNewTile, listener);
+  },
+  onDownloads: (cb) => {
+    const listener = (_e: IpcRendererEvent, downloads: DownloadInfo[]): void => cb(downloads);
+    ipcRenderer.on(IPC.downloadsUpdate, listener);
+    return () => ipcRenderer.removeListener(IPC.downloadsUpdate, listener);
   },
 };
 

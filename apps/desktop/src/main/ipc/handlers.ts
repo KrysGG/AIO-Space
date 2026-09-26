@@ -2,10 +2,23 @@ import { ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent
 import { BUILTIN_APPS } from '@aio/core';
 import { IPC } from '../../shared/ipc';
 import type { WorkspaceStore } from '../store/workspaceStore';
+import type { DownloadManager } from '../downloads/DownloadManager';
 import type { ViewManager } from '../views/ViewManager';
-import { PlacementsSchema, ViewCommandSchema, ViewFocusSchema, ViewNavigateSchema, WorkspaceSchema } from './schemas';
+import {
+  DownloadActionSchema,
+  PlacementsSchema,
+  ViewCommandSchema,
+  ViewFocusSchema,
+  ViewNavigateSchema,
+  WorkspaceSchema,
+} from './schemas';
 
-export function registerIpc(win: BrowserWindow, store: WorkspaceStore, views: ViewManager): void {
+export function registerIpc(
+  win: BrowserWindow,
+  store: WorkspaceStore,
+  views: ViewManager,
+  downloads: DownloadManager,
+): void {
   /** Only the UI window's top frame may talk to main. Web app views have no preload anyway. */
   const fromUi = (e: IpcMainEvent | IpcMainInvokeEvent): boolean =>
     !win.isDestroyed() &&
@@ -60,5 +73,11 @@ export function registerIpc(win: BrowserWindow, store: WorkspaceStore, views: Vi
     if (!fromUi(e)) return;
     const parsed = ViewNavigateSchema.safeParse(raw);
     if (parsed.success) views.navigate(parsed.data.leafId, parsed.data.url);
+  });
+
+  ipcMain.on(IPC.downloadsAction, (e, raw: unknown) => {
+    if (!fromUi(e)) return;
+    const parsed = DownloadActionSchema.safeParse(raw);
+    if (parsed.success) downloads.action(parsed.data.id, parsed.data.action);
   });
 }

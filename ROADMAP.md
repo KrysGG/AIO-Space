@@ -175,7 +175,7 @@ Allow notifications per app (already in permissions); show unread counts parsed 
 like `(3) Discord` on the rail icon and tile header. Linux tray icon with total unread count.
 **Done when:** A Discord message in a background tile shows a system notification and a badge.
 
-### - [ ] 2.6 Downloads
+### - [x] 2.6 Downloads
 Handle `will-download` per session: save to `~/Downloads`, progress in a small downloads panel in
 the rail, open file / show in folder. Reject downloads from the UI session.
 **Done when:** Downloading a file from any tile works and shows progress.

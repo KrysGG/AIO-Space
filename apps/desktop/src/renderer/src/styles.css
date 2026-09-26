@@ -269,3 +269,33 @@ button { font: inherit; color: inherit; }
 .rail-badge { position: absolute; top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--rail); }
 .unread-dot.rail-badge { top: 0; right: 0; }
 .tile-handle { flex: none; display: grid; place-items: center; width: 16px; height: 16px; }
+
+/* ---- Downloads panel ------------------------------------------------------ */
+.popover {
+  position: absolute;
+  left: 64px;
+  bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+  background: var(--rail);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+.popover-title { margin: 0; font-size: 14px; font-weight: 600; }
+.popover-hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.downloads { width: 380px; max-height: min(520px, calc(100vh - 24px)); display: flex; flex-direction: column; }
+.downloads-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.downloads-list { list-style: none; margin: 10px 0 0; padding: 0; overflow: auto; display: grid; gap: 6px; }
+.download { padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--ink); }
+.download-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; user-select: text; }
+.download-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.download.is-interrupted .download-meta { color: #f08a8a; }
+.download-bar { height: 4px; margin-top: 6px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.download-bar span { display: block; height: 100%; background: var(--focus); transition: width 0.2s; }
+.download-bar span.is-unknown { opacity: 0.5; }
+.download-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; }
+.download-actions:empty { display: none; }
+.download-note { color: var(--muted); font-size: 11px; }
+.text-btn { padding: 2px 0; border: 0; background: none; color: var(--focus); font-size: 12px; cursor: pointer; }
+.text-btn:hover { text-decoration: underline; }
+.rail-badge-info { background: var(--focus); color: var(--ink); }

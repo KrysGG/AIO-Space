@@ -23,7 +23,8 @@ import {
   type WebAppDef,
   type Workspace,
 } from '@aio/core';
-import type { OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
+import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
+import { DownloadsPanel } from './components/DownloadsPanel';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
 import { TileLayout } from './components/TileLayout';
@@ -40,6 +41,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [downloads, setDownloads] = useState<DownloadInfo[]>([]);
+  const [downloadsOpen, setDownloadsOpen] = useState(false);
   const saveTimer = useRef<number | undefined>(undefined);
   // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
@@ -59,7 +62,9 @@ export function App() {
     );
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
     const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
+    const offDownloads = window.aio.onDownloads(setDownloads);
     return () => {
+      offDownloads();
       offState();
       offFocus();
       offShortcut();
@@ -81,6 +86,7 @@ export function App() {
   }, []);
 
   const closeHelp = useCallback(() => setHelpOpen(false), []);
+  const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
   const refocusTile = useCallback(() => window.aio.focusView(focusedRef.current), []);
 
@@ -215,6 +221,9 @@ export function App() {
         menuOpen={menuOpen}
         onHelp={() => setHelpOpen(!helpOpen)}
         helpOpen={helpOpen}
+        onDownloads={() => setDownloadsOpen(!downloadsOpen)}
+        downloadsOpen={downloadsOpen}
+        activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
       />
       <TileLayout
         layout={space.layout}
@@ -233,6 +242,7 @@ export function App() {
         onSwap={swap}
       />
       {helpOpen && <ShortcutsHelp onClose={closeHelp} onClosed={refocusTile} />}
+      {downloadsOpen && <DownloadsPanel downloads={downloads} onClose={closeDownloads} onClosed={refocusTile} />}
     </div>
   );
 }

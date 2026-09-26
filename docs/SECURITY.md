@@ -28,6 +28,9 @@ These are enforced by review, and several by ESLint. Do not break them.
 9. Workspace file is written atomically with mode `0600`.
 10. No telemetry, analytics, or crash upload from this app. Anything like that must be opt-in and
     documented here first.
+11. Downloads only come from app sessions (the UI session cancels every download), are saved into the
+    Downloads folder under a sanitized, never-overwriting name, and file types the desktop could run
+    (scripts, `.desktop`, installers, binaries) are never opened from the app, only shown in the folder.
 
 ## Packaging hardening (ROADMAP 5.3)
 

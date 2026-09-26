@@ -13,9 +13,10 @@ export function installGlobalHardening(): void {
   });
 }
 
-/** The UI window's session never needs any permission. */
+/** The UI window's session never needs any permission, and never downloads. */
 export function lockDownUiSession(): void {
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   ses.setPermissionCheckHandler(() => false);
+  ses.on('will-download', (e) => e.preventDefault());
 }

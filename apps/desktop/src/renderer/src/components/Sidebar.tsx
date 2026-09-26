@@ -13,10 +13,14 @@ interface Props {
   menuOpen: boolean;
   onHelp(): void;
   helpOpen: boolean;
+  onDownloads(): void;
+  downloadsOpen: boolean;
+  /** Downloads in progress, for the badge on the downloads button. */
+  activeDownloads: number;
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, onHelp, helpOpen }: Props) {
+export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads }: Props) {
   return (
     <nav className="rail" aria-label="Apps">
       {/* TODO(ROADMAP 2.8): menu with spaces, settings, shields panel */}
@@ -47,6 +51,16 @@ export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, me
         </button>
         <button className="rail-btn" disabled={!canSplit} onClick={() => onSplit('column')} title="Split down" aria-label="Split focused tile down">
           <svg viewBox="0 0 20 20" aria-hidden><rect x="2.5" y="3.5" width="15" height="13" rx="2" /><line x1="2.5" y1="10" x2="17.5" y2="10" /></svg>
+        </button>
+        <button
+          className="rail-btn"
+          onClick={onDownloads}
+          aria-expanded={downloadsOpen}
+          title="Downloads"
+          aria-label={activeDownloads ? `Downloads, ${activeDownloads} in progress` : 'Downloads'}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden><path d="M10 3v9M6 8.5l4 4 4-4M4 15.5h12" /></svg>
+          <UnreadBadge unread={activeDownloads ? { count: activeDownloads, more: false } : null} className="rail-badge rail-badge-info" />
         </button>
         <button className="rail-btn" onClick={onHelp} aria-expanded={helpOpen} title="Keyboard shortcuts (Ctrl+/)" aria-label="Keyboard shortcuts">
           <svg viewBox="0 0 20 20" aria-hidden><rect x="2.5" y="5" width="15" height="10" rx="2" /><path d="M5.5 8h1M9.5 8h1M13.5 8h1M6.5 12h7" /></svg>

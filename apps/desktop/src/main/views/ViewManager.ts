@@ -21,6 +21,7 @@ import {
   type WebAppDef,
 } from '@aio/core';
 import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
+import type { DownloadManager } from '../downloads/DownloadManager';
 import { getAppSession } from '../sessions/appSession';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
@@ -58,6 +59,7 @@ export class ViewManager {
   constructor(
     private readonly win: BrowserWindow,
     private readonly store: WorkspaceStore,
+    private readonly downloads: DownloadManager,
   ) {}
 
   sync(placements: ViewPlacement[]): void {
@@ -136,6 +138,7 @@ export class ViewManager {
     const def = getApp(appId);
     if (!def) return undefined;
     const ses = getAppSession(def, () => this.store.privacyFor(appId));
+    this.downloads.attach(ses);
 
     const view = new WebContentsView({
       webPreferences: {

@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import { join } from 'node:path';
+import { DownloadManager } from './downloads/DownloadManager';
 import { registerIpc } from './ipc/handlers';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { cleanUserAgent } from './sessions/userAgent';
@@ -40,8 +41,9 @@ app.whenReady().then(async () => {
   await store.load();
 
   const win = createMainWindow();
-  const views = new ViewManager(win, store);
-  registerIpc(win, store, views);
+  const downloads = new DownloadManager(win);
+  const views = new ViewManager(win, store, downloads);
+  registerIpc(win, store, views, downloads);
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);
 

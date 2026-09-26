@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createLeaf, defaultWorkspace, splitLeaf, type LayoutNode } from '@aio/core';
 import {
+  DownloadActionSchema,
   LayoutSchema,
   MAX_TILES,
   PlacementsSchema,
@@ -138,5 +139,14 @@ describe('SearchEngineSchema', () => {
     for (const id of ['duckduckgo', 'brave', 'startpage']) expect(SearchEngineSchema.safeParse(id).success).toBe(true);
     expect(SearchEngineSchema.safeParse('google').success).toBe(false);
     expect(SearchEngineSchema.safeParse(null).success).toBe(false);
+  });
+});
+
+describe('DownloadActionSchema', () => {
+  it('accepts known actions on a download id only', () => {
+    for (const action of ['open', 'show', 'cancel', 'clear']) expect(DownloadActionSchema.safeParse({ id: 'dl_1', action }).success).toBe(true);
+    expect(DownloadActionSchema.safeParse({ id: 'dl_1', action: 'delete' }).success).toBe(false);
+    expect(DownloadActionSchema.safeParse({ id: '/etc/passwd', action: 'open' }).success).toBe(false);
+    expect(DownloadActionSchema.safeParse({ action: 'open' }).success).toBe(false);
   });
 });

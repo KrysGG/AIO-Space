@@ -145,3 +145,12 @@ app, over all tiles) and tile headers (title shown without the prefix). `ViewMan
 the desktop supports it. The tray icon is rendered to a bitmap in `main/tray.ts` (2x2 tiles, amber
 focus) so no image assets are needed until packaging (5.1). Web notifications are Chromium's own,
 shown via the desktop; only apps with `notifications` in their catalog permissions can send them.
+
+**D-021: Downloads.**
+`DownloadManager` (main) attaches to each app session's `will-download` once, saves to
+`app.getPath('downloads')` with `safeFilename` + `uniquePath` (`name (1).ext`, never overwrite), and
+sends the whole list to the UI (`downloads:update`, throttled to 250 ms while bytes arrive). Paths stay
+in main; the UI gets file names and byte counts. Actions (`downloads:action`: open, show, cancel,
+clear) are validated with zod; "open" is refused in main for risky types (`isRiskyToOpen`: scripts,
+`.desktop`, installers, `.bin`...), not just hidden in the UI (SECURITY invariant 11). The list lives
+for the session only. The panel is a rail popover that hides views, like the shortcuts list.

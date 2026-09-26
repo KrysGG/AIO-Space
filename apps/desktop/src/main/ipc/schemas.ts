@@ -91,3 +91,8 @@ export const ViewNavigateSchema = z.object({
   leafId: Id,
   url: z.string().max(8192).refine(isWebUrl, 'only http(s) URLs'),
 });
+
+export const DownloadActionSchema = z.object({
+  id: Id,
+  action: z.enum(['open', 'show', 'cancel', 'clear']),
+});

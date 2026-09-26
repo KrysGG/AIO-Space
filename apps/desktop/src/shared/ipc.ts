@@ -16,6 +16,8 @@ export const IPC = {
   viewFocus: 'view:focus',
   viewNavigate: 'view:navigate',
   openInNewTile: 'view:open-in-new-tile',
+  downloadsUpdate: 'downloads:update',
+  downloadsAction: 'downloads:action',
   shortcut: 'shortcut',
 } as const;
 
@@ -51,6 +53,22 @@ export interface OpenInNewTile {
   background: boolean;
 }
 
+/** One download as the UI shows it. Paths stay in main; the UI only gets the file name. */
+export interface DownloadInfo {
+  id: string;
+  filename: string;
+  /** Site the file came from, e.g. "github.com". */
+  host: string;
+  receivedBytes: number;
+  /** 0 when the server didn't say. */
+  totalBytes: number;
+  state: 'progressing' | 'completed' | 'cancelled' | 'interrupted';
+  /** False for types the desktop might run (scripts, .desktop, installers): show in folder only. */
+  canOpen: boolean;
+}
+
+export type DownloadAction = 'open' | 'show' | 'cancel' | 'clear';
+
 /** A keyboard shortcut caught in main (from the UI or any web view) and handled by the UI. */
 export type ShortcutAction =
   | { kind: 'focus-direction'; direction: FocusDirection }
@@ -78,4 +96,8 @@ export interface AioApi {
   onViewFocused(cb: (leafId: string) => void): () => void;
   onShortcut(cb: (action: ShortcutAction) => void): () => void;
   onOpenInNewTile(cb: (request: OpenInNewTile) => void): () => void;
+  /** Full list of this session's downloads, newest first, whenever it changes. */
+  onDownloads(cb: (downloads: DownloadInfo[]) => void): () => void;
+  /** `clear` removes finished downloads from the list (the files stay); `id` is ignored for it. */
+  downloadAction(id: string, action: DownloadAction): void;
 }
