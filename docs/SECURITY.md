@@ -38,9 +38,10 @@ These are enforced by review, and several by ESLint. Do not break them.
 13. Filter lists are fetched only from `raw.githubusercontent.com`, in their own in-memory session with
     no credentials; the lists only feed the blocking engine, never run as code.
 
-## Packaging hardening (ROADMAP 5.3)
+## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 
-Apply Electron fuses at build time:
+Electron fuses are flipped on the packaged binary by `apps/desktop/scripts/afterPack.cjs`
+(electron-builder `afterPack`, `@electron/fuses`):
 
 | Fuse | Value |
 | --- | --- |
@@ -50,8 +51,52 @@ Apply Electron fuses at build time:
 | EnableEmbeddedAsarIntegrityValidation | on |
 | OnlyLoadAppFromAsar | on |
 | EnableCookieEncryption | on |
+| GrantFileProtocolExtraPrivileges | off (the UI is served from `aio://app`, not `file://`) |
+
+`EnableEmbeddedAsarIntegrityValidation` is enforced by Electron on macOS and Windows only; on Linux it
+is set but has no effect yet.
+
+Verified on a packaged build (`electron-builder --linux dir`, 2026-09-26): `@electron/fuses read`
+shows the values above; with `ELECTRON_RUN_AS_NODE=1` the binary starts AIO Space instead of Node
+(stock Electron runs the script); `NODE_OPTIONS=--require ...` and `--inspect` are ignored.
 
 Also run `electronegativity` and go through Electron's security checklist before each release.
+
+## Audit (ROADMAP 3.7, 2026-09-26)
+
+**electronegativity 1.10.3** (`electronegativity -i apps/desktop/src -e 44.4.5`), 7 findings:
+
+| Finding | Where | Outcome |
+| --- | --- | --- |
+| CSP_GLOBAL_CHECK (low) | `renderer/index.html` | The meta CSP must allow Vite's inline styles in dev. Packaged builds now also get a strict CSP header from the `aio://` handler (no `'unsafe-inline'`, `form-action 'none'`); browsers enforce both. |
+| AUXCLICK_JS_CHECK | `main/window.ts` | Fixed: UI window sets `disableBlinkFeatures: 'Auxclick'`. Web views keep middle-click (Browser tile opens links in new tiles); their window-open handler decides. |
+| PRELOAD_JS_CHECK | `main/window.ts` | Accepted: our own preload, `contextBridge` only, named functions, no raw `ipcRenderer`. |
+| DANGEROUS_FUNCTIONS (insertCSS) | `main/views/ViewManager.ts` | Accepted: filter-list element-hiding CSS, injected as user CSS; CSS can't run script. |
+| OPEN_EXTERNAL ×3 | `ViewManager.ts`, `contextMenu.ts` | Accepted: every call is behind `isWebUrl` / `isWeb` (http(s) only), invariant 7. |
+
+**Electron security checklist** (electronjs.org/docs/latest/tutorial/security):
+
+| # | Recommendation | Status |
+| --- | --- | --- |
+| 1 | Only load secure content | HTTPS upgrade by default (3.2); http only after the user chooses it per site. |
+| 2 | No Node integration for remote content | `nodeIntegration: false` everywhere (lint-enforced). |
+| 3 | Context isolation | On everywhere (lint-enforced). |
+| 4 | Process sandboxing | `app.enableSandbox()`, `sandbox: true` (lint-enforced). |
+| 5 | Handle permission requests | Per-app allow list; UI session denies all. |
+| 6 | Don't disable webSecurity | Never (lint-enforced). |
+| 7 | Content Security Policy | UI: meta CSP + strict header in packaged builds. Remote sites keep their own. |
+| 8 | No `allowRunningInsecureContent` | Never set. |
+| 9 | No experimental features | Never set. |
+| 10 | No `enableBlinkFeatures` | Never set (only `disableBlinkFeatures: 'Auxclick'` on the UI). |
+| 11–12 | `<webview>` options | `<webview>` is disabled (`will-attach-webview` prevented). |
+| 13 | Limit navigation | UI can't navigate; apps limited to `allowedHosts`. |
+| 14 | Limit new windows | Denied by default; sign-in popups only for `popupHosts`, hardened. |
+| 15 | `shell.openExternal` with untrusted content | http(s) only. |
+| 16 | Current Electron | 44.4.5. |
+| 17 | Validate IPC senders | `fromUi()` on every handler, zod on every payload. |
+| 18 | Avoid `file://` | Fixed: UI served from `aio://app` (`main/security/uiProtocol.ts`), confined to the renderer folder (tested against path traversal). |
+| 19 | Check fuses | Flipped in `afterPack` (table above). |
+| 20 | Don't expose Electron APIs to web content | Web views get no IPC; their preload exposes nothing. |
 
 ## Privacy features ("Shields")
 

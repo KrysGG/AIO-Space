@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
 import { IPC } from '../shared/ipc';
 import { forwardShortcuts } from './shortcuts';
+import { uiIndexUrl } from './security/uiProtocol';
 
 const BG = '#161B26';
 
@@ -22,6 +23,8 @@ export function createMainWindow(): BrowserWindow {
       nodeIntegration: false,
       webSecurity: true,
       spellcheck: false,
+      // Middle-click can't open anything from the UI (Electron checklist; windows are denied anyway).
+      disableBlinkFeatures: 'Auxclick',
     },
   });
 
@@ -36,7 +39,7 @@ export function createMainWindow(): BrowserWindow {
   if (devUrl && !app.isPackaged) {
     void win.loadURL(devUrl);
   } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'));
+    void win.loadURL(uiIndexUrl());
   }
   return win;
 }

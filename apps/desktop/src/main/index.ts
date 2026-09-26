@@ -4,6 +4,7 @@ import { DownloadManager } from './downloads/DownloadManager';
 import { registerIpc } from './ipc/handlers';
 import { FilterLists } from './privacy/filterLists';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
+import { handleUiScheme, registerUiScheme } from './security/uiProtocol';
 import { cleanUserAgent } from './sessions/userAgent';
 import { WorkspaceStore } from './store/workspaceStore';
 import { createTray } from './tray';
@@ -33,10 +34,12 @@ if (!app.requestSingleInstanceLock()) {
 app.userAgentFallback = cleanUserAgent(app.userAgentFallback, app.getName());
 
 installGlobalHardening();
+registerUiScheme();
 
 // ---- Ready ------------------------------------------------------------------
 app.whenReady().then(async () => {
   lockDownUiSession();
+  handleUiScheme(join(__dirname, '../renderer'));
 
   const store = new WorkspaceStore(join(app.getPath('userData'), 'workspace.json'));
   await store.load();

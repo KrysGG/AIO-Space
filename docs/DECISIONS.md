@@ -304,3 +304,11 @@ filtering from main: at `dom-ready` the site's rules and generic base rules, and
 ads on YouTube are expected to remain; subframe cosmetics; redirect surrogates. New IPC:
 `filters:status`, `filters:update` (menu shows rule counts, last update, "Update now").
 Desktop tests now run one file at a time (`fileParallelism: false`): three files launch Electron.
+
+**D-035: UI served from `aio://app`; fuses flipped in an electron-builder `afterPack` hook.**
+ROADMAP 3.7. The packaged UI loads from a privileged custom scheme (`standard`, `secure`) handled only
+in the default (UI) session (`main/security/uiProtocol.ts`), confined to `out/renderer`, with a strict
+CSP header on HTML; dev still uses Vite's http URL. That allows the `GrantFileProtocolExtraPrivileges`
+fuse to be off. Fuses are flipped with `@electron/fuses` (new dev dependency, Electron's own package)
+in `scripts/afterPack.cjs`, rather than electron-builder's `electronFuses` option, so the list lives in
+one readable file next to its reasons. Packaged Linux executable is named `aio-space`.

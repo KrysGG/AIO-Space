@@ -268,7 +268,7 @@ DECISIONS.md.
 **Done when:** Ads blocked on common test pages, YouTube works (ad blocking on YouTube is a moving
 target; document current state), per-app toggle respected.
 
-### - [ ] 3.7 Security audit and fuses
+### - [x] 3.7 Security audit and fuses
 Run `electronegativity`, walk Electron's security checklist, confirm every invariant in
 `docs/SECURITY.md`. Apply fuses (table in SECURITY.md) with `@electron/fuses` in an
 electron-builder `afterPack` hook.

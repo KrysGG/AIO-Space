@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [3.7] Security audit (electronegativity + Electron checklist, in SECURITY.md); UI served from `aio://app` with a strict CSP instead of `file://`; fuses flipped on packaged builds (verified: `ELECTRON_RUN_AS_NODE=1` starts the app, not Node); tile blocked counts no longer miss early requests.
 - [3.5/3.6 built] Ad and tracker blocking with EasyList, EasyPrivacy, uBlock Origin and Brave lists (@ghostery/adblocker engine in our pipeline), cosmetic hiding of ad slots, daily list updates cached on disk, "Block ads" switch and list status in the menu (D-034). Waiting for the owner to check popular sites and YouTube.
 - [3.4 built] Fingerprinting protection (standard/strict) for canvas, WebGL and audio, `navigator.globalPrivacyControl`, hidden `webdriver`; a choice in both Shields panels (D-033). Waiting for the owner to check YouTube, Discord and X.
 - [UI polish] White/grey focus outline instead of amber, liquid-glass panels and snapshots, web pages as inset rounded cards (no more square corners), menu icon centered in its button, subtle scrollbars (D-032).

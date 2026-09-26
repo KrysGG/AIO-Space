@@ -642,11 +642,14 @@ export class ViewManager {
     });
     const wcId = wc.id;
     wc.on('destroyed', () => forgetPage(wcId));
-    // A new page starts a new blocked count (same-document navigations keep it).
-    wc.on('did-navigate', () => {
+    // A new page starts a new blocked count (same-document navigations keep it). Reset when the
+    // navigation starts: 'did-navigate' can arrive after the new page's first requests were blocked.
+    wc.on('did-start-navigation', (d) => {
+      if (!d.isMainFrame || d.isSameDocument) return;
       entry.blocked = 0;
       emit();
     });
+    wc.on('did-navigate', () => emit());
     wc.on('did-navigate-in-page', () => emit());
     wc.on('page-title-updated', () => {
       emit();
