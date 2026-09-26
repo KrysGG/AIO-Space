@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { OnBeforeRequestListenerDetails, OnBeforeSendHeadersListenerDetails } from 'electron';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '@aio/core';
 import { buildShieldFilters } from '../src/main/privacy/shields';
+import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, noteUpgrade, upgradedFrom } from '../src/main/privacy/httpsFallback';
 import type { RequestFilter } from '../src/main/privacy/requestPipeline';
 import { googleSignInFilter } from '../src/main/sessions/userAgent';
 
@@ -14,8 +15,8 @@ const filter = (name: string): RequestFilter => {
 };
 
 /** Only the fields the filters read; the rest of Electron's details object is irrelevant here. */
-const req = (url: string, resourceType = 'mainFrame') =>
-  ({ url, resourceType }) as unknown as OnBeforeRequestListenerDetails;
+const req = (url: string, resourceType = 'mainFrame', webContentsId?: number) =>
+  ({ url, resourceType, webContentsId }) as unknown as OnBeforeRequestListenerDetails;
 const hdr = (url: string) => ({ url }) as unknown as OnBeforeSendHeadersListenerDetails;
 
 beforeEach(() => {
@@ -123,5 +124,41 @@ describe('google-sign-in-ua', () => {
   it('leaves every other host untouched', () => {
     const out = googleSignInFilter.onBeforeSendHeaders!(hdr('https://www.youtube.com/'), { ...chromeHeaders });
     expect(out).toEqual(chromeHeaders);
+  });
+});
+
+describe('https-only fallback hooks (ROADMAP 3.2)', () => {
+  it('skips sites the user allowed over http, and notes main-frame upgrades only', () => {
+    const upgrades: string[] = [];
+    const f = buildShieldFilters(() => settings, {
+      httpAllowed: (h) => h === 'neverssl.com',
+      onUpgrade: (id, http, https) => upgrades.push(`${id} ${http} -> ${https}`),
+    }).find((x) => x.name === 'https-only')!;
+    expect(f.onBeforeRequest!(req('http://neverssl.com/', 'mainFrame', 7))).toBeUndefined();
+    expect(f.onBeforeRequest!(req('http://example.com/a', 'mainFrame', 7))).toEqual({ redirectURL: 'https://example.com/a' });
+    expect(f.onBeforeRequest!(req('http://example.com/img.png', 'image', 7))).toEqual({ redirectURL: 'https://example.com/img.png' });
+    expect(upgrades).toEqual(['7 http://example.com/a -> https://example.com/a']);
+  });
+});
+
+describe('httpsFallback', () => {
+  it('maps a failed upgraded load back to its http address, per page', () => {
+    noteUpgrade(1, 'http://neverssl.com/', 'https://neverssl.com/');
+    expect(upgradedFrom(1, 'https://neverssl.com/')).toBe('http://neverssl.com/');
+    expect(upgradedFrom(1, 'https://other.example/')).toBeUndefined();
+    expect(upgradedFrom(2, 'https://neverssl.com/')).toBeUndefined();
+    forgetPage(1);
+    expect(upgradedFrom(1, 'https://neverssl.com/')).toBeUndefined();
+  });
+
+  it('treats connection, TLS, certificate and timeout errors as "no https", not DNS or aborts', () => {
+    for (const code of [-7, -100, -102, -107, -118, -200, -202]) expect(isFallbackError(code)).toBe(true);
+    for (const code of [-3, -105, -300, -2, 0]) expect(isFallbackError(code)).toBe(false);
+  });
+
+  it('remembers allowed sites for this run, case-insensitively', () => {
+    allowHttpThisRun('NeverSSL.com');
+    expect(isHttpAllowedThisRun('neverssl.com')).toBe(true);
+    expect(isHttpAllowedThisRun('example.com')).toBe(false);
   });
 });

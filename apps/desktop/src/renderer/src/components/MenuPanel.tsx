@@ -23,6 +23,8 @@ interface Props {
   onSleepAfter(minutes: SleepAfterMinutes): void;
   /** Change a Shields default for all apps (apps with their own setting keep it). */
   onShieldDefault<K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]): void;
+  /** Stop allowing a site over http (it gets upgraded to https again). */
+  onDisallowHttp(host: string): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -31,7 +33,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
@@ -185,6 +187,23 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               ))}
             </select>
           </label>
+          {ws.httpAllowedHosts.length > 0 && (
+            <div className="http-allowed">
+              <span>Sites allowed without HTTPS</span>
+              <ul>
+                {ws.httpAllowedHosts.map((h) => (
+                  <li key={h}>
+                    {h}
+                    <button className="icon-btn" title={`Upgrade ${h} to HTTPS again`} aria-label={`Remove ${h}`} onClick={() => onDisallowHttp(h)}>
+                      <svg viewBox="0 0 20 20" aria-hidden>
+                        <path d="m5 5 10 10M15 5 5 15" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       </div>
     </div>

@@ -23,6 +23,7 @@ import {
 } from '@aio/core';
 import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
+import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
 import { getAppSession, hasUsedMedia } from '../sessions/appSession';
 import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
@@ -50,6 +51,8 @@ interface Entry {
   blocked: number;
   /** Pending throttled state update for the blocked count. */
   blockedTimer?: NodeJS.Timeout;
+  /** The upgraded https:// load failed: view hidden, tile offers http (ROADMAP 3.2). */
+  httpsFailed?: { host: string; url: string; error: string };
   appId: string;
   def: WebAppDef;
   view: WebContentsView;
@@ -121,7 +124,7 @@ export class ViewManager {
       if (!entry) continue;
       entry.leafId = p.leafId;
       entry.view.setBounds(p.bounds);
-      entry.view.setVisible(!this.hidden);
+      entry.view.setVisible(!this.hidden && !entry.httpsFailed);
     }
   }
 
@@ -160,9 +163,9 @@ export class ViewManager {
 
   private applyVisibility(): void {
     const shown = new Set(this.lastPlacements.map((p) => p.instanceId));
-    for (const [instanceId, { view }] of this.views) {
+    for (const [instanceId, { view, httpsFailed }] of this.views) {
       if (!shown.has(instanceId)) continue; // other spaces' views stay hidden
-      view.setVisible(!this.hidden);
+      view.setVisible(!this.hidden && !httpsFailed);
       // A static page may not paint for seconds after being shown again; until it does, the Wayland
       // compositor can show its old frame in the wrong place (torn strips after a divider drag).
       if (!this.hidden) view.webContents.invalidate();
@@ -215,7 +218,15 @@ export class ViewManager {
     if (!entry) return;
     const wc = entry.view.webContents;
     const nav = wc.navigationHistory;
-    if (cmd === 'back' && nav.canGoBack()) nav.goBack();
+    if (cmd === 'allow-http') {
+      // "Continue with HTTP": remember the site for this run (the UI saves it for good), load http://.
+      if (!entry.httpsFailed) return;
+      allowHttpThisRun(entry.httpsFailed.host);
+      void wc.loadURL(entry.httpsFailed.url);
+      return;
+    }
+    if (cmd === 'back' && entry.httpsFailed && !nav.canGoBack()) void wc.loadURL(this.homeOf(entry.def));
+    else if (cmd === 'back' && nav.canGoBack()) nav.goBack();
     else if (cmd === 'forward' && nav.canGoForward()) nav.goForward();
     else if (cmd === 'reload') wc.reload();
     else if (cmd === 'home') void wc.loadURL(this.homeOf(entry.def));
@@ -271,7 +282,13 @@ export class ViewManager {
   private create(leafId: string, instanceId: string, appId: string, profile: string, wakeUrl?: string): Entry | undefined {
     const def = getApp(appId, this.store.catalog());
     if (!def) return undefined;
-    const ses = getAppSession(def, profile, () => this.store.privacyFor(appId), (id) => this.countBlocked(id));
+    const ses = getAppSession(
+      def,
+      profile,
+      () => this.store.privacyFor(appId),
+      (id) => this.countBlocked(id),
+      (host) => this.store.get().httpAllowedHosts.includes(host) || isHttpAllowedThisRun(host),
+    );
     this.downloads.attach(ses);
 
     const view = new WebContentsView({
@@ -494,12 +511,31 @@ export class ViewManager {
         crashed,
         zoom: wc.getZoomFactor(),
         blocked: entry.blocked,
+        ...(entry.httpsFailed ? { httpsFailed: entry.httpsFailed } : {}),
       };
       this.win.webContents.send(IPC.viewState, state);
     };
     entry.emit = () => emit();
     wc.on('did-start-loading', () => emit());
     wc.on('did-stop-loading', () => emit());
+    // HTTPS fallback (ROADMAP 3.2): an upgraded page that can't connect securely gets the tile's
+    // "continue over http" panel instead of a broken page. Any new navigation clears it.
+    wc.on('did-fail-load', (_e, code, description, url, isMainFrame) => {
+      if (!isMainFrame || !isFallbackError(code)) return;
+      const http = upgradedFrom(wc.id, url);
+      if (!http) return;
+      entry.httpsFailed = { host: new URL(http).hostname, url: http, error: description };
+      this.applyVisibility();
+      emit();
+    });
+    wc.on('did-start-navigation', (d) => {
+      if (!d.isMainFrame || d.isSameDocument || !entry.httpsFailed) return;
+      entry.httpsFailed = undefined;
+      this.applyVisibility();
+      emit();
+    });
+    const wcId = wc.id;
+    wc.on('destroyed', () => forgetPage(wcId));
     // A new page starts a new blocked count (same-document navigations keep it).
     wc.on('did-navigate', () => {
       entry.blocked = 0;

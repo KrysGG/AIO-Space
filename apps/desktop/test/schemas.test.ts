@@ -235,3 +235,13 @@ describe('accounts', () => {
     expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: many } }).success).toBe(false);
   });
 });
+
+describe('http-allowed sites', () => {
+  it('stores real hostnames only, once each', () => {
+    const ws = defaultWorkspace();
+    expect(WorkspaceSchema.safeParse({ ...ws, httpAllowedHosts: ['neverssl.com'] }).success).toBe(true);
+    expect(WorkspaceSchema.safeParse({ ...ws, httpAllowedHosts: ['*'] }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...ws, httpAllowedHosts: ['a.com', 'a.com'] }).success).toBe(false);
+    expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1', command: 'allow-http' }).success).toBe(true);
+  });
+});

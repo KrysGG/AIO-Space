@@ -1,6 +1,7 @@
 import { app, session, type Session, type WebContents } from 'electron';
 import { partitionFor, type AppPermission, type PrivacySettings, type WebAppDef } from '@aio/core';
 import { installRequestPipeline } from '../privacy/requestPipeline';
+import { noteUpgrade } from '../privacy/httpsFallback';
 import { buildShieldFilters } from '../privacy/shields';
 import { cleanUserAgent, googleSignInFilter } from './userAgent';
 
@@ -21,6 +22,7 @@ export function getAppSession(
   profile: string,
   getPrivacy: () => PrivacySettings,
   onBlocked: (webContentsId: number) => void,
+  httpAllowed: (host: string) => boolean,
 ): Session {
   const partition = partitionFor(def.id, profile);
   const existing = configured.get(partition);
@@ -37,7 +39,8 @@ export function getAppSession(
   });
   ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
 
-  installRequestPipeline(ses, [googleSignInFilter, ...buildShieldFilters(getPrivacy)], onBlocked);
+  const https = { httpAllowed, onUpgrade: noteUpgrade };
+  installRequestPipeline(ses, [googleSignInFilter, ...buildShieldFilters(getPrivacy, https)], onBlocked);
 
   configured.set(partition, ses);
   return ses;

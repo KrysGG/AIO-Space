@@ -35,7 +35,7 @@ export interface ViewPlacement {
   bounds: Rect;
 }
 
-export type ViewCommand = 'back' | 'forward' | 'reload' | 'home' | 'zoom-in' | 'zoom-out' | 'zoom-reset';
+export type ViewCommand = 'back' | 'forward' | 'reload' | 'home' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'allow-http';
 
 export interface ViewState {
   /** The running app instance this state belongs to. The UI keys states by it, so they follow swaps. */
@@ -53,6 +53,11 @@ export interface ViewState {
   zoom: number;
   /** Requests Shields blocked on the current page (ROADMAP 3.1). */
   blocked: number;
+  /**
+   * The page was upgraded to https and that failed (ROADMAP 3.2): the view is hidden and the tile
+   * offers to continue over http. `url` is the http:// address, `error` Chromium's description.
+   */
+  httpsFailed?: { host: string; url: string; error: string };
 }
 
 /** A Browser tile link asked for a new tab. `background` = middle-click / Ctrl+click: keep focus where it is. */

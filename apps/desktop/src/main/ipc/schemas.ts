@@ -118,6 +118,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
       z.array(z.object({ id: ProfileId.refine((p) => p !== 'default'), name: z.string().trim().min(1).max(30) })).max(MAX_PROFILES_PER_APP - 1),
     )
     .refine((p) => Object.keys(p).length <= 100, 'too many apps with accounts'),
+  httpAllowedHosts: z.array(Host).max(200).refine(unique, 'duplicate host'),
   customApps: z
     .array(CustomAppSchema)
     .max(MAX_CUSTOM_APPS)
@@ -150,7 +151,7 @@ export const ViewsSyncSchema = z.object({
 
 export const ViewCommandSchema = z.object({
   leafId: Id,
-  command: z.enum(['back', 'forward', 'reload', 'home', 'zoom-in', 'zoom-out', 'zoom-reset']),
+  command: z.enum(['back', 'forward', 'reload', 'home', 'zoom-in', 'zoom-out', 'zoom-reset', 'allow-http']),
 });
 
 /** `null` means "give keyboard focus to the UI". */

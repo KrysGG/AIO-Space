@@ -32,16 +32,26 @@ function matchesHost(host: string, list: string[]): boolean {
   return list.some((h) => host === h || host.endsWith(`.${h}`));
 }
 
-export function buildShieldFilters(getPrivacy: () => PrivacySettings): RequestFilter[] {
+export interface HttpsOptions {
+  /** Sites the user allowed over http after https failed (ROADMAP 3.2): not upgraded. */
+  httpAllowed(host: string): boolean;
+  /** A page load was upgraded; remembered so a failure can offer http instead. */
+  onUpgrade(webContentsId: number, httpUrl: string, httpsUrl: string): void;
+}
+
+const NO_HTTPS_OPTIONS: HttpsOptions = { httpAllowed: () => false, onUpgrade: () => {} };
+
+export function buildShieldFilters(getPrivacy: () => PrivacySettings, https: HttpsOptions = NO_HTTPS_OPTIONS): RequestFilter[] {
   return [
     {
       name: 'https-only',
       onBeforeRequest(d) {
         if (!getPrivacy().httpsOnly || !d.url.startsWith('http://')) return undefined;
         const host = hostOf(d.url);
-        if (!host || LOCAL_HOST.test(host)) return undefined;
-        // TODO(ROADMAP 3.2): fall back to http + interstitial when https fails.
-        return { redirectURL: 'https://' + d.url.slice('http://'.length) };
+        if (!host || LOCAL_HOST.test(host) || https.httpAllowed(host)) return undefined;
+        const upgraded = 'https://' + d.url.slice('http://'.length);
+        if (d.resourceType === 'mainFrame' && d.webContentsId !== undefined) https.onUpgrade(d.webContentsId, d.url, upgraded);
+        return { redirectURL: upgraded };
       },
     },
     {

@@ -48,6 +48,8 @@ interface Props {
   accountsOf(appId: string): AppProfile[];
   /** Pick an account for a tile, or '+add' to create one. */
   onAccount(leafId: string, profile: string): void;
+  /** "Continue with HTTP" on the https fallback panel: remember the site (ROADMAP 3.2). */
+  onAllowHttp(host: string): void;
   /** Whether Shields are up for an app (ROADMAP 3.1). */
   shieldsUp(appId: string): boolean;
   onShields(leafId: string): void;
@@ -328,7 +330,34 @@ export function TileLayout(props: Props) {
                 // The native view covers this area. It shows only while views are hidden or loading;
                 // while hidden for a drag or popover, a snapshot of the page stands in for it.
                 <div className="tile-placeholder">
-                  {t.instanceId && props.snapshots[t.instanceId] ? (
+                  {state?.httpsFailed ? (
+                    <div className="https-failed" role="alert">
+                      <svg viewBox="0 0 20 20" aria-hidden>
+                        <path d="M6 9V6.5a4 4 0 0 1 8 0V9M4.5 9h11v8h-11z" />
+                        <path d="m3 3 14 14" />
+                      </svg>
+                      <h3>{state.httpsFailed.host} doesn’t offer a secure connection</h3>
+                      <p>
+                        AIO Space tried the secure (https) version and it didn’t work ({state.httpsFailed.error}). The site may only
+                        support http, where anyone on your network can see and change what you send and receive.
+                      </p>
+                      <div className="form-actions">
+                        <button className="btn" onClick={() => window.aio.viewCommand(t.leafId, 'back')}>
+                          Go back
+                        </button>
+                        <button
+                          className="btn btn-warn"
+                          onClick={() => {
+                            props.onAllowHttp(state.httpsFailed!.host);
+                            window.aio.viewCommand(t.leafId, 'allow-http');
+                          }}
+                        >
+                          Continue with HTTP (not secure)
+                        </button>
+                      </div>
+                      <small>The choice is remembered for {state.httpsFailed.host}. You can undo it in the menu.</small>
+                    </div>
+                  ) : t.instanceId && props.snapshots[t.instanceId] ? (
                     <img className="tile-snapshot" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
                   ) : state?.crashed ? (
                     'This app stopped. Press reload to restart it.'

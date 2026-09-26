@@ -446,3 +446,15 @@ button { font: inherit; color: inherit; }
 .shields-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .shields-foot .popover-hint { margin: 0; }
 .menu-panel .shield-switch { margin-top: 2px; }
+
+/* ---- HTTPS fallback panel (ROADMAP 3.2) ------------------------------------ */
+.https-failed { max-width: 460px; padding: 24px; display: grid; gap: 10px; justify-items: start; color: var(--text); font-size: 13px; }
+.https-failed svg { width: 32px; height: 32px; fill: none; stroke: #e8793b; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.https-failed h3 { margin: 0; font-size: 16px; }
+.https-failed p { margin: 0; color: var(--muted); line-height: 1.5; }
+.https-failed small { color: var(--muted); font-size: 11px; }
+.btn-warn { border-color: #e8793b; color: #e8793b; }
+.btn-warn:hover { border-color: #e8793b; background: rgb(232 121 59 / 0.12); }
+.http-allowed { display: grid; gap: 4px; font-size: 12px; }
+.http-allowed ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.http-allowed li { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--ink); }

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import {
   activeSpace,
   addProfile,
+  allowHttpHost,
   addSpace,
   addressToUrl,
   assignApp,
   catalogOf,
   computeLayout,
+  disallowHttpHost,
   ensureFocus,
   findLeaf,
   listLeaves,
@@ -368,6 +370,7 @@ export function App() {
         onAccount={setAccount}
         shieldsUp={(appId) => resolvePrivacy(ws.privacy, ws.privacyOverrides[appId]).shields}
         onShields={setShieldsLeaf}
+        onAllowHttp={(host) => edit((w) => allowHttpHost(w, host))}
         onAddApp={(leafId) => setAdding({ leafId })}
         onRemoveApp={removeApp}
       />
@@ -381,6 +384,7 @@ export function App() {
           onRemove={spaces.remove}
           onSearchEngine={(engine) => edit((w) => ({ ...w, browser: { ...w.browser, searchEngine: engine } }))}
           onShieldDefault={setShieldDefault}
+          onDisallowHttp={(host) => edit((w) => disallowHttpHost(w, host))}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}

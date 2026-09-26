@@ -40,3 +40,18 @@ describe('workspace v8', () => {
     expect(out.privacy.shields).toBe(true);
   });
 });
+
+describe('sites allowed over http (v9)', () => {
+  it('starts empty, adds each host once (lower-cased), removes, and migrates v8', async () => {
+    const { allowHttpHost, disallowHttpHost } = await import('../src/workspace/workspace');
+    let ws = defaultWorkspace();
+    expect(ws.httpAllowedHosts).toEqual([]);
+    ws = allowHttpHost(allowHttpHost(ws, 'NeverSSL.com'), 'neverssl.com');
+    expect(ws.httpAllowedHosts).toEqual(['neverssl.com']);
+    expect(disallowHttpHost(ws, 'neverssl.com').httpAllowedHosts).toEqual([]);
+    const v8: Record<string, unknown> = { ...defaultWorkspace(), version: 8 };
+    delete v8['httpAllowedHosts'];
+    expect(migrateWorkspace(v8).httpAllowedHosts).toEqual([]);
+    expect(migrateWorkspace(v8).version).toBe(WORKSPACE_VERSION);
+  });
+});

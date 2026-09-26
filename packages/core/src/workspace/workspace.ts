@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 8;
+export const WORKSPACE_VERSION = 9;
 
 export interface Space {
   id: string;
@@ -48,6 +48,11 @@ export interface Workspace {
   zoom: Record<string, number>;
   /** Extra accounts per app id (the first, 'default', is implicit). Added in version 7 (ROADMAP 2.12). */
   profiles: Record<string, AppProfile[]>;
+  /**
+   * Sites the user chose to load over plain http because they have no working https (ROADMAP 3.2):
+   * exempt from the HTTPS upgrade. Added in version 9.
+   */
+  httpAllowedHosts: string[];
 }
 
 export interface AppProfile {
@@ -68,6 +73,7 @@ export function defaultWorkspace(): Workspace {
     performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER },
     zoom: {},
     profiles: {},
+    httpAllowedHosts: [],
   };
 }
 
@@ -115,6 +121,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
     const privacy = (w['privacy'] && typeof w['privacy'] === 'object' ? w['privacy'] : {}) as Record<string, unknown>;
     w = { ...w, version: 8, privacy: { ...privacy, shields: true } };
   }
+  if (w['version'] === 8) w = { ...w, version: 9, httpAllowedHosts: [] };
   return w as unknown as Workspace;
 }
 
@@ -193,4 +200,18 @@ export function addProfile(ws: Workspace, appId: string): { ws: Workspace; profi
   while (ids.has(`p${n}`)) n++;
   const profile: AppProfile = { id: `p${n}`, name: `Account ${n}` };
   return { ws: { ...ws, profiles: { ...ws.profiles, [appId]: [...(ws.profiles[appId] ?? []), profile] } }, profileId: profile.id };
+}
+
+/* ---- Sites allowed over plain http (ROADMAP 3.2) ------------------------------------------- */
+
+export const MAX_HTTP_ALLOWED = 200;
+
+export function allowHttpHost(ws: Workspace, host: string): Workspace {
+  const h = host.toLowerCase();
+  if (!h || ws.httpAllowedHosts.includes(h) || ws.httpAllowedHosts.length >= MAX_HTTP_ALLOWED) return ws;
+  return { ...ws, httpAllowedHosts: [...ws.httpAllowedHosts, h] };
+}
+
+export function disallowHttpHost(ws: Workspace, host: string): Workspace {
+  return { ...ws, httpAllowedHosts: ws.httpAllowedHosts.filter((h) => h !== host) };
 }
