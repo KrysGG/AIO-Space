@@ -165,3 +165,13 @@ catalog is built-ins + custom (`store.catalog()`); the UI merges the same way. V
 after every save, so a just-added app opens at once. The icon is the page's own favicon, fetched once
 through the app's session (`views/favicon.ts`: https, raster types, <= 100 KB). Removing an app
 empties its tiles; its partition data stays until "clear data" (3.9).
+
+**D-023: Spaces keep their apps running in the background.**
+The rail's menu button opens `MenuPanel` (spaces + settings; hides views like other popovers).
+Space operations are pure core functions (`addSpace`, `renameSpace`, `switchSpace`, `removeSpace`:
+never the last space; removing the active one moves to its neighbour). `views:sync` carries
+`{ placements, keep }`: `keep` lists the instance ids of every other space's apps, which main hides
+instead of destroying, so switching back is instant and pages keep playing (verified with YouTube).
+Apps in a space that hasn't been shown yet start when it is first shown. `setHidden(false)` and
+`focus()` only touch the active space's views. Unread badges and the tray count all spaces. Sleeping
+background tiles to save memory is 2.9. Shields settings will join the menu in 3.1.

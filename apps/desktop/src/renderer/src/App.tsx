@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   activeSpace,
+  addSpace,
   addressToUrl,
   assignApp,
   catalogOf,
@@ -11,10 +12,13 @@ import {
   MAX_TILES,
   neighborTile,
   removeLeaf,
+  removeSpace,
+  renameSpace,
   setRatio,
   splitLeaf,
   sumUnread,
   swapApps,
+  switchSpace,
   unreadFromTitle,
   updateActiveSpace,
   urlAfterEngineSwitch,
@@ -27,6 +31,7 @@ import {
 import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
 import { AddAppDialog } from './components/AddAppDialog';
 import { DownloadsPanel } from './components/DownloadsPanel';
+import { MenuPanel } from './components/MenuPanel';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
 import { TileLayout } from './components/TileLayout';
@@ -99,6 +104,7 @@ export function App() {
   const closeHelp = useCallback(() => setHelpOpen(false), []);
   const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
   const closeAdding = useCallback(() => setAdding(null), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
   const refocusTile = useCallback(() => window.aio.focusView(focusedRef.current), []);
 
@@ -178,6 +184,10 @@ export function App() {
   const space = activeSpace(ws);
   const focused = space.focusedLeafId;
   const catalog = catalogOf(ws, builtins);
+  // Apps in the other spaces keep running (hidden) so switching is instant (ROADMAP 2.8).
+  const backgroundInstances = ws.spaces
+    .filter((s) => s.id !== space.id)
+    .flatMap((s) => listLeaves(s.layout).flatMap((l) => (l.instanceId ? [l.instanceId] : [])));
 
   // Unread per app for the rail, from every tile's page title (all spaces: they all run).
   const unreadByApp: Record<string, Unread> = {};
@@ -239,6 +249,19 @@ export function App() {
     }));
   };
 
+  const spaces = {
+    switch: (id: string): void => {
+      edit((w) => switchSpace(w, id));
+      setMenuOpen(false);
+    },
+    add: (): void => {
+      edit((w) => addSpace(w));
+      setMenuOpen(false);
+    },
+    rename: (id: string, name: string): void => edit((w) => renameSpace(w, id, name)),
+    remove: (id: string): void => edit((w) => removeSpace(w, id)),
+  };
+
   const setSearchEngine = (leafId: string, searchEngine: SearchEngineId): void => {
     edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
     // Make the switch visible: a tile showing a search engine moves to the new one (same search).
@@ -253,7 +276,7 @@ export function App() {
   };
 
   return (
-    <div className={`shell${menuOpen ? ' menu-open' : ''}`}>
+    <div className="shell">
       <Sidebar
         catalog={catalog}
         unread={unreadByApp}
@@ -262,6 +285,8 @@ export function App() {
         canSplit={Boolean(focused)}
         onMenu={() => setMenuOpen(!menuOpen)}
         menuOpen={menuOpen}
+        spaceName={space.name}
+        showSpaceName={ws.spaces.length > 1}
         onHelp={() => setHelpOpen(!helpOpen)}
         helpOpen={helpOpen}
         onDownloads={() => setDownloadsOpen(!downloadsOpen)}
@@ -273,6 +298,7 @@ export function App() {
         catalog={catalog}
         focusedLeafId={focused}
         viewStates={viewStates}
+        backgroundInstances={backgroundInstances}
         searchEngine={ws.browser.searchEngine}
         onSearchEngine={setSearchEngine}
         onNavigate={navigate}
@@ -287,6 +313,18 @@ export function App() {
         onRemoveApp={removeApp}
       />
       {helpOpen && <ShortcutsHelp onClose={closeHelp} onClosed={refocusTile} />}
+      {menuOpen && (
+        <MenuPanel
+          ws={ws}
+          onSwitch={spaces.switch}
+          onAdd={spaces.add}
+          onRename={spaces.rename}
+          onRemove={spaces.remove}
+          onSearchEngine={(engine) => edit((w) => ({ ...w, browser: { ...w.browser, searchEngine: engine } }))}
+          onClose={closeMenu}
+          onClosed={refocusTile}
+        />
+      )}
       {adding && <AddAppDialog catalog={catalog} onAdd={addApp} onClose={closeAdding} onClosed={refocusTile} />}
       {downloadsOpen && <DownloadsPanel downloads={downloads} onClose={closeDownloads} onClosed={refocusTile} />}
     </div>

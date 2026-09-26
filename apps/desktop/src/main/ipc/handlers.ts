@@ -6,7 +6,7 @@ import type { DownloadManager } from '../downloads/DownloadManager';
 import type { ViewManager } from '../views/ViewManager';
 import {
   DownloadActionSchema,
-  PlacementsSchema,
+  ViewsSyncSchema,
   ViewCommandSchema,
   ViewFocusSchema,
   ViewNavigateSchema,
@@ -49,8 +49,8 @@ export function registerIpc(
 
   ipcMain.on(IPC.viewsSync, (e, raw: unknown) => {
     if (!fromUi(e)) return;
-    const parsed = PlacementsSchema.safeParse(raw);
-    if (parsed.success) views.sync(parsed.data);
+    const parsed = ViewsSyncSchema.safeParse(raw);
+    if (parsed.success) views.sync(parsed.data.placements, parsed.data.keep);
   });
 
   ipcMain.on(IPC.viewsSetHidden, (e, raw: unknown) => {

@@ -186,7 +186,7 @@ permissions (all off by default), glyph or favicon. Stored in the workspace (bum
 `WORKSPACE_VERSION`, add migration). Catalog in main merges built-ins and custom apps.
 **Done when:** A user-added app (e.g. WhatsApp Web) works exactly like a built-in one and survives restart.
 
-### - [ ] 2.8 Menu, spaces and settings panel
+### - [x] 2.8 Menu, spaces and settings panel
 The rail's menu button opens a panel (hide views while it's open, or render it in the rail's side
 area). Contents: spaces (create, rename, switch, delete: each space is its own layout), settings,
 and the Shields panel from 3.1.

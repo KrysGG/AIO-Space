@@ -4,6 +4,7 @@ import {
   isWebUrl,
   listLeaves,
   MAX_CUSTOM_APPS,
+  MAX_SPACES,
   MAX_TILES,
   SEARCH_ENGINES,
   type AppPermission,
@@ -117,6 +118,15 @@ export const PlacementsSchema = z
   )
   .max(MAX_TILES)
   .refine((ps) => unique(ps.map((p) => p.instanceId)) && unique(ps.map((p) => p.leafId)), 'duplicate tile or instance');
+
+/** `views:sync`: the active space's placements, and instance ids of other spaces' apps to keep alive. */
+export const ViewsSyncSchema = z.object({
+  placements: PlacementsSchema,
+  keep: z
+    .array(Id)
+    .max(MAX_TILES * MAX_SPACES)
+    .refine(unique, 'duplicate instance'),
+});
 
 export const ViewCommandSchema = z.object({
   leafId: Id,

@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.8] Menu panel from the rail: spaces (create, rename, switch, delete) whose apps keep running in the background, and settings (search engine).
 - [2.7] Custom apps: add any https site (name, address, allowed sites, permissions off by default) from the launcher; own session, favicon icon, saved in workspace v4.
 - [4.2] App icons complete: custom apps show their own favicon.
 - [2.6] Downloads to ~/Downloads (unique names) with progress, cancel, open / show in folder in a rail panel; risky file types are never opened from the app.

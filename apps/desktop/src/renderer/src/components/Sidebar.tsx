@@ -11,6 +11,9 @@ interface Props {
   canSplit: boolean;
   onMenu(): void;
   menuOpen: boolean;
+  /** Name of the active space, shown under the menu button when there's more than one. */
+  spaceName: string;
+  showSpaceName: boolean;
   onHelp(): void;
   helpOpen: boolean;
   onDownloads(): void;
@@ -20,15 +23,19 @@ interface Props {
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads }: Props) {
+export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads }: Props) {
   return (
     <nav className="rail" aria-label="Apps">
-      {/* TODO(ROADMAP 2.8): menu with spaces, settings, shields panel */}
-      <button className="rail-btn rail-menu" title="Menu" aria-label="Menu" aria-expanded={menuOpen} onClick={onMenu}>
+      <button className="rail-btn rail-menu" title={`Menu (space: ${spaceName})`} aria-label={`Menu, space ${spaceName}`} aria-expanded={menuOpen} onClick={onMenu}>
         <span />
         <span />
         <span />
       </button>
+      {showSpaceName && (
+        <button className="rail-space" onClick={onMenu} title={`Space: ${spaceName}`} aria-hidden tabIndex={-1}>
+          {spaceName}
+        </button>
+      )}
 
       <div className="rail-apps">
         {catalog.map((app) => (

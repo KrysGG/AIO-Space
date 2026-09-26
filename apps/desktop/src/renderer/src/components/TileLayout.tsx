@@ -25,6 +25,8 @@ interface Props {
   focusedLeafId: string | null;
   /** Keyed by instance id. */
   viewStates: Record<string, ViewState>;
+  /** Instance ids of apps in other spaces: kept running (hidden) by main. */
+  backgroundInstances: string[];
   searchEngine: SearchEngineId;
   /** Engine picked in a Browser tile's header; the tile follows if it's showing a search engine. */
   onSearchEngine(leafId: string, engine: SearchEngineId): void;
@@ -79,6 +81,9 @@ export function TileLayout(props: Props) {
     [layout, size],
   );
 
+  // A string, so a new but equal list from the parent doesn't re-sync every render.
+  const keepKey = props.backgroundInstances.join('|');
+
   // Tell main where each native view goes (tile body = tile rect minus header).
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -97,8 +102,8 @@ export function TileLayout(props: Props) {
           height: Math.max(0, t.rect.height - HEADER),
         },
       }));
-    window.aio.syncViews(placements);
-  }, [computed, size]);
+    window.aio.syncViews(placements, keepKey ? keepKey.split('|') : []);
+  }, [computed, size, keepKey]);
 
   // Latest onResize for the drag listeners, so they aren't re-attached (and views re-shown) every render.
   const onResizeRef = useRef(props.onResize);

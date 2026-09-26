@@ -1,6 +1,7 @@
 import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
 import type { WebAppDef } from '../catalog/apps';
 import { createLeaf, listLeaves, newInstanceId } from '../layout/tree';
+import { newId } from '../util/id';
 import type { LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
 
@@ -100,4 +101,46 @@ function addInstanceIds(spaces: unknown): unknown {
   return spaces.map((s: unknown) =>
     s && typeof s === 'object' ? { ...(s as Record<string, unknown>), layout: walk((s as Record<string, unknown>)['layout']) } : s,
   );
+}
+
+/* ---- Spaces (ROADMAP 2.8): each is its own layout; the others keep running in the background. ---- */
+
+export const MAX_SPACES = 20;
+export const MAX_SPACE_NAME = 40;
+
+function cleanName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').slice(0, MAX_SPACE_NAME);
+}
+
+/** "Space 2", "Space 3"... the first number not in use. */
+function nextSpaceName(ws: Workspace): string {
+  const names = new Set(ws.spaces.map((s) => s.name));
+  for (let i = ws.spaces.length + 1; ; i++) if (!names.has(`Space ${i}`)) return `Space ${i}`;
+}
+
+/** Add a space with one empty tile and switch to it. No-op at MAX_SPACES. */
+export function addSpace(ws: Workspace, name?: string): Workspace {
+  if (ws.spaces.length >= MAX_SPACES) return ws;
+  const leaf = createLeaf(null);
+  const space: Space = { id: newId('space'), name: cleanName(name ?? '') || nextSpaceName(ws), layout: leaf, focusedLeafId: leaf.id };
+  return { ...ws, spaces: [...ws.spaces, space], activeSpaceId: space.id };
+}
+
+export function renameSpace(ws: Workspace, spaceId: string, name: string): Workspace {
+  const clean = cleanName(name);
+  if (!clean) return ws;
+  return { ...ws, spaces: ws.spaces.map((s) => (s.id === spaceId ? { ...s, name: clean } : s)) };
+}
+
+export function switchSpace(ws: Workspace, spaceId: string): Workspace {
+  return ws.spaces.some((s) => s.id === spaceId) ? { ...ws, activeSpaceId: spaceId } : ws;
+}
+
+/** Remove a space (never the last). Removing the active one switches to its neighbour. */
+export function removeSpace(ws: Workspace, spaceId: string): Workspace {
+  const i = ws.spaces.findIndex((s) => s.id === spaceId);
+  if (i < 0 || ws.spaces.length <= 1) return ws;
+  const spaces = ws.spaces.filter((s) => s.id !== spaceId);
+  const activeSpaceId = ws.activeSpaceId === spaceId ? spaces[Math.min(i, spaces.length - 1)]!.id : ws.activeSpaceId;
+  return { ...ws, spaces, activeSpaceId };
 }

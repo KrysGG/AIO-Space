@@ -52,6 +52,7 @@ export class ViewManager {
   /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
   private readonly pendingUrl = new Map<string, string>();
   private lastPlacements: ViewPlacement[] = [];
+  private lastKeep: string[] = [];
   private pendingFocus: string | null = null;
   private lastUnread = '';
 
@@ -64,11 +65,20 @@ export class ViewManager {
     private readonly downloads: DownloadManager,
   ) {}
 
-  sync(placements: ViewPlacement[]): void {
+  /**
+   * Show the active space's views at their placements; hide (but keep running) the views listed in
+   * `keep`, which belong to other spaces (ROADMAP 2.8); destroy everything else. Views for `keep`
+   * apps that aren't running yet are only created once their space is shown.
+   */
+  sync(placements: ViewPlacement[], keep: string[] = this.lastKeep): void {
     this.lastPlacements = placements;
-    const wanted = new Set(placements.map((p) => p.instanceId));
-    for (const instanceId of [...this.views.keys()]) {
-      if (!wanted.has(instanceId)) this.destroy(instanceId);
+    this.lastKeep = keep;
+    const shown = new Set(placements.map((p) => p.instanceId));
+    const kept = new Set(keep);
+    for (const [instanceId, entry] of [...this.views]) {
+      if (shown.has(instanceId)) continue;
+      if (kept.has(instanceId)) entry.view.setVisible(false);
+      else this.destroy(instanceId);
     }
     for (const p of placements) {
       let entry = this.views.get(p.instanceId);
@@ -99,7 +109,9 @@ export class ViewManager {
 
   setHidden(hidden: boolean): void {
     this.hidden = hidden;
-    for (const { view } of this.views.values()) {
+    const shown = new Set(this.lastPlacements.map((p) => p.instanceId));
+    for (const [instanceId, { view }] of this.views) {
+      if (!shown.has(instanceId)) continue; // other spaces' views stay hidden
       view.setVisible(!hidden);
       // A static page may not paint for seconds after being shown again; until it does, the Wayland
       // compositor can show its old frame in the wrong place (torn strips after a divider drag).
@@ -110,7 +122,8 @@ export class ViewManager {
   /** Keyboard focus to a tile's view; the UI page when the tile is empty or `leafId` is null. */
   focus(leafId: string | null): void {
     if (this.win.isDestroyed()) return;
-    const entry = leafId ? this.byLeaf(leafId) : undefined;
+    // Only views on screen (active space) can take focus.
+    const entry = leafId && this.lastPlacements.some((p) => p.leafId === leafId) ? this.byLeaf(leafId) : undefined;
     // A tile whose view is about to be created (pending URL) gets focus once it exists.
     this.pendingFocus = !entry && leafId && this.pendingUrl.has(leafId) ? leafId : null;
     if (entry && !this.hidden) entry.view.webContents.focus();

@@ -10,6 +10,7 @@ import {
   ViewCommandSchema,
   ViewFocusSchema,
   ViewNavigateSchema,
+  ViewsSyncSchema,
   WorkspaceSchema,
 } from '../src/main/ipc/schemas';
 
@@ -185,4 +186,17 @@ describe('CustomAppSchema', () => {
     expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), customApps: [app, app] }).success).toBe(false);
   });
 
+});
+
+describe('ViewsSyncSchema', () => {
+  const placement = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'discord', bounds: { x: 0, y: 0, width: 10, height: 10 } };
+  it('takes placements plus instance ids to keep running', () => {
+    expect(ViewsSyncSchema.safeParse({ placements: [placement], keep: ['app_2', 'app_3'] }).success).toBe(true);
+    expect(ViewsSyncSchema.safeParse({ placements: [], keep: [] }).success).toBe(true);
+  });
+  it('rejects bad or duplicate keep ids and old-style payloads', () => {
+    expect(ViewsSyncSchema.safeParse({ placements: [placement], keep: ['app_2', 'app_2'] }).success).toBe(false);
+    expect(ViewsSyncSchema.safeParse({ placements: [placement], keep: ['../x'] }).success).toBe(false);
+    expect(ViewsSyncSchema.safeParse([placement]).success).toBe(false);
+  });
 });

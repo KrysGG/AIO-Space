@@ -350,3 +350,35 @@ button { font: inherit; color: inherit; }
 .btn:hover { border-color: var(--muted); }
 .btn-primary { border-color: var(--focus); background: var(--focus); color: var(--ink); font-weight: 600; }
 .btn-primary:hover { filter: brightness(1.08); border-color: var(--focus); }
+
+/* ---- Menu: spaces and settings ------------------------------------------- */
+.menu-panel { top: 12px; bottom: auto; width: 340px; max-height: calc(100vh - 24px); overflow: auto; display: grid; gap: 16px; }
+.menu-panel section { display: grid; gap: 8px; }
+.menu-panel .popover-hint { margin: 0; }
+.space-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.space-row { display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--ink); }
+.space-row.is-active { border-color: var(--focus); }
+.space-switch { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 0; background: none; text-align: left; cursor: pointer; }
+.space-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+.space-row.is-active .space-name { color: var(--focus); }
+.space-count { flex: none; color: var(--muted); font-size: 11px; }
+.space-rename { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--focus); border-radius: 6px; background: var(--rail); color: var(--text); font: inherit; user-select: text; }
+.space-rename:focus { outline: none; }
+.text-btn:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
+.setting select { height: 26px; border: 1px solid var(--line); border-radius: 6px; background: var(--ink); color: var(--text); font: inherit; font-size: 12px; }
+.rail-space {
+  width: 48px;
+  margin-top: -4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--focus);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}

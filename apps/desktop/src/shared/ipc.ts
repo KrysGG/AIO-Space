@@ -85,7 +85,11 @@ export interface AioApi {
   getWorkspace(): Promise<Workspace>;
   saveWorkspace(ws: Workspace): Promise<void>;
   getCatalog(): Promise<WebAppDef[]>;
-  syncViews(placements: ViewPlacement[]): void;
+  /**
+   * Where the active space's views go, plus `keep`: instance ids of apps in other spaces, which
+   * main hides but keeps running (ROADMAP 2.8). Any other view is destroyed.
+   */
+  syncViews(placements: ViewPlacement[], keep: string[]): void;
   setViewsHidden(hidden: boolean): void;
   viewCommand(leafId: string, command: ViewCommand): void;
   /** Give keyboard focus to a tile's web view, or to the UI when `leafId` is null or the tile is empty. */
