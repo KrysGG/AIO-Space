@@ -283,3 +283,24 @@ hardwareConcurrency 4/8, deviceMemory 8, screen size snapped to a common resolut
 Preloads run in main frames only; subframes, workers and `about:blank` iframes are not covered yet
 (Backlog). Verified with a local test page: hashes stable across reloads, different after a restart,
 real with protection off; WebGL checked with SwiftShader.
+
+**D-034: Ad and tracker blocking: @ghostery/adblocker engines in our pipeline (uBO Lite doesn't run).**
+ROADMAP 3.5/3.6. Option A was tried first: uBlock Origin Lite (MV3, from its uBOL-home repo) loads
+through `session.extensions.loadExtension`, but its service worker crashes on a missing chrome API and
+Electron has no `declarativeNetRequest`, so nothing is blocked (a test request to doubleclick went
+out). Option B: `@ghostery/adblocker` (MPL-2.0, the engine behind Ghostery; new dependency, pure JS)
+compiles two engines, `ads` (EasyList, Peter Lowe, uBlock filters/2024/badware/quick-fixes/unbreak,
+Brave first-party/specific/unbreak) and `trackers` (EasyPrivacy, uBlock privacy, Brave
+first-party-cname/unbreak), so "Block ads" and "Block trackers" stay separate per app. Only the
+engine is used, from the `filter-lists` RequestFilter; never `enableBlockingInSession`. Page loads
+(mainFrame) are never blocked. Lists come only from `raw.githubusercontent.com` (Ghostery's mirror of
+EasyList/uBlock, Brave's repo), fetched in an in-memory `aio-filter-lists` session with no
+credentials, compiled (~175k rules in ~1.2 s), and cached as serialized engines in
+`userData/filters/{ads,trackers}.{bin,json}` (atomic writes, 0600); rebuilt when older than a day or
+when the library's `ENGINE_VERSION` changes; a failed update keeps the old engines. Cosmetic
+filtering from main: at `dom-ready` the site's rules and generic base rules, and at `dom-ready` and
+`did-finish-load` generic rules for the page's class names/ids, collected in isolated world 1001
+(invisible to the page), all via `insertCSS` (user origin). Not done: scriptlets (`+js()`), so video
+ads on YouTube are expected to remain; subframe cosmetics; redirect surrogates. New IPC:
+`filters:status`, `filters:update` (menu shows rule counts, last update, "Update now").
+Desktop tests now run one file at a time (`fileParallelism: false`): three files launch Electron.

@@ -22,7 +22,19 @@ export const IPC = {
   appZoom: 'app:zoom',
   viewsSnapshots: 'views:snapshots',
   shortcut: 'shortcut',
+  filtersStatus: 'filters:status',
+  filtersUpdate: 'filters:update',
 } as const;
+
+/** Ad and tracker filter lists (ROADMAP 3.5/3.6). */
+export type FilterListKind = 'ads' | 'trackers';
+
+export interface FilterListStatus {
+  updating: boolean;
+  /** Why the last update failed; the previous lists stay in use. */
+  error: string | null;
+  lists: Array<{ kind: FilterListKind; rules: number; updatedAt: number | null }>;
+}
 
 /**
  * Web views sit inside the tile body as a rounded card: inset from the tile's sides and bottom so
@@ -139,4 +151,7 @@ export interface AioApi {
   onViewSnapshots(cb: (snapshots: Record<string, string>) => void): () => void;
   /** `clear` removes finished downloads from the list (the files stay); `id` is ignored for it. */
   downloadAction(id: string, action: DownloadAction): void;
+  getFilterListStatus(): Promise<FilterListStatus>;
+  /** Download the filter lists now; resolves with the new status when done. */
+  updateFilterLists(): Promise<FilterListStatus>;
 }

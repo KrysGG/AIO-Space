@@ -12,6 +12,7 @@ import {
   ViewNavigateSchema,
   ViewsSyncSchema,
   WorkspaceSchema,
+  NoPayloadSchema,
 } from '../src/main/ipc/schemas';
 
 /** A layout with `n` leaves, built by repeatedly splitting the newest leaf. */
@@ -243,5 +244,12 @@ describe('http-allowed sites', () => {
     expect(WorkspaceSchema.safeParse({ ...ws, httpAllowedHosts: ['*'] }).success).toBe(false);
     expect(WorkspaceSchema.safeParse({ ...ws, httpAllowedHosts: ['a.com', 'a.com'] }).success).toBe(false);
     expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1', command: 'allow-http' }).success).toBe(true);
+  });
+});
+
+describe('NoPayloadSchema (filters:status, filters:update)', () => {
+  it('accepts no payload and rejects anything else', () => {
+    expect(NoPayloadSchema.safeParse(undefined).success).toBe(true);
+    for (const bad of [null, {}, 'update', 1, []]) expect(NoPayloadSchema.safeParse(bad).success).toBe(false);
   });
 });

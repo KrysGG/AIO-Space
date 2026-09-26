@@ -23,6 +23,8 @@ const api: AioApi = {
   focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
   navigate: (leafId, url) => ipcRenderer.send(IPC.viewNavigate, { leafId, url }),
   downloadAction: (id, action) => ipcRenderer.send(IPC.downloadsAction, { id, action }),
+  getFilterListStatus: () => ipcRenderer.invoke(IPC.filtersStatus),
+  updateFilterLists: () => ipcRenderer.invoke(IPC.filtersUpdate),
   onViewState: (cb) => {
     const listener = (_e: IpcRendererEvent, s: ViewState): void => cb(s);
     ipcRenderer.on(IPC.viewState, listener);

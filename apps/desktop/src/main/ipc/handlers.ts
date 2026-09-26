@@ -4,9 +4,11 @@ import { IPC } from '../../shared/ipc';
 import { clearHttpAllowedThisRun } from '../privacy/httpsFallback';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { DownloadManager } from '../downloads/DownloadManager';
+import type { FilterLists } from '../privacy/filterLists';
 import type { ViewManager } from '../views/ViewManager';
 import {
   DownloadActionSchema,
+  NoPayloadSchema,
   ViewsSyncSchema,
   ViewCommandSchema,
   ViewFocusSchema,
@@ -19,6 +21,7 @@ export function registerIpc(
   store: WorkspaceStore,
   views: ViewManager,
   downloads: DownloadManager,
+  filterLists: FilterLists,
 ): void {
   /** Only the UI window's top frame may talk to main. Web app views have no preload anyway. */
   const fromUi = (e: IpcMainEvent | IpcMainInvokeEvent): boolean =>
@@ -83,5 +86,18 @@ export function registerIpc(
     if (!fromUi(e)) return;
     const parsed = DownloadActionSchema.safeParse(raw);
     if (parsed.success) downloads.action(parsed.data.id, parsed.data.action);
+  });
+
+  ipcMain.handle(IPC.filtersStatus, (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    return filterLists.status();
+  });
+
+  ipcMain.handle(IPC.filtersUpdate, async (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    await filterLists.update();
+    return filterLists.status();
   });
 }

@@ -13,6 +13,7 @@ import {
   type SleepAfterMinutes,
   type Workspace,
 } from '@aio/core';
+import { FilterListStatus } from './FilterListStatus';
 
 interface Props {
   ws: Workspace;
@@ -201,6 +202,7 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               ))}
             </select>
           </label>
+          <FilterListStatus />
           {ws.httpAllowedHosts.length > 0 && (
             <div className="http-allowed">
               <span>Sites allowed without HTTPS</span>

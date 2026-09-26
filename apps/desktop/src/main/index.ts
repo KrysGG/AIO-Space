@@ -1,7 +1,8 @@
-import { app } from 'electron';
+import { app, session } from 'electron';
 import { join } from 'node:path';
 import { DownloadManager } from './downloads/DownloadManager';
 import { registerIpc } from './ipc/handlers';
+import { FilterLists } from './privacy/filterLists';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { cleanUserAgent } from './sessions/userAgent';
 import { WorkspaceStore } from './store/workspaceStore';
@@ -42,8 +43,10 @@ app.whenReady().then(async () => {
 
   const win = createMainWindow();
   const downloads = new DownloadManager(win);
-  const views = new ViewManager(win, store, downloads);
-  registerIpc(win, store, views, downloads);
+  const filterLists = new FilterLists(join(app.getPath('userData'), 'filters'), fetchFilterList);
+  void filterLists.start();
+  const views = new ViewManager(win, store, downloads, filterLists);
+  registerIpc(win, store, views, downloads, filterLists);
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);
 
@@ -54,3 +57,14 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => app.quit());
+
+/**
+ * Filter lists are fetched in their own in-memory session (no cookies, nothing shared with apps or
+ * the UI), and only from GitHub's raw file host (ROADMAP 3.5/3.6).
+ */
+async function fetchFilterList(url: string): Promise<string> {
+  if (!url.startsWith('https://raw.githubusercontent.com/')) throw new Error(`Refusing filter list URL ${url}`);
+  const res = await session.fromPartition('aio-filter-lists').fetch(url, { credentials: 'omit', cache: 'no-store' });
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  return res.text();
+}

@@ -16,7 +16,7 @@
   --radius-tile: 12px;
   --radius-ctl: 7px;
   /* Liquid glass: translucent fill, strong backdrop blur and saturation, a bright top edge. */
-  --glass-fill: rgb(30 36 52 / 0.52);
+  --glass-fill: rgb(24 29 42 / 0.74); /* dense enough to stay readable over bright pages */
   --glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0) 42%);
   --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.22), inset 0 0 0 1px rgb(255 255 255 / 0.09), inset 0 -1px 0 rgb(0 0 0 / 0.25);
   --glass-blur: blur(28px) saturate(1.8);
@@ -515,3 +515,10 @@ button { font: inherit; color: inherit; }
 .http-allowed { display: grid; gap: 4px; font-size: 12px; }
 .http-allowed ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .http-allowed li { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--ink); }
+
+/* ---- Filter lists (ROADMAP 3.5/3.6) ------------------------------------------ */
+.filter-lists { display: grid; gap: 6px; justify-items: start; font-size: 12px; }
+.filter-lists ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; width: 100%; }
+.filter-lists li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.filter-lists small { color: var(--muted); font-size: 11px; text-align: right; }
+.filter-lists .form-error { font-size: 11px; }

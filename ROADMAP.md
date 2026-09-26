@@ -456,6 +456,14 @@ Add items found while working on other steps here, with the step where they were
 - (3.4) Farbling covers main frames only. Cross-origin iframes (preload with
   `nodeIntegrationInSubFrames`, which with sandbox gives no Node), same-origin `about:blank` iframes
   (their fresh prototypes are unpatched), workers and `OffscreenCanvas` are not covered yet.
+- (3.5/3.6) Built and tested offline (blocking, counting, cosmetic hiding, per-app switches) and with
+  the real lists on a local page, but not ticked: this environment can't reach YouTube or popular
+  sites. Owner: check the blocked count on a few news sites, that no built-in app breaks, and YouTube.
+  Expected on YouTube: banner/sidebar ads blocked, video ads still shown (they need uBlock scriptlets,
+  not run yet). The list download itself runs through Chromium (`session.fetch`), which this
+  environment's TLS proxy blocks; the same code was verified with a Node fetcher.
+- (3.6) Not done yet: scriptlet injection (`+js()`, needed for YouTube video ads), cosmetic filtering in
+  subframes, redirect surrogates (uBlock resources) instead of plain blocking.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

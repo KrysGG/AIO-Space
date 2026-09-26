@@ -167,3 +167,6 @@ export const DownloadActionSchema = z.object({
   id: Id,
   action: z.enum(['open', 'show', 'cancel', 'clear']),
 });
+
+/** Channels that take no payload (filters:status, filters:update): anything sent along is rejected. */
+export const NoPayloadSchema = z.undefined();

@@ -35,6 +35,8 @@ These are enforced by review, and several by ESLint. Do not break them.
     (scripts, `.desktop`, installers, binaries) are never opened from the app, only shown in the folder.
 12. User-added apps are validated like IPC input: https start page, real hostnames (never `*`),
     permissions off unless granted, icons only as small raster data URLs.
+13. Filter lists are fetched only from `raw.githubusercontent.com`, in their own in-memory session with
+    no credentials; the lists only feed the blocking engine, never run as code.
 
 ## Packaging hardening (ROADMAP 5.3)
 
@@ -65,8 +67,8 @@ Settings live in `packages/core/src/privacy/settings.ts`; implementation in
 | Cross-origin referrer trimming | Referrer policy | Done |
 | HTTPS upgrade | HTTPS by default | Done, fallback in 3.2 |
 | WebRTC local IP protection | WebRTC IP policy | Done (keeps Discord voice working) |
-| Tracker and telemetry blocking | Shields trackers | Starter list; filter lists in 3.5 |
-| Ad blocking | Shields ads | 3.6 |
+| Tracker and telemetry blocking | Shields trackers | Done (3.5): EasyPrivacy, uBlock privacy, Brave lists, updated daily; starter list as fallback |
+| Ad blocking | Shields ads | Done (3.6): EasyList, uBlock, Brave lists + cosmetic hiding; no scriptlets (YouTube video ads remain) |
 | Third-party cookie blocking | Cookie blocking | Done for HTTP cookies (3.3); script-set cookies in cross-site frames: Backlog |
 | Fingerprint randomization | Farbling | Done in main frames (3.4): canvas, WebGL, audio; strict buckets hardware and screen. Subframes/workers: Backlog |
 | Discord telemetry endpoints | n/a | Done (`/api/v*/science`, `/metrics`) |

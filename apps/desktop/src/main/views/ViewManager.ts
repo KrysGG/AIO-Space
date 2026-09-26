@@ -25,6 +25,8 @@ import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { IPC, VIEW_RADIUS, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
+import type { FilterLists } from '../privacy/filterLists';
+import { getDomain } from 'tldts';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
 import { getAppSession, hasUsedMedia } from '../sessions/appSession';
 import { fetchFavicon } from './favicon';
@@ -33,6 +35,20 @@ import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
 import { webAppArgs, type WebAppArgs } from '../../shared/webapp';
 import type { WorkspaceStore } from '../store/workspaceStore';
+
+/** Isolated world (not the page's) where main reads class names and ids for cosmetic filtering. */
+const COSMETIC_WORLD = 1001;
+/** Collects the page's class names, ids and link targets (capped) for generic element-hiding rules. */
+const COLLECT_DOM = `(() => {
+  const classes = new Set(), ids = new Set(), hrefs = new Set();
+  for (const el of document.querySelectorAll('[class],[id],a[href]')) {
+    if (classes.size > 4000) break;
+    for (const c of el.classList) classes.add(c);
+    if (el.id) ids.add(el.id);
+    if (el.tagName === 'A' && hrefs.size < 1000) hrefs.add(el.href);
+  }
+  return { classes: [...classes], ids: [...ids], hrefs: [...hrefs] };
+})()`;
 
 /** How often hidden apps are checked for sleeping. */
 const SLEEP_CHECK_MS = 30_000;
@@ -94,6 +110,7 @@ export class ViewManager {
     private readonly win: BrowserWindow,
     private readonly store: WorkspaceStore,
     private readonly downloads: DownloadManager,
+    private readonly filterLists?: FilterLists,
   ) {
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
     // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
@@ -308,6 +325,7 @@ export class ViewManager {
       (id) => this.countBlocked(id),
       // An allowed site covers its subdomains (http-only sites like neverssl.com hop between them).
       (host) => hostMatches(host, this.store.get().httpAllowedHosts) || isHttpAllowedThisRun(host),
+      this.filterLists,
     );
     this.downloads.attach(ses);
 
@@ -353,6 +371,8 @@ export class ViewManager {
       if (Math.abs(wc.getZoomFactor() - saved) > 0.001) wc.setZoomFactor(saved);
       entry.emit?.();
     });
+    wc.on('dom-ready', () => void this.hideAds(appId, wc, true));
+    wc.on('did-finish-load', () => void this.hideAds(appId, wc, false));
     if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(def, wc);
 
     this.win.contentView.addChildView(view);
@@ -366,6 +386,44 @@ export class ViewManager {
 
     this.views.set(instanceId, entry);
     return entry;
+  }
+
+  /**
+   * Cosmetic filtering (ROADMAP 3.6): the ad list's element-hiding rules as a user stylesheet, so
+   * emptied ad slots don't leave gaps. On DOM ready: the site's own rules and the generic base rules;
+   * then (and again when loading finishes) generic rules for the class names and ids on the page,
+   * read in an isolated world the page can't see. Main frame only; scriptlet rules (uBlock's `+js()`,
+   * which YouTube ad blocking relies on) are not run.
+   */
+  private async hideAds(appId: string, wc: WebContents, first: boolean): Promise<void> {
+    const engine = this.filterLists?.engine('ads');
+    if (!engine || wc.isDestroyed() || !this.store.privacyFor(appId).blockAds) return;
+    let url: URL;
+    try {
+      url = new URL(wc.getURL());
+    } catch {
+      return;
+    }
+    if (!isWebUrl(url.href)) return;
+    let dom: { classes: string[]; ids: string[]; hrefs: string[] } = { classes: [], ids: [], hrefs: [] };
+    try {
+      dom = await wc.executeJavaScriptInIsolatedWorld(COSMETIC_WORLD, [{ code: COLLECT_DOM }]);
+    } catch {
+      // The page is gone or refuses scripts: its own and the base rules still apply.
+    }
+    if (wc.isDestroyed() || wc.getURL() !== url.href) return;
+    const { styles } = engine.getCosmeticsFilters({
+      url: url.href,
+      hostname: url.hostname,
+      domain: getDomain(url.hostname) ?? url.hostname,
+      ...dom,
+      getBaseRules: first,
+      getRulesFromHostname: first,
+      getRulesFromDOM: true,
+      getInjectionRules: false,
+      getExtendedRules: false,
+    });
+    if (styles) await wc.insertCSS(styles, { cssOrigin: 'user' }).catch(() => {});
   }
 
   /** A custom app's icon: its own favicon, fetched once through its own session (ROADMAP 2.7/4.2). */
