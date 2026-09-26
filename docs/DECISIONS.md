@@ -48,3 +48,11 @@ devDependency so it is bundled. Electron 44 has no postinstall: the binary downl
 Catches broken hook rules and stale effect dependencies in React code. Its flat `recommended`
 config applies only to `apps/desktop/src/renderer/**`. CI (`.github/workflows/ci.yml`) runs
 install, typecheck, test and lint on `ubuntu-latest`; warnings don't fail the build, errors do.
+
+**D-011: Native Wayland via `ozone-platform-hint=auto`; Vulkan log line is expected.**
+On CachyOS KDE Plasma (Electron 44) the switch in `main/index.ts` takes effect: GPU and renderer
+processes run with `--ozone-platform=wayland`. Checked at 100% and 145% on two monitors: view
+bounds match tile bodies and screenshots show no gaps. Chromium logs
+`'--ozone-platform=wayland' is not compatible with Vulkan` at startup; it is emitted while probing
+Vulkan (for WebGPU). Vulkan is `disabled_off` and GPU compositing, rasterization, WebGL and WebGPU
+stay enabled, so it is harmless. Don't switch to X11 or add GPU flags to silence it.

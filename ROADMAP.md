@@ -59,7 +59,7 @@ filling gaps, not writing it from scratch.
 - Confirm the security lint rules fire: temporarily set `sandbox: false` somewhere, see lint fail, revert.
 **Done when:** CI is green on the main branch and the security rule test was verified.
 
-### - [ ] 0.4 Native Wayland check
+### - [x] 0.4 Native Wayland check
 **Goal:** Crisp rendering and correct scaling on CachyOS (KDE Plasma or GNOME on Wayland).
 **Files:** `apps/desktop/src/main/index.ts`
 **Tasks:**
@@ -418,9 +418,9 @@ Add items found while working on other steps here, with the step where they were
 - (0.1) `pnpm install` warns that `esbuild` and `electron-winstaller` build scripts were ignored:
   pnpm 10.0 reads `onlyBuiltDependencies` from `package.json` only, so the list in
   `pnpm-workspace.yaml` has no effect. Pick one place. Electron 44 no longer needs to be listed.
-- (0.2) Chromium logs `'--ozone-platform=wayland' is not compatible with Vulkan` at startup on
-  KDE Wayland (Electron 44). `--disable-features=Vulkan` does not silence it. The UI renders fine.
-  Look at it in 0.4.
+- (0.4) Views are square and cover the tile's rounded bottom corners and its 3px inset focus bar
+  beside the body. Use `WebContentsView.setBorderRadius()` and/or inset the view bounds to match
+  the tile style. Cosmetic.
 - (0.3) `react-hooks/exhaustive-deps` warns on the divider-drag effect in `TileLayout.tsx`: it
   captures `props.onResize` from drag start. Don't add `props` to the deps (listeners and view
   hiding would reset every render); keep the latest `onResize` in a ref instead. Do it in 1.4.
