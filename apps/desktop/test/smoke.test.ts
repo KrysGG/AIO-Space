@@ -75,8 +75,10 @@ describe('desktop smoke test', () => {
     await tiles().first().getByRole('button', { name: 'Split right' }).click();
     await expect.poll(() => tiles().count()).toBe(2);
 
-    // Grab the app icon at the start of the header (the Browser header is otherwise address bar and buttons).
-    const handle = await tiles().first().locator('.tile-head .app-icon, .tile-head .tile-spinner').first().boundingBox();
+    // Let the previous step's page finish loading, then grab the handle at the start of the header
+    // (the Browser header is otherwise address bar and buttons).
+    await expect.poll(() => tiles().first().locator('.tile-spinner').count(), { timeout: 20_000 }).toBe(0);
+    const handle = await tiles().first().locator('.tile-handle').boundingBox();
     const to = await tiles().nth(1).boundingBox();
     const start = { x: handle!.x + handle!.width / 2, y: handle!.y + handle!.height / 2 };
     await ui.mouse.move(start.x, start.y);

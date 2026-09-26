@@ -220,12 +220,14 @@ export function TileLayout(props: Props) {
             >
               {isBrowser(t.appId) ? (
                 <div className="tile-title tile-title-browser" title={state?.title}>
-                  {/* Icon doubles as the drag handle: the rest of this header is address bar and buttons. */}
-                  {state?.loading ? (
-                    <span className="tile-spinner" aria-label="Loading" />
-                  ) : (
-                    appOf(t.appId) && <AppIcon app={appOf(t.appId)!} size={14} />
-                  )}
+                  {/* Always-present drag handle: the rest of this header is address bar and buttons. */}
+                  <span className="tile-handle">
+                    {state?.loading ? (
+                      <span className="tile-spinner" aria-label="Loading" />
+                    ) : (
+                      appOf(t.appId) && <AppIcon app={appOf(t.appId)!} size={14} />
+                    )}
+                  </span>
                   <AddressBar
                     leafId={t.leafId}
                     url={state?.url ?? ''}
