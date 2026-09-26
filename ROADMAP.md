@@ -193,7 +193,7 @@ and the Shields panel from 3.1.
 **Done when:** You can keep a "Gaming" space and a "Work" space and switch instantly; views of the
 inactive space are hidden, not destroyed (unless slept by 2.9).
 
-### - [ ] 2.9 Sleep inactive tiles
+### - [x] 2.9 Sleep inactive tiles
 Tiles not visible (other space) or untouched for N minutes are discarded to save memory and reload
 when shown again. Never sleep a tile in a voice call or playing audio (`isCurrentlyAudible`).
 **Done when:** Memory drops after sleeping; Discord in a call never sleeps.

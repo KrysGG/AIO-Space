@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addSpace, defaultWorkspace, MAX_SPACES, removeSpace, renameSpace, switchSpace } from '../src/workspace/workspace';
+import { addSpace, defaultWorkspace, MAX_SPACES, migrateWorkspace, removeSpace, renameSpace, switchSpace, WORKSPACE_VERSION } from '../src/workspace/workspace';
 
 describe('spaces', () => {
   it('adds a space with one empty tile and switches to it', () => {
@@ -48,5 +48,16 @@ describe('spaces', () => {
     expect(removeSpace(without, main).activeSpaceId).toBe(b); // removing an inactive one keeps focus
     const single = defaultWorkspace();
     expect(removeSpace(single, single.spaces[0]!.id)).toBe(single);
+  });
+});
+
+describe('workspace v5 (sleep setting)', () => {
+  it('defaults to sleeping hidden tiles after 30 minutes, and migrates v4', () => {
+    expect(defaultWorkspace().performance).toEqual({ sleepAfterMinutes: 30 });
+    const v4: Record<string, unknown> = { ...defaultWorkspace(), version: 4 };
+    delete v4['performance'];
+    const out = migrateWorkspace(v4);
+    expect(out.version).toBe(WORKSPACE_VERSION);
+    expect(out.performance).toEqual({ sleepAfterMinutes: 30 });
   });
 });

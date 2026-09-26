@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 4;
+export const WORKSPACE_VERSION = 5;
 
 export interface Space {
   id: string;
@@ -20,6 +20,15 @@ export interface Space {
 
 export interface BrowserSettings {
   searchEngine: SearchEngineId;
+}
+
+/** How long a tile may stay hidden (in another space) before it's put to sleep. Null: never. */
+export const SLEEP_CHOICES = [null, 5, 15, 30, 60] as const;
+export type SleepAfterMinutes = (typeof SLEEP_CHOICES)[number];
+export const DEFAULT_SLEEP_AFTER: SleepAfterMinutes = 30;
+
+export interface PerformanceSettings {
+  sleepAfterMinutes: SleepAfterMinutes;
 }
 
 export interface Workspace {
@@ -33,6 +42,8 @@ export interface Workspace {
   browser: BrowserSettings;
   /** User-added apps (ROADMAP 2.7). Added in version 4. */
   customApps: WebAppDef[];
+  /** Added in version 5 (ROADMAP 2.9). */
+  performance: PerformanceSettings;
 }
 
 export function defaultWorkspace(): Workspace {
@@ -45,6 +56,7 @@ export function defaultWorkspace(): Workspace {
     privacyOverrides: {},
     browser: { searchEngine: DEFAULT_SEARCH_ENGINE },
     customApps: [],
+    performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER },
   };
 }
 
@@ -85,6 +97,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (w['version'] === 1) w = { ...w, version: 2, browser: { searchEngine: DEFAULT_SEARCH_ENGINE } };
   if (w['version'] === 2) w = { ...w, version: 3, spaces: addInstanceIds(w['spaces']) };
   if (w['version'] === 3) w = { ...w, version: 4, customApps: [] };
+  if (w['version'] === 4) w = { ...w, version: 5, performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER } };
   return w as unknown as Workspace;
 }
 

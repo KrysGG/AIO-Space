@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { listLeaves, MAX_SPACE_NAME, MAX_SPACES, SEARCH_ENGINES, type SearchEngineId, type Workspace } from '@aio/core';
+import {
+  listLeaves,
+  MAX_SPACE_NAME,
+  MAX_SPACES,
+  SEARCH_ENGINES,
+  SLEEP_CHOICES,
+  type SearchEngineId,
+  type SleepAfterMinutes,
+  type Workspace,
+} from '@aio/core';
 
 interface Props {
   ws: Workspace;
@@ -8,6 +17,7 @@ interface Props {
   onRename(spaceId: string, name: string): void;
   onRemove(spaceId: string): void;
   onSearchEngine(engine: SearchEngineId): void;
+  onSleepAfter(minutes: SleepAfterMinutes): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -16,7 +26,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
@@ -129,6 +139,23 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               ))}
             </select>
           </label>
+          <label className="setting">
+            <span>Sleep apps hidden in other spaces</span>
+            <select
+              value={String(ws.performance.sleepAfterMinutes)}
+              onChange={(e) => onSleepAfter(e.target.value === 'null' ? null : (Number(e.target.value) as SleepAfterMinutes))}
+            >
+              {SLEEP_CHOICES.map((m) => (
+                <option key={String(m)} value={String(m)}>
+                  {m === null ? 'Never' : m < 60 ? `After ${m} minutes` : 'After 1 hour'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="popover-hint">
+            Sleeping apps free memory and reload when you open their space. Apps that play audio, use your camera or microphone, or can send
+            notifications stay awake.
+          </p>
           {/* TODO(ROADMAP 3.1): Shields settings (global and per app) go here. */}
         </section>
       </div>

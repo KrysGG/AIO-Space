@@ -321,6 +321,7 @@ export function App() {
           onRename={spaces.rename}
           onRemove={spaces.remove}
           onSearchEngine={(engine) => edit((w) => ({ ...w, browser: { ...w.browser, searchEngine: engine } }))}
+          onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}
         />

@@ -22,16 +22,21 @@ import {
 } from '@aio/core';
 import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
-import { getAppSession } from '../sessions/appSession';
+import { getAppSession, hasUsedMedia } from '../sessions/appSession';
 import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
+/** How often hidden apps are checked for sleeping. */
+const SLEEP_CHECK_MS = 30_000;
+
 interface Entry {
   /** The tile the view currently sits in. Changes when tiles are swapped; the view doesn't. */
   leafId: string;
+  /** When the view was last hidden in another space (ms), or undefined while it's on screen. */
+  hiddenSince?: number;
   appId: string;
   def: WebAppDef;
   view: WebContentsView;
@@ -53,6 +58,8 @@ export class ViewManager {
   private readonly pendingUrl = new Map<string, string>();
   private lastPlacements: ViewPlacement[] = [];
   private lastKeep: string[] = [];
+  /** Slept apps (ROADMAP 2.9): the page they were on, to reload when their space is shown again. */
+  private readonly sleeping = new Map<string, { url: string; appId: string }>();
   private pendingFocus: string | null = null;
   private lastUnread = '';
 
@@ -63,7 +70,9 @@ export class ViewManager {
     private readonly win: BrowserWindow,
     private readonly store: WorkspaceStore,
     private readonly downloads: DownloadManager,
-  ) {}
+  ) {
+    setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
+  }
 
   /**
    * Show the active space's views at their placements; hide (but keep running) the views listed in
@@ -76,9 +85,17 @@ export class ViewManager {
     const shown = new Set(placements.map((p) => p.instanceId));
     const kept = new Set(keep);
     for (const [instanceId, entry] of [...this.views]) {
-      if (shown.has(instanceId)) continue;
-      if (kept.has(instanceId)) entry.view.setVisible(false);
-      else this.destroy(instanceId);
+      if (shown.has(instanceId)) {
+        entry.hiddenSince = undefined;
+        continue;
+      }
+      if (kept.has(instanceId)) {
+        entry.view.setVisible(false);
+        entry.hiddenSince ??= Date.now();
+      } else this.destroy(instanceId);
+    }
+    for (const instanceId of [...this.sleeping.keys()]) {
+      if (!shown.has(instanceId) && !kept.has(instanceId)) this.sleeping.delete(instanceId); // app closed
     }
     for (const p of placements) {
       let entry = this.views.get(p.instanceId);
@@ -86,7 +103,7 @@ export class ViewManager {
         this.destroy(p.instanceId);
         entry = undefined;
       }
-      entry ??= this.create(p.leafId, p.instanceId, p.appId);
+      entry ??= this.create(p.leafId, p.instanceId, p.appId, this.wake(p.instanceId, p.appId));
       if (!entry) continue;
       entry.leafId = p.leafId;
       entry.view.setBounds(p.bounds);
@@ -158,7 +175,33 @@ export class ViewManager {
     return def.kind === 'browser' ? SEARCH_ENGINES[this.store.get().browser.searchEngine].home : def.url;
   }
 
-  private create(leafId: string, instanceId: string, appId: string): Entry | undefined {
+  /** A slept app's saved page, if this instance was put to sleep (and is the same app). */
+  private wake(instanceId: string, appId: string): string | undefined {
+    const slept = this.sleeping.get(instanceId);
+    this.sleeping.delete(instanceId);
+    return slept && slept.appId === appId ? slept.url : undefined;
+  }
+
+  /**
+   * Put apps to sleep that have been hidden in another space longer than the user's setting: close
+   * the page, remember where it was. Never an app playing audio, one that was given the camera,
+   * microphone or screen (a call can be silent), or one allowed to notify (it would miss messages).
+   */
+  private sleepIdle(): void {
+    const minutes = this.store.get().performance.sleepAfterMinutes;
+    if (minutes === null) return;
+    const cutoff = Date.now() - minutes * 60_000;
+    for (const [instanceId, entry] of [...this.views]) {
+      const wc = entry.view.webContents;
+      if (entry.hiddenSince === undefined || entry.hiddenSince > cutoff || wc.isDestroyed()) continue;
+      if (wc.isCurrentlyAudible() || hasUsedMedia(wc) || entry.def.permissions.includes('notifications')) continue;
+      const url = wc.getURL();
+      this.sleeping.set(instanceId, { url: isWebUrl(url) ? url : this.homeOf(entry.def), appId: entry.appId });
+      this.destroy(instanceId);
+    }
+  }
+
+  private create(leafId: string, instanceId: string, appId: string, wakeUrl?: string): Entry | undefined {
     const def = getApp(appId, this.store.catalog());
     if (!def) return undefined;
     const ses = getAppSession(def, () => this.store.privacyFor(appId));
@@ -191,7 +234,7 @@ export class ViewManager {
     this.win.contentView.addChildView(view);
     const startUrl = def.kind === 'browser' ? this.pendingUrl.get(leafId) : undefined;
     this.pendingUrl.delete(leafId);
-    void wc.loadURL(startUrl ?? this.homeOf(def));
+    void wc.loadURL(wakeUrl ?? startUrl ?? this.homeOf(def));
     if (this.pendingFocus === leafId) {
       this.pendingFocus = null;
       wc.focus();

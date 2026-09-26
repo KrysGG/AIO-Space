@@ -175,3 +175,13 @@ instead of destroying, so switching back is instant and pages keep playing (veri
 Apps in a space that hasn't been shown yet start when it is first shown. `setHidden(false)` and
 `focus()` only touch the active space's views. Unread badges and the tray count all spaces. Sleeping
 background tiles to save memory is 2.9. Shields settings will join the menu in 3.1.
+
+**D-024: Sleep only hidden apps, and only ones that can safely miss time.**
+`ViewManager` records when a view is hidden in another space and, every 30 s, sleeps views hidden
+longer than `workspace.performance.sleepAfterMinutes` (workspace v5; Never/5/15/30/60, default 30):
+the page is closed and its URL kept, and the same instance reloads there when its space is shown.
+Never slept: pages currently audible, pages given camera/mic or screen (tracked in the permission
+handler, so a silent call is still protected), and apps allowed to send notifications (they'd miss
+messages). Visible tiles never sleep, even if untouched: the roadmap's "or untouched for N minutes"
+is narrowed on purpose so a tile never goes blank in front of the user. Verified: a paused YouTube page
+slept (-234 MB, one process fewer) and woke on the same video; Reddit and a mic-using app stayed up.

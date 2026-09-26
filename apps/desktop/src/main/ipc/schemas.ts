@@ -99,6 +99,9 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   browser: z.object({
     searchEngine: SearchEngineSchema,
   }),
+  performance: z.object({
+    sleepAfterMinutes: z.union([z.null(), z.literal(5), z.literal(15), z.literal(30), z.literal(60)]),
+  }),
   customApps: z
     .array(CustomAppSchema)
     .max(MAX_CUSTOM_APPS)

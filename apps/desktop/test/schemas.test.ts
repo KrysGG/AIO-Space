@@ -200,3 +200,11 @@ describe('ViewsSyncSchema', () => {
     expect(ViewsSyncSchema.safeParse([placement]).success).toBe(false);
   });
 });
+
+describe('performance settings', () => {
+  it('accepts only the offered sleep choices', () => {
+    const ws = defaultWorkspace();
+    for (const m of [null, 5, 15, 30, 60]) expect(WorkspaceSchema.safeParse({ ...ws, performance: { sleepAfterMinutes: m } }).success).toBe(true);
+    for (const m of [0, 1, 7, -5, '30']) expect(WorkspaceSchema.safeParse({ ...ws, performance: { sleepAfterMinutes: m } }).success).toBe(false);
+  });
+});
