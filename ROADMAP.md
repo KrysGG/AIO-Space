@@ -124,7 +124,7 @@ filling gaps, not writing it from scratch.
 - A `javascript:` or `file:` URL can never be opened externally or navigated to.
 - Browser tile can go anywhere; `target=_blank` links load in the same tile (until 2.2).
 
-### - [ ] 1.7 Discord voice on Linux
+### - [x] 1.7 Discord voice on Linux
 **Goal:** Voice chat works in the Discord tile.
 **Done when:**
 - Joining a voice channel asks for mic access once (permission granted by the app definition) and

@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [1.7] Verified Discord voice both ways over PipeWire (mic granted by app permissions); Browser tile gets NotAllowedError for the mic.
 - [1.5] Verified layout restore after relaunch and atomic saves (15/15 SIGKILL-mid-save runs valid); unreadable or wrong-version workspace files now log a warning.
 - [1.4] Verified live divider drag, 10%/90% clamp, window resize alignment and release outside the window; drag listeners read the latest `onResize` from a ref.
 - [1.3] Verified split right/down, close (neighbor fills, view destroyed, memory drops), last-tile reset, and focus by header or click inside a view.
