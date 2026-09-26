@@ -91,7 +91,7 @@ filling gaps, not writing it from scratch.
 - DevTools on the Reddit view shows no discord.com cookies (and vice versa).
 - Folders `Partitions/app-discord-default` etc. exist in the userData directory.
 
-### - [ ] 1.3 Split and close tiles
+### - [x] 1.3 Split and close tiles
 **Goal:** Build layouts like the sketch: Discord and a launcher on top, a browser across the bottom.
 **Done when:**
 - Split right / split down create a new empty tile next to the focused one.

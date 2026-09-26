@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [1.3] Verified split right/down, close (neighbor fills, view destroyed, memory drops), last-tile reset, and focus by header or click inside a view.
 - [1.2] Verified per-app logins persist across restarts (Discord, Reddit) and cookies stay isolated per partition.
 - [1.1] Verified opening, replacing and clearing apps in a tile; fixed empty tiles keeping the previous page title (view states now carry `appId`).
 - [0.4] Verified native Wayland on KDE at 100% and 145% (two monitors); views align with tile bodies. Vulkan log line documented as harmless (D-011).
