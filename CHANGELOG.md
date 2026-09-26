@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.10] Zoom per app with Ctrl +/-/0 or Ctrl+wheel, remembered across restarts; a badge in the tile header shows and resets it.
 - [2.9] Apps hidden in other spaces sleep after a set time (default 30 min) and reload where they were; audible, call/mic and notifying apps stay awake.
 - [2.8] Menu panel from the rail: spaces (create, rename, switch, delete) whose apps keep running in the background, and settings (search engine).
 - [2.7] Custom apps: add any https site (name, address, allowed sites, permissions off by default) from the launcher; own session, favicon icon, saved in workspace v4.

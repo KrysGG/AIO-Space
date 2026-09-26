@@ -3,6 +3,7 @@ import {
   computeLayout,
   ratioFromPointer,
   titleWithoutUnread,
+  zoomLabel,
   unreadFromTitle,
   type DividerRect,
   type LayoutNode,
@@ -256,6 +257,11 @@ export function TileLayout(props: Props) {
                 </span>
               )}
               <div className="tile-tools">
+                {t.appId && state && Math.abs(state.zoom - 1) > 0.001 && (
+                  <button className="zoom-badge" title="Reset zoom (Ctrl+0)" aria-label={`Zoom ${zoomLabel(state.zoom)}, reset`} onClick={() => window.aio.viewCommand(t.leafId, 'zoom-reset')}>
+                    {zoomLabel(state.zoom)}
+                  </button>
+                )}
                 {t.appId && (
                   <>
                     <IconBtn label="Back" disabled={!state?.canGoBack} onClick={() => window.aio.viewCommand(t.leafId, 'back')} d="M12 5 7 10l5 5" />

@@ -198,7 +198,7 @@ Tiles not visible (other space) or untouched for N minutes are discarded to save
 when shown again. Never sleep a tile in a voice call or playing audio (`isCurrentlyAudible`).
 **Done when:** Memory drops after sleeping; Discord in a call never sleeps.
 
-### - [ ] 2.10 Per-tile zoom
+### - [x] 2.10 Per-tile zoom
 Ctrl+plus/minus/0 zoom the focused view only; zoom level saved per app.
 **Done when:** Zoom persists per app across restarts.
 

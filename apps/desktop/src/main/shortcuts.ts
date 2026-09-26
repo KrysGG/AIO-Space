@@ -26,6 +26,10 @@ export function shortcutFor(input: KeyInput): ShortcutAction | null {
     return direction ? { kind: 'focus-direction', direction } : null;
   }
   if (alt) return null;
+  // Zoom: Ctrl +/= (Shift allowed, "+" needs it on US layouts), Ctrl -, Ctrl 0, and the numpad keys.
+  if (input.code === 'Equal' || input.code === 'NumpadAdd') return { kind: 'zoom', change: 'in' };
+  if (input.code === 'Minus' || input.code === 'NumpadSubtract') return { kind: 'zoom', change: 'out' };
+  if (!shift && (input.code === 'Digit0' || input.code === 'Numpad0')) return { kind: 'zoom', change: 'reset' };
   if (shift) {
     if (key === 'd') return { kind: 'split', direction: 'row' };
     if (key === 'e') return { kind: 'split', direction: 'column' };

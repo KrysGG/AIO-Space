@@ -9,6 +9,8 @@ const SHORTCUTS: Array<[keys: string, action: string]> = [
   ['Ctrl+W', 'Close tile'],
   ['Ctrl+R', 'Reload tile'],
   ['Ctrl+L', 'Go to the address bar (Browser tile)'],
+  ['Ctrl+Plus / Ctrl+Minus', 'Zoom the tile in or out (also Ctrl+wheel)'],
+  ['Ctrl+0', 'Reset the tile’s zoom'],
   ['Ctrl+/', 'Show or hide this list'],
 ];
 

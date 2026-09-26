@@ -382,3 +382,16 @@ button { font: inherit; color: inherit; }
   white-space: nowrap;
   cursor: pointer;
 }
+
+.zoom-badge {
+  height: 20px;
+  margin-right: 4px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.zoom-badge:hover { color: var(--text); border-color: var(--muted); }

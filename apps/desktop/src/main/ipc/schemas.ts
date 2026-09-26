@@ -6,6 +6,8 @@ import {
   MAX_CUSTOM_APPS,
   MAX_SPACES,
   MAX_TILES,
+  MAX_ZOOM,
+  MIN_ZOOM,
   SEARCH_ENGINES,
   type AppPermission,
   type LayoutNode,
@@ -102,6 +104,9 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   performance: z.object({
     sleepAfterMinutes: z.union([z.null(), z.literal(5), z.literal(15), z.literal(30), z.literal(60)]),
   }),
+  zoom: z
+    .record(z.string().regex(/^[a-z0-9-]{1,64}$/), z.number().min(MIN_ZOOM).max(MAX_ZOOM))
+    .refine((z) => Object.keys(z).length <= 200, 'too many zoom entries'),
   customApps: z
     .array(CustomAppSchema)
     .max(MAX_CUSTOM_APPS)
@@ -133,7 +138,7 @@ export const ViewsSyncSchema = z.object({
 
 export const ViewCommandSchema = z.object({
   leafId: Id,
-  command: z.enum(['back', 'forward', 'reload', 'home']),
+  command: z.enum(['back', 'forward', 'reload', 'home', 'zoom-in', 'zoom-out', 'zoom-reset']),
 });
 
 /** `null` means "give keyboard focus to the UI". */

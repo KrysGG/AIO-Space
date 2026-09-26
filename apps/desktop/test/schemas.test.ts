@@ -208,3 +208,14 @@ describe('performance settings', () => {
     for (const m of [0, 1, 7, -5, '30']) expect(WorkspaceSchema.safeParse({ ...ws, performance: { sleepAfterMinutes: m } }).success).toBe(false);
   });
 });
+
+describe('zoom', () => {
+  it('stores 25%..500% per app id, and zoom commands', () => {
+    const ws = defaultWorkspace();
+    expect(WorkspaceSchema.safeParse({ ...ws, zoom: { youtube: 1.25, 'custom-mail-abc123': 0.9 } }).success).toBe(true);
+    expect(WorkspaceSchema.safeParse({ ...ws, zoom: { youtube: 7 } }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...ws, zoom: { youtube: 0.1 } }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...ws, zoom: { '../x': 1.1 } }).success).toBe(false);
+    expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1', command: 'zoom-in' }).success).toBe(true);
+  });
+});

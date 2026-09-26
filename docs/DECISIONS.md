@@ -185,3 +185,12 @@ handler, so a silent call is still protected), and apps allowed to send notifica
 messages). Visible tiles never sleep, even if untouched: the roadmap's "or untouched for N minutes"
 is narrowed on purpose so a tile never goes blank in front of the user. Verified: a paused YouTube page
 slept (-234 MB, one process fewer) and woke on the same video; Reddit and a mic-using app stayed up.
+
+**D-025: Zoom is per app; main applies it, the UI saves only user zoom actions.**
+Ctrl +/-/0 (and numpad keys) are caught with the other shortcuts (D-014); Ctrl+wheel arrives as
+`zoom-changed` and is limited to one step per 150 ms (a notch can fire twice; touchpads burst).
+Steps follow Chrome (`nextZoom` in core). `ViewManager.setZoom` applies the factor to every view of
+the app and sends `app:zoom`; the UI stores it in `workspace.zoom` (v6; 100% = no entry). Main
+re-applies the saved factor on each `did-navigate`. View states carry the current zoom for display
+only, never for saving, so a page reporting 100% while loading can't wipe a saved zoom. Tiles show a
+"125%" badge when not at 100% (click to reset).

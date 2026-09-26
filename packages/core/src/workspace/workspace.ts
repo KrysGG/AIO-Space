@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 5;
+export const WORKSPACE_VERSION = 6;
 
 export interface Space {
   id: string;
@@ -44,6 +44,8 @@ export interface Workspace {
   customApps: WebAppDef[];
   /** Added in version 5 (ROADMAP 2.9). */
   performance: PerformanceSettings;
+  /** Zoom factor per app id; missing means 100%. Added in version 6 (ROADMAP 2.10). */
+  zoom: Record<string, number>;
 }
 
 export function defaultWorkspace(): Workspace {
@@ -57,6 +59,7 @@ export function defaultWorkspace(): Workspace {
     browser: { searchEngine: DEFAULT_SEARCH_ENGINE },
     customApps: [],
     performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER },
+    zoom: {},
   };
 }
 
@@ -98,6 +101,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (w['version'] === 2) w = { ...w, version: 3, spaces: addInstanceIds(w['spaces']) };
   if (w['version'] === 3) w = { ...w, version: 4, customApps: [] };
   if (w['version'] === 4) w = { ...w, version: 5, performance: { sleepAfterMinutes: DEFAULT_SLEEP_AFTER } };
+  if (w['version'] === 5) w = { ...w, version: 6, zoom: {} };
   return w as unknown as Workspace;
 }
 

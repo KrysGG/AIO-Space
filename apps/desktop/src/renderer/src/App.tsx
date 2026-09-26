@@ -73,12 +73,23 @@ export function App() {
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
     const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
     const offDownloads = window.aio.onDownloads(setDownloads);
+    // Save user zoom per app; 100% is the default, so it's removed instead of stored.
+    const offZoom = window.aio.onAppZoom((appId, factor) =>
+      setWs((prev) => {
+        if (!prev) return prev;
+        const zoom = { ...prev.zoom };
+        if (Math.abs(factor - 1) < 0.001) delete zoom[appId];
+        else zoom[appId] = factor;
+        return { ...prev, zoom };
+      }),
+    );
     const offIcon = window.aio.onAppIcon((appId, icon) =>
       setWs((prev) =>
         prev ? { ...prev, customApps: prev.customApps.map((a) => (a.id === appId && !a.icon ? { ...a, icon } : a)) } : prev,
       ),
     );
     return () => {
+      offZoom();
       offIcon();
       offDownloads();
       offState();
@@ -147,6 +158,9 @@ export function App() {
         }
         case 'reload':
           window.aio.viewCommand(focused, 'reload');
+          return;
+        case 'zoom':
+          window.aio.viewCommand(focused, `zoom-${action.change}`);
           return;
         case 'focus-address': {
           const input = document.querySelector<HTMLInputElement>(`[data-address-for="${focused}"]`);

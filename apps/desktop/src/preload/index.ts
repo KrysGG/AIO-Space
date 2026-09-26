@@ -43,6 +43,11 @@ const api: AioApi = {
     ipcRenderer.on(IPC.openInNewTile, listener);
     return () => ipcRenderer.removeListener(IPC.openInNewTile, listener);
   },
+  onAppZoom: (cb) => {
+    const listener = (_e: IpcRendererEvent, appId: string, factor: number): void => cb(appId, factor);
+    ipcRenderer.on(IPC.appZoom, listener);
+    return () => ipcRenderer.removeListener(IPC.appZoom, listener);
+  },
   onAppIcon: (cb) => {
     const listener = (_e: IpcRendererEvent, appId: string, icon: string): void => cb(appId, icon);
     ipcRenderer.on(IPC.appIcon, listener);

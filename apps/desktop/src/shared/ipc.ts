@@ -2,7 +2,7 @@
  * The ONLY contract between renderer (UI) and main. Keep it small.
  * Every channel added here must also get a zod schema in main/ipc/schemas.ts.
  */
-import type { FocusDirection, Rect, SplitDirection, WebAppDef, Workspace } from '@aio/core';
+import type { FocusDirection, Rect, SplitDirection, WebAppDef, Workspace, ZoomChange } from '@aio/core';
 
 export const IPC = {
   workspaceGet: 'workspace:get',
@@ -19,6 +19,7 @@ export const IPC = {
   downloadsUpdate: 'downloads:update',
   downloadsAction: 'downloads:action',
   appIcon: 'app:icon',
+  appZoom: 'app:zoom',
   shortcut: 'shortcut',
 } as const;
 
@@ -31,7 +32,7 @@ export interface ViewPlacement {
   bounds: Rect;
 }
 
-export type ViewCommand = 'back' | 'forward' | 'reload' | 'home';
+export type ViewCommand = 'back' | 'forward' | 'reload' | 'home' | 'zoom-in' | 'zoom-out' | 'zoom-reset';
 
 export interface ViewState {
   /** The running app instance this state belongs to. The UI keys states by it, so they follow swaps. */
@@ -45,6 +46,8 @@ export interface ViewState {
   canGoBack: boolean;
   canGoForward: boolean;
   crashed: boolean;
+  /** Page zoom factor (1 = 100%). The UI saves it per app (ROADMAP 2.10). */
+  zoom: number;
 }
 
 /** A Browser tile link asked for a new tab. `background` = middle-click / Ctrl+click: keep focus where it is. */
@@ -78,6 +81,7 @@ export type ShortcutAction =
   | { kind: 'close' }
   | { kind: 'reload' }
   | { kind: 'focus-address' }
+  | { kind: 'zoom'; change: ZoomChange }
   | { kind: 'help' };
 
 /** Exposed on window.aio by the preload script. */
@@ -105,6 +109,11 @@ export interface AioApi {
   onDownloads(cb: (downloads: DownloadInfo[]) => void): () => void;
   /** A custom app's favicon was fetched (data: URL); the UI stores it on the app. */
   onAppIcon(cb: (appId: string, icon: string) => void): () => void;
+  /**
+   * The user zoomed an app (keys or Ctrl+wheel); the UI saves it per app. Only sent for user
+   * actions, so a page reporting 100% while it loads never overwrites a saved zoom.
+   */
+  onAppZoom(cb: (appId: string, factor: number) => void): () => void;
   /** `clear` removes finished downloads from the list (the files stay); `id` is ignored for it. */
   downloadAction(id: string, action: DownloadAction): void;
 }

@@ -37,7 +37,7 @@ describe('shortcutFor', () => {
     expect(press({ control: true, key: '1', code: 'Digit1' })).toEqual({ kind: 'focus-index', index: 0 });
     expect(press({ control: true, key: '&', code: 'Digit1' })).toEqual({ kind: 'focus-index', index: 0 });
     expect(press({ control: true, key: '9', code: 'Digit9' })).toEqual({ kind: 'focus-index', index: 8 });
-    expect(press({ control: true, key: '0', code: 'Digit0' })).toBeNull();
+    expect(press({ control: true, key: '0', code: 'Digit0' })).toEqual({ kind: 'zoom', change: 'reset' }); // Ctrl+0 is zoom reset
   });
 
   it('leaves everything else to the page', () => {
@@ -47,6 +47,16 @@ describe('shortcutFor', () => {
     expect(press({ control: true, shift: true, key: 'R', code: 'KeyR' })).toBeNull(); // hard reload stays with the page
     expect(press({ control: true, alt: true, key: 'w', code: 'KeyW' })).toBeNull();
     expect(press({ control: true, meta: true, key: 'w', code: 'KeyW' })).toBeNull();
+  });
+
+  it('maps zoom keys, including numpad and Ctrl+Shift+= ("+")', () => {
+    expect(press({ control: true, key: '=', code: 'Equal' })).toEqual({ kind: 'zoom', change: 'in' });
+    expect(press({ control: true, shift: true, key: '+', code: 'Equal' })).toEqual({ kind: 'zoom', change: 'in' });
+    expect(press({ control: true, key: '+', code: 'NumpadAdd' })).toEqual({ kind: 'zoom', change: 'in' });
+    expect(press({ control: true, key: '-', code: 'Minus' })).toEqual({ kind: 'zoom', change: 'out' });
+    expect(press({ control: true, key: '-', code: 'NumpadSubtract' })).toEqual({ kind: 'zoom', change: 'out' });
+    expect(press({ control: true, key: '0', code: 'Numpad0' })).toEqual({ kind: 'zoom', change: 'reset' });
+    expect(press({ key: '=', code: 'Equal' })).toBeNull(); // no Ctrl
   });
 
   it('ignores key-up and auto-repeat', () => {

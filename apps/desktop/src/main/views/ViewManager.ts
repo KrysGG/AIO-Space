@@ -14,6 +14,7 @@ import {
   hostMatches,
   isWebUrl,
   MAX_TILES,
+  nextZoom,
   SEARCH_ENGINES,
   sumUnread,
   unreadFromTitle,
@@ -31,12 +32,16 @@ import type { WorkspaceStore } from '../store/workspaceStore';
 
 /** How often hidden apps are checked for sleeping. */
 const SLEEP_CHECK_MS = 30_000;
+/** Minimum time between Ctrl+wheel zoom steps. */
+const WHEEL_ZOOM_MS = 150;
 
 interface Entry {
   /** The tile the view currently sits in. Changes when tiles are swapped; the view doesn't. */
   leafId: string;
   /** When the view was last hidden in another space (ms), or undefined while it's on screen. */
   hiddenSince?: number;
+  /** Re-sends this view's state to the UI (set up in wireState). */
+  emit?: () => void;
   appId: string;
   def: WebAppDef;
   view: WebContentsView;
@@ -168,6 +173,22 @@ export class ViewManager {
     else if (cmd === 'forward' && nav.canGoForward()) nav.goForward();
     else if (cmd === 'reload') wc.reload();
     else if (cmd === 'home') void wc.loadURL(this.homeOf(entry.def));
+    else if (cmd === 'zoom-in') this.setZoom(entry.appId, nextZoom(wc.getZoomFactor(), 'in'));
+    else if (cmd === 'zoom-out') this.setZoom(entry.appId, nextZoom(wc.getZoomFactor(), 'out'));
+    else if (cmd === 'zoom-reset') this.setZoom(entry.appId, 1);
+  }
+
+  /**
+   * Zoom is per app (ROADMAP 2.10): every view of the app gets the factor and reports it, and the UI
+   * saves it in workspace.zoom, which is applied again whenever a page of that app loads.
+   */
+  private setZoom(appId: string, factor: number): void {
+    for (const entry of this.views.values()) {
+      if (entry.appId !== appId || entry.view.webContents.isDestroyed()) continue;
+      entry.view.webContents.setZoomFactor(factor);
+      entry.emit?.();
+    }
+    if (!this.win.isDestroyed()) this.win.webContents.send(IPC.appZoom, appId, factor);
   }
 
   /** The Browser tile starts on the chosen search engine; other apps on their own start page. */
@@ -229,6 +250,21 @@ export class ViewManager {
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
+    // Ctrl + mouse wheel inside the page; Electron leaves zooming to us. One step per 150 ms: a notch
+    // can arrive as several events, and touchpads send bursts.
+    let lastWheelZoom = 0;
+    wc.on('zoom-changed', (_e, direction) => {
+      const now = Date.now();
+      if (now - lastWheelZoom < WHEEL_ZOOM_MS) return;
+      lastWheelZoom = now;
+      this.setZoom(appId, nextZoom(wc.getZoomFactor(), direction));
+    });
+    // The saved zoom, re-applied on each page load (Chromium may reset it when the page navigates).
+    wc.on('did-navigate', () => {
+      const saved = this.store.get().zoom[appId] ?? 1;
+      if (Math.abs(wc.getZoomFactor() - saved) > 0.001) wc.setZoomFactor(saved);
+      entry.emit?.();
+    });
     if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(def, wc);
 
     this.win.contentView.addChildView(view);
@@ -382,9 +418,11 @@ export class ViewManager {
         canGoBack: wc.navigationHistory.canGoBack(),
         canGoForward: wc.navigationHistory.canGoForward(),
         crashed,
+        zoom: wc.getZoomFactor(),
       };
       this.win.webContents.send(IPC.viewState, state);
     };
+    entry.emit = () => emit();
     wc.on('did-start-loading', () => emit());
     wc.on('did-stop-loading', () => emit());
     wc.on('did-navigate', () => emit());
