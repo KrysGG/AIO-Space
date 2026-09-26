@@ -50,7 +50,7 @@ filling gaps, not writing it from scratch.
 - The window opens, the launcher grid lists Discord, YouTube, Reddit, X, Instagram, Browser.
 - No errors in the terminal or the UI DevTools console.
 
-### - [ ] 0.3 Lint, format and CI
+### - [x] 0.3 Lint, format and CI
 **Goal:** Every push is checked automatically.
 **Files:** `eslint.config.mjs`, `.github/workflows/ci.yml` (new)
 **Tasks:**
