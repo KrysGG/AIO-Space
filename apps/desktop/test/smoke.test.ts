@@ -44,6 +44,15 @@ describe('desktop smoke test', () => {
     await expect.poll(() => tiles().first().getAttribute('aria-label')).toBe('Browser');
   });
 
+  it('loads an address typed into the Browser tile', async () => {
+    const address = ui.getByRole('textbox', { name: 'Address or search' });
+    await address.fill('example.com');
+    await address.press('Enter');
+    await expect
+      .poll(() => app.evaluate(({ webContents }) => webContents.getAllWebContents().some((w) => w.getURL() === 'https://example.com/')))
+      .toBe(true);
+  });
+
   it('splits the tile, then closes both tiles back to one empty tile', async () => {
     await tiles().first().getByRole('button', { name: 'Split right' }).click();
     await expect.poll(() => tiles().count()).toBe(2);

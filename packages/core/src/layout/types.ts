@@ -49,5 +49,8 @@ export interface ComputedLayout {
   dividers: DividerRect[];
 }
 
+/** Most tiles one space may hold (each is a full web view). */
+export const MAX_TILES = 16;
+
 export const MIN_RATIO = 0.1;
 export const MAX_RATIO = 0.9;

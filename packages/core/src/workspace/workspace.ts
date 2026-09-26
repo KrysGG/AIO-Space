@@ -1,3 +1,4 @@
+import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
 import { createLeaf, listLeaves } from '../layout/tree';
 import type { LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
@@ -6,13 +7,17 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 1;
+export const WORKSPACE_VERSION = 2;
 
 export interface Space {
   id: string;
   name: string;
   layout: LayoutNode;
   focusedLeafId: string | null;
+}
+
+export interface BrowserSettings {
+  searchEngine: SearchEngineId;
 }
 
 export interface Workspace {
@@ -22,6 +27,8 @@ export interface Workspace {
   privacy: PrivacySettings;
   /** Per-app privacy overrides, keyed by app id. */
   privacyOverrides: Record<string, Partial<PrivacySettings>>;
+  /** Added in version 2. */
+  browser: BrowserSettings;
 }
 
 export function defaultWorkspace(): Workspace {
@@ -32,6 +39,7 @@ export function defaultWorkspace(): Workspace {
     activeSpaceId: 'space_main',
     privacy: { ...DEFAULT_PRIVACY },
     privacyOverrides: {},
+    browser: { searchEngine: DEFAULT_SEARCH_ENGINE },
   };
 }
 
@@ -51,11 +59,19 @@ export function ensureFocus(space: Space): Space {
   return { ...space, focusedLeafId: leaves[0]?.id ?? null };
 }
 
-/** Upgrade older saved workspaces. Unknown/newer versions fall back to defaults. */
+/** Versions migrateWorkspace() can upgrade (or load as-is). */
+export function isSupportedWorkspaceVersion(v: unknown): boolean {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= WORKSPACE_VERSION;
+}
+
+/**
+ * Upgrade older saved workspaces, one version at a time. Unknown/newer versions fall back to
+ * defaults. The result is still untrusted: the shell validates it afterwards.
+ */
 export function migrateWorkspace(raw: unknown): Workspace {
   if (!raw || typeof raw !== 'object') return defaultWorkspace();
-  const v = (raw as { version?: unknown }).version;
-  if (v === WORKSPACE_VERSION) return raw as Workspace;
-  // Future: if (v === 1) raw = migrateV1toV2(raw) ...
-  return defaultWorkspace();
+  let w = raw as Record<string, unknown>;
+  if (!isSupportedWorkspaceVersion(w['version'])) return defaultWorkspace();
+  if (w['version'] === 1) w = { ...w, version: 2, browser: { searchEngine: DEFAULT_SEARCH_ENGINE } };
+  return w as unknown as Workspace;
 }

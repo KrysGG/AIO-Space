@@ -6,6 +6,7 @@ import {
   PlacementsSchema,
   ViewCommandSchema,
   ViewFocusSchema,
+  ViewNavigateSchema,
   WorkspaceSchema,
 } from '../src/main/ipc/schemas';
 
@@ -43,6 +44,10 @@ describe('WorkspaceSchema', () => {
     expect(WorkspaceSchema.safeParse({ ...ws, activeSpaceId: '../etc' }).success).toBe(false);
     expect(WorkspaceSchema.safeParse({ ...ws, privacy: { ...ws.privacy, fingerprinting: 'max' } }).success).toBe(false);
     expect(WorkspaceSchema.safeParse({ ...ws, version: '1' }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...ws, browser: { searchEngine: 'google' } }).success).toBe(false);
+    const { browser: _omit, ...noBrowser } = ws;
+    void _omit;
+    expect(WorkspaceSchema.safeParse(noBrowser).success).toBe(false);
     expect(WorkspaceSchema.safeParse(null).success).toBe(false);
   });
 });
@@ -88,5 +93,17 @@ describe('ViewFocusSchema', () => {
     expect(ViewFocusSchema.safeParse({}).success).toBe(false);
     expect(ViewFocusSchema.safeParse({ leafId: '<script>' }).success).toBe(false);
     expect(ViewFocusSchema.safeParse({ leafId: 5 }).success).toBe(false);
+  });
+});
+
+describe('ViewNavigateSchema', () => {
+  it('accepts http(s) URLs only', () => {
+    expect(ViewNavigateSchema.safeParse({ leafId: 'leaf_1', url: 'https://example.com/' }).success).toBe(true);
+    expect(ViewNavigateSchema.safeParse({ leafId: 'leaf_1', url: 'http://example.com/' }).success).toBe(true);
+    for (const url of ['javascript:alert(1)', 'file:///etc/passwd', 'data:text/html,x', 'chrome://gpu', 'example.com', '']) {
+      expect(ViewNavigateSchema.safeParse({ leafId: 'leaf_1', url }).success).toBe(false);
+    }
+    expect(ViewNavigateSchema.safeParse({ leafId: 'leaf_1', url: 'https://x.example/' + 'a'.repeat(9000) }).success).toBe(false);
+    expect(ViewNavigateSchema.safeParse({ leafId: '../x', url: 'https://example.com/' }).success).toBe(false);
   });
 });

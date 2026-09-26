@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { listLeaves, type LayoutNode, type Workspace } from '@aio/core';
+import { isWebUrl, listLeaves, MAX_TILES, SEARCH_ENGINES, type LayoutNode, type SearchEngineId, type Workspace } from '@aio/core';
 
 /** Every IPC payload from the renderer is untrusted until parsed here. */
 
 const Id = z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/);
-export const MAX_TILES = 16;
+export { MAX_TILES };
 
 const LeafSchema = z.object({ type: z.literal('leaf'), id: Id, appId: Id.nullable() });
 
@@ -50,6 +50,9 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   activeSpaceId: Id,
   privacy: PrivacySchema,
   privacyOverrides: z.record(Id, PrivacySchema.partial()),
+  browser: z.object({
+    searchEngine: z.enum(Object.keys(SEARCH_ENGINES) as [SearchEngineId, ...SearchEngineId[]]),
+  }),
 });
 
 const Bound = z.number().int().min(0).max(20000);
@@ -71,3 +74,9 @@ export const ViewCommandSchema = z.object({
 
 /** `null` means "give keyboard focus to the UI". */
 export const ViewFocusSchema = z.object({ leafId: Id.nullable() });
+
+/** Browser tile address bar. Only http(s) URLs; main also refuses non-Browser tiles. */
+export const ViewNavigateSchema = z.object({
+  leafId: Id,
+  url: z.string().max(8192).refine(isWebUrl, 'only http(s) URLs'),
+});

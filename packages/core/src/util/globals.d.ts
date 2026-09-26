@@ -13,6 +13,7 @@ declare class URL {
   protocol: string;
   search: string;
   origin: string;
+  href: string;
   readonly searchParams: URLSearchParams;
   toString(): string;
 }

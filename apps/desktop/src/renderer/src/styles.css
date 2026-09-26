@@ -217,3 +217,20 @@ button { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 .shortcuts-hint { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+
+/* ---- Browser tile address bar ------------------------------------------- */
+.address { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.address-engine, .address-input {
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.address-engine { flex: none; max-width: 120px; padding: 0 4px; color: var(--muted); }
+.address-input { flex: 1; min-width: 0; padding: 0 8px; user-select: text; }
+.address-input::placeholder { color: var(--muted); }
+.address-input:focus { outline: none; border-color: var(--focus); }
+.tile-title-browser { flex: 1; font-weight: 400; }

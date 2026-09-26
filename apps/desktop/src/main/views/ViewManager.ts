@@ -1,6 +1,12 @@
-import { BrowserWindow, shell, WebContentsView } from 'electron';
-import { getApp, hostMatches, type WebAppDef } from '@aio/core';
-import { IPC, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
+import {
+  BrowserWindow,
+  shell,
+  WebContentsView,
+  type BrowserWindowConstructorOptions,
+  type WebContents,
+} from 'electron';
+import { getApp, hostMatches, isWebUrl, MAX_TILES, type WebAppDef } from '@aio/core';
+import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import { getAppSession } from '../sessions/appSession';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
@@ -22,6 +28,9 @@ interface Entry {
 export class ViewManager {
   private readonly views = new Map<string, Entry>();
   private hidden = false;
+  /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
+  private readonly pendingUrl = new Map<string, string>();
+  private pendingFocus: string | null = null;
 
   constructor(
     private readonly win: BrowserWindow,
@@ -55,8 +64,22 @@ export class ViewManager {
   focus(leafId: string | null): void {
     if (this.win.isDestroyed()) return;
     const entry = leafId ? this.views.get(leafId) : undefined;
+    // A tile whose view is about to be created (pending URL) gets focus once it exists.
+    this.pendingFocus = !entry && leafId && this.pendingUrl.has(leafId) ? leafId : null;
     if (entry && !this.hidden) entry.view.webContents.focus();
     else this.win.webContents.focus();
+  }
+
+  /** Address bar and new tiles from links. Browser tiles only, http(s) only (also checked by the schema). */
+  navigate(leafId: string, url: string): void {
+    if (!isWebUrl(url)) return;
+    const entry = this.views.get(leafId);
+    if (entry) {
+      if (entry.def.kind === 'browser') void entry.view.webContents.loadURL(url);
+      return;
+    }
+    if (this.pendingUrl.size >= MAX_TILES) this.pendingUrl.delete(this.pendingUrl.keys().next().value!);
+    this.pendingUrl.set(leafId, url);
   }
 
   command(leafId: string, cmd: ViewCommand): void {
@@ -97,11 +120,22 @@ export class ViewManager {
     this.wireState(leafId, appId, view);
 
     this.win.contentView.addChildView(view);
-    void wc.loadURL(def.url);
+    const startUrl = def.kind === 'browser' ? this.pendingUrl.get(leafId) : undefined;
+    this.pendingUrl.delete(leafId);
+    void wc.loadURL(startUrl ?? def.url);
+    if (this.pendingFocus === leafId) {
+      this.pendingFocus = null;
+      wc.focus();
+    }
 
     const entry: Entry = { appId, def, view };
     this.views.set(leafId, entry);
     return entry;
+  }
+
+  private leafOf(wc: WebContents): string | undefined {
+    for (const [leafId, entry] of this.views) if (entry.view.webContents === wc) return leafId;
+    return undefined;
   }
 
   private destroy(leafId: string): void {
@@ -135,26 +169,36 @@ export class ViewManager {
       }
     });
 
-    wc.setWindowOpenHandler(({ url }) => {
+    // Sign-in popups. Child inherits this app's session; hardening applies to it too.
+    const popup = {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        parent: this.win,
+        width: 520,
+        height: 720,
+        autoHideMenuBar: true,
+        webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
+      } satisfies BrowserWindowConstructorOptions,
+    } as const;
+
+    wc.setWindowOpenHandler(({ url, disposition }) => {
       if (!isWeb(url)) return { action: 'deny' };
       if (def.kind === 'browser') {
-        // TODO(ROADMAP 2.2): open in a new tile or tab instead of replacing.
+        // Links asking for a new tab open in a new Browser tile (D-015). Scripted popups
+        // (window.open with features, e.g. "Sign in with ...") stay popups so they keep their opener.
+        if (disposition === 'new-window') return popup;
+        if (disposition === 'foreground-tab' || disposition === 'background-tab') {
+          const leafId = this.leafOf(wc);
+          if (leafId && !this.win.isDestroyed()) {
+            const request: OpenInNewTile = { fromLeafId: leafId, url, background: disposition === 'background-tab' };
+            this.win.webContents.send(IPC.openInNewTile, request);
+            return { action: 'deny' };
+          }
+        }
         void wc.loadURL(url);
         return { action: 'deny' };
       }
-      if (hostMatches(host(url), def.popupHosts)) {
-        // Sign-in popups. Child inherits this app's session; hardening applies to it too.
-        return {
-          action: 'allow',
-          overrideBrowserWindowOptions: {
-            parent: this.win,
-            width: 520,
-            height: 720,
-            autoHideMenuBar: true,
-            webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
-          },
-        };
-      }
+      if (hostMatches(host(url), def.popupHosts)) return popup;
       if (hostMatches(host(url), def.allowedHosts)) {
         void wc.loadURL(url);
         return { action: 'deny' };

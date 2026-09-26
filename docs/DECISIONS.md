@@ -82,3 +82,15 @@ digits and arrows by `code` (Ctrl+1 on AZERTY reports "&"); auto-repeat is ignor
 moves focus, the UI also calls `view:focus` so keyboard focus follows the amber edge. New shortcuts:
 add them to `shortcutFor()` and to the list in `ShortcutsHelp.tsx`. Tests must send keys with
 `webContents.sendInputEvent` (CDP `Input.dispatchKeyEvent` bypasses `before-input-event`).
+
+**D-015: Browser tile opens "new tab" links in a new tile; workspace v2 stores the search engine.**
+Owner's choice over in-tile tabs. In a Browser tile, links that ask for a new tab (`foreground-tab`:
+`target=_blank`, plain `window.open(url)`; `background-tab`: middle-click / Ctrl+click) go to the UI,
+which splits the tile to the right and starts a Browser view on that URL (`view:navigate` before the
+layout update; main keeps it as the pending start URL). Background tabs keep focus where it was. At
+`MAX_TILES` the link loads in the same tile. Scripted popups (`new-window`: `window.open` with
+features, e.g. "Sign in with ...") stay real popup windows so they keep `window.opener`.
+The address bar turns input into an https URL or a search (`addressToUrl` in core); other schemes are
+always searched, never loaded. `view:navigate` accepts only http(s) and only affects Browser tiles.
+Search engine (DuckDuckGo default, Brave Search, Startpage) lives in `workspace.browser`, added in
+`WORKSPACE_VERSION` 2 with a v1 migration.

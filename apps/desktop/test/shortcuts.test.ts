@@ -26,7 +26,8 @@ describe('shortcutFor', () => {
     expect(press({ control: true, shift: true, key: 'e', code: 'KeyE' })).toEqual({ kind: 'split', direction: 'column' });
   });
 
-  it('maps Ctrl+W, Ctrl+R and Ctrl+/', () => {
+  it('maps Ctrl+W, Ctrl+R, Ctrl+L and Ctrl+/', () => {
+    expect(press({ control: true, key: 'l', code: 'KeyL' })).toEqual({ kind: 'focus-address' });
     expect(press({ control: true, key: 'w', code: 'KeyW' })).toEqual({ kind: 'close' });
     expect(press({ control: true, key: 'r', code: 'KeyR' })).toEqual({ kind: 'reload' });
     expect(press({ control: true, key: '/', code: 'Slash' })).toEqual({ kind: 'help' });

@@ -153,7 +153,7 @@ tile, Ctrl+R reload focused, Ctrl+1..9 focus nth tile. Shortcuts must work while
 focus (use `before-input-event` on each view in main and forward to the UI).
 **Done when:** All shortcuts work regardless of which tile has focus, and are listed in a help popover.
 
-### - [ ] 2.2 Real browser tile
+### - [x] 2.2 Real browser tile
 Address bar in the Browser tile header (URL or search), new-tab links open a new tile to the right
 (or tabs inside the tile; record the choice in DECISIONS.md), and a search engine setting
 (DuckDuckGo default, Brave Search, Startpage).

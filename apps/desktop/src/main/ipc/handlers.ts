@@ -3,7 +3,7 @@ import { BUILTIN_APPS } from '@aio/core';
 import { IPC } from '../../shared/ipc';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { ViewManager } from '../views/ViewManager';
-import { PlacementsSchema, ViewCommandSchema, ViewFocusSchema, WorkspaceSchema } from './schemas';
+import { PlacementsSchema, ViewCommandSchema, ViewFocusSchema, ViewNavigateSchema, WorkspaceSchema } from './schemas';
 
 export function registerIpc(win: BrowserWindow, store: WorkspaceStore, views: ViewManager): void {
   /** Only the UI window's top frame may talk to main. Web app views have no preload anyway. */
@@ -54,5 +54,11 @@ export function registerIpc(win: BrowserWindow, store: WorkspaceStore, views: Vi
     if (!fromUi(e)) return;
     const parsed = ViewFocusSchema.safeParse(raw);
     if (parsed.success) views.focus(parsed.data.leafId);
+  });
+
+  ipcMain.on(IPC.viewNavigate, (e, raw: unknown) => {
+    if (!fromUi(e)) return;
+    const parsed = ViewNavigateSchema.safeParse(raw);
+    if (parsed.success) views.navigate(parsed.data.leafId, parsed.data.url);
   });
 }

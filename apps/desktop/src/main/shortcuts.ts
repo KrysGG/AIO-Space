@@ -33,6 +33,7 @@ export function shortcutFor(input: KeyInput): ShortcutAction | null {
   }
   if (key === 'w') return { kind: 'close' };
   if (key === 'r') return { kind: 'reload' };
+  if (key === 'l') return { kind: 'focus-address' };
   if (key === '/' || input.code === 'Slash') return { kind: 'help' };
   const digit = /^Digit([1-9])$/.exec(input.code);
   if (digit) return { kind: 'focus-index', index: Number(digit[1]) - 1 };

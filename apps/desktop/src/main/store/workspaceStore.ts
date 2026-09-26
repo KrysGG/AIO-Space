@@ -2,9 +2,9 @@ import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
 import {
   defaultWorkspace,
+  isSupportedWorkspaceVersion,
   migrateWorkspace,
   resolvePrivacy,
-  WORKSPACE_VERSION,
   type PrivacySettings,
   type Workspace,
 } from '@aio/core';
@@ -24,7 +24,7 @@ export class WorkspaceStore {
     try {
       const raw: unknown = JSON.parse(await fs.readFile(this.file, 'utf8'));
       const version = raw && typeof raw === 'object' ? (raw as { version?: unknown }).version : undefined;
-      if (version !== WORKSPACE_VERSION) console.warn('[store] unsupported workspace version, using defaults:', version);
+      if (!isSupportedWorkspaceVersion(version)) console.warn('[store] unsupported workspace version, using defaults:', version);
       const parsed = WorkspaceSchema.safeParse(migrateWorkspace(raw));
       this.ws = parsed.success ? parsed.data : defaultWorkspace();
       if (!parsed.success) console.warn('[store] invalid workspace, using defaults', parsed.error.issues);

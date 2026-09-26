@@ -4,7 +4,7 @@
  * Never expose ipcRenderer itself or any generic "send anything" function.
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type AioApi, type ShortcutAction, type ViewState } from '../shared/ipc';
+import { IPC, type AioApi, type OpenInNewTile, type ShortcutAction, type ViewState } from '../shared/ipc';
 
 const api: AioApi = {
   getWorkspace: () => ipcRenderer.invoke(IPC.workspaceGet),
@@ -14,6 +14,7 @@ const api: AioApi = {
   setViewsHidden: (hidden) => ipcRenderer.send(IPC.viewsSetHidden, hidden),
   viewCommand: (leafId, command) => ipcRenderer.send(IPC.viewCommand, { leafId, command }),
   focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
+  navigate: (leafId, url) => ipcRenderer.send(IPC.viewNavigate, { leafId, url }),
   onViewState: (cb) => {
     const listener = (_e: IpcRendererEvent, s: ViewState): void => cb(s);
     ipcRenderer.on(IPC.viewState, listener);
@@ -28,6 +29,11 @@ const api: AioApi = {
     const listener = (_e: IpcRendererEvent, action: ShortcutAction): void => cb(action);
     ipcRenderer.on(IPC.shortcut, listener);
     return () => ipcRenderer.removeListener(IPC.shortcut, listener);
+  },
+  onOpenInNewTile: (cb) => {
+    const listener = (_e: IpcRendererEvent, request: OpenInNewTile): void => cb(request);
+    ipcRenderer.on(IPC.openInNewTile, listener);
+    return () => ipcRenderer.removeListener(IPC.openInNewTile, listener);
   },
 };
 

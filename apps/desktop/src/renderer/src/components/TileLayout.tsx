@@ -4,10 +4,12 @@ import {
   ratioFromPointer,
   type DividerRect,
   type LayoutNode,
+  type SearchEngineId,
   type SplitDirection,
   type WebAppDef,
 } from '@aio/core';
 import type { ViewPlacement, ViewState } from '../../../shared/ipc';
+import { AddressBar } from './AddressBar';
 import { Launcher } from './Launcher';
 
 const GUTTER = 6;
@@ -18,6 +20,10 @@ interface Props {
   catalog: WebAppDef[];
   focusedLeafId: string | null;
   viewStates: Record<string, ViewState>;
+  searchEngine: SearchEngineId;
+  onSearchEngine(engine: SearchEngineId): void;
+  /** Address bar input from a Browser tile. */
+  onNavigate(leafId: string, text: string): void;
   onFocus(leafId: string): void;
   onResize(splitId: string, ratio: number): void;
   onOpenApp(appId: string, leafId: string): void;
@@ -102,6 +108,7 @@ export function TileLayout(props: Props) {
   }, [dragging]);
 
   const appName = (id: string | null): string => catalog.find((a) => a.id === id)?.name ?? 'Empty tile';
+  const isBrowser = (id: string | null): boolean => catalog.find((a) => a.id === id)?.kind === 'browser';
 
   return (
     <main className={`tiles${dragging ? ' is-dragging' : ''}`} ref={containerRef}>
@@ -119,10 +126,23 @@ export function TileLayout(props: Props) {
             aria-label={appName(t.appId)}
           >
             <header className="tile-head" style={{ height: HEADER }}>
-              <span className="tile-title">
-                {state?.loading && <span className="tile-spinner" aria-label="Loading" />}
-                {state?.title || appName(t.appId)}
-              </span>
+              {isBrowser(t.appId) ? (
+                <div className="tile-title tile-title-browser" title={state?.title}>
+                  {state?.loading && <span className="tile-spinner" aria-label="Loading" />}
+                  <AddressBar
+                    leafId={t.leafId}
+                    url={state?.url ?? ''}
+                    engine={props.searchEngine}
+                    onEngine={props.onSearchEngine}
+                    onGo={(text) => props.onNavigate(t.leafId, text)}
+                  />
+                </div>
+              ) : (
+                <span className="tile-title">
+                  {state?.loading && <span className="tile-spinner" aria-label="Loading" />}
+                  {state?.title || appName(t.appId)}
+                </span>
+              )}
               <div className="tile-tools">
                 {t.appId && (
                   <>

@@ -1,20 +1,24 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   activeSpace,
+  addressToUrl,
   assignApp,
   computeLayout,
   ensureFocus,
+  findLeaf,
   listLeaves,
+  MAX_TILES,
   neighborTile,
   removeLeaf,
   setRatio,
   splitLeaf,
   updateActiveSpace,
+  type SearchEngineId,
   type SplitDirection,
   type WebAppDef,
   type Workspace,
 } from '@aio/core';
-import type { ShortcutAction, ViewState } from '../../shared/ipc';
+import type { OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
 import { TileLayout } from './components/TileLayout';
@@ -31,8 +35,9 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const saveTimer = useRef<number | undefined>(undefined);
-  // Latest shortcut handler and focused tile; the IPC listener and closeHelp are created once.
+  // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
+  const openInNewTileRef = useRef<(request: OpenInNewTile) => void>(() => {});
   const focusedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -47,10 +52,12 @@ export function App() {
       setWs((prev) => (prev ? updateActiveSpace(prev, (s) => ({ ...s, focusedLeafId: leafId })) : prev)),
     );
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
+    const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
     return () => {
       offState();
       offFocus();
       offShortcut();
+      offNewTile();
     };
   }, []);
 
@@ -111,7 +118,33 @@ export function App() {
         case 'reload':
           window.aio.viewCommand(focused, 'reload');
           return;
+        case 'focus-address': {
+          const input = document.querySelector<HTMLInputElement>(`[data-address-for="${focused}"]`);
+          if (!input) return;
+          window.aio.focusView(null); // keyboard to the UI page, then to the address bar inside it
+          input.focus();
+          return;
+        }
       }
+    };
+
+    // A Browser tile link asked for a new tab: open it in a new Browser tile to the right (D-015).
+    openInNewTileRef.current = ({ fromLeafId, url, background }) => {
+      if (!ws) return;
+      const space = activeSpace(ws);
+      if (!findLeaf(space.layout, fromLeafId)) return;
+      if (listLeaves(space.layout).length >= MAX_TILES) {
+        window.aio.navigate(fromLeafId, url); // no room: same tile, like before
+        return;
+      }
+      const r = splitLeaf(space.layout, fromLeafId, 'row', 'browser');
+      const newLeafId = r.newLeafId;
+      if (!newLeafId) return;
+      window.aio.navigate(newLeafId, url); // before the layout update, so the view starts on this URL
+      edit((w) =>
+        updateActiveSpace(w, (s) => ({ ...s, layout: r.root, focusedLeafId: background ? s.focusedLeafId : newLeafId })),
+      );
+      if (!background) window.aio.focusView(newLeafId);
     };
   });
 
@@ -140,6 +173,14 @@ export function App() {
   const clear = (leafId: string): void =>
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: assignApp(s.layout, leafId, null) })));
 
+  const setSearchEngine = (searchEngine: SearchEngineId): void =>
+    edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
+
+  const navigate = (leafId: string, text: string): void => {
+    const url = addressToUrl(text, ws.browser.searchEngine);
+    if (url) window.aio.navigate(leafId, url);
+  };
+
   return (
     <div className={`shell${menuOpen ? ' menu-open' : ''}`}>
       <Sidebar
@@ -157,6 +198,9 @@ export function App() {
         catalog={catalog}
         focusedLeafId={focused}
         viewStates={viewStates}
+        searchEngine={ws.browser.searchEngine}
+        onSearchEngine={setSearchEngine}
+        onNavigate={navigate}
         onFocus={(leafId) => edit((w) => updateActiveSpace(w, (s) => ({ ...s, focusedLeafId: leafId })))}
         onResize={(splitId, ratio) => edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: setRatio(s.layout, splitId, ratio) })))}
         onOpenApp={openApp}
