@@ -29,7 +29,7 @@ adblock, plugins) register as `RequestFilter`s in one pipeline.
 
 **D-006: Hide native views while dragging a divider.**
 Native views capture the pointer, which breaks drags. Views hide during the drag and the tile
-placeholder shows. Upgrade path: show `capturePage()` snapshots instead (ROADMAP 2.13).
+placeholder shows. Since 2.13 the placeholder shows a `capturePage()` snapshot of the page (D-027).
 
 **D-007: Per-app session partitions `persist:app-<appId>-<profile>`.**
 Isolates cookies and storage per service. `profile` enables multiple accounts later (ROADMAP 2.12).
@@ -204,3 +204,11 @@ storage never mix. `setProfile` gives the tile a fresh instance (new view in the
 shows an account dropdown on the focused tile, or on any tile whose app has several accounts, with
 "+ Add account". Verified with two Browser tiles on example.com: separate partitions and cookies.
 Renaming/removing accounts and clearing their data come with 3.9.
+
+**D-027: Snapshots stand in for hidden views.**
+`ViewManager.setHidden(true)` captures each visible view first (JPEG, resized to the tile width, ~20
+KB; 150 ms limit per page, a slow page just shows the plain placeholder), sends them to the UI
+(`views:snapshots`), then hides. The UI draws them in the tile placeholders (`object-fit: cover`,
+top-left) during divider drags, tile drags and popovers. Showing again makes the views visible first,
+then sends `{}` so the UI drops the snapshots, which avoids a blank flash. A show that arrives while
+snapshots are being taken cancels the pending hide. Measured: views hide ~50 ms after a drag starts.

@@ -20,6 +20,7 @@ export const IPC = {
   downloadsAction: 'downloads:action',
   appIcon: 'app:icon',
   appZoom: 'app:zoom',
+  viewsSnapshots: 'views:snapshots',
   shortcut: 'shortcut',
 } as const;
 
@@ -116,6 +117,11 @@ export interface AioApi {
    * actions, so a page reporting 100% while it loads never overwrites a saved zoom.
    */
   onAppZoom(cb: (appId: string, factor: number) => void): () => void;
+  /**
+   * Snapshots (JPEG data URLs, by instance id) of the views, sent just before they're hidden so tiles
+   * can show them (ROADMAP 2.13); an empty object when the views are shown again.
+   */
+  onViewSnapshots(cb: (snapshots: Record<string, string>) => void): () => void;
   /** `clear` removes finished downloads from the list (the files stay); `id` is ignored for it. */
   downloadAction(id: string, action: DownloadAction): void;
 }

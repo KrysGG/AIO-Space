@@ -53,6 +53,8 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [downloads, setDownloads] = useState<DownloadInfo[]>([]);
+  // Page snapshots shown in tiles while the views are hidden (drags, popovers).
+  const [snapshots, setSnapshots] = useState<Record<string, string>>({});
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   // Open "Add app" dialog; leafId = the empty tile it was opened from (the new app opens there).
   const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
@@ -76,6 +78,7 @@ export function App() {
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
     const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
     const offDownloads = window.aio.onDownloads(setDownloads);
+    const offSnapshots = window.aio.onViewSnapshots(setSnapshots);
     // Save user zoom per app; 100% is the default, so it's removed instead of stored.
     const offZoom = window.aio.onAppZoom((appId, factor) =>
       setWs((prev) => {
@@ -92,6 +95,7 @@ export function App() {
       ),
     );
     return () => {
+      offSnapshots();
       offZoom();
       offIcon();
       offDownloads();
@@ -328,6 +332,7 @@ export function App() {
         focusedLeafId={focused}
         viewStates={viewStates}
         backgroundInstances={backgroundInstances}
+        snapshots={snapshots}
         searchEngine={ws.browser.searchEngine}
         onSearchEngine={setSearchEngine}
         onNavigate={navigate}

@@ -29,6 +29,8 @@ interface Props {
   viewStates: Record<string, ViewState>;
   /** Instance ids of apps in other spaces: kept running (hidden) by main. */
   backgroundInstances: string[];
+  /** Page snapshots by instance id, shown while the views are hidden (ROADMAP 2.13). */
+  snapshots: Record<string, string>;
   searchEngine: SearchEngineId;
   /** Engine picked in a Browser tile's header; the tile follows if it's showing a search engine. */
   onSearchEngine(leafId: string, engine: SearchEngineId): void;
@@ -306,9 +308,16 @@ export function TileLayout(props: Props) {
                   onRemoveApp={props.onRemoveApp}
                 />
               ) : (
-                // The native view covers this area. It shows only while views are hidden or loading.
+                // The native view covers this area. It shows only while views are hidden or loading;
+                // while hidden for a drag or popover, a snapshot of the page stands in for it.
                 <div className="tile-placeholder">
-                  {state?.crashed ? 'This app stopped. Press reload to restart it.' : appName(t.appId)}
+                  {t.instanceId && props.snapshots[t.instanceId] ? (
+                    <img className="tile-snapshot" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
+                  ) : state?.crashed ? (
+                    'This app stopped. Press reload to restart it.'
+                  ) : (
+                    appName(t.appId)
+                  )}
                 </div>
               )}
             </div>

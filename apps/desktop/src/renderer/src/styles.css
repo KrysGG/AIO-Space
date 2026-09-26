@@ -410,3 +410,7 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .account-select:hover { color: var(--text); border-color: var(--muted); }
+
+/* ---- Page snapshots while views are hidden (ROADMAP 2.13) ----------------- */
+.tile-placeholder:has(.tile-snapshot) { padding: 0; }
+.tile-snapshot { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; pointer-events: none; }

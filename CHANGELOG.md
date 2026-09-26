@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.13] Tiles show a snapshot of their page while views are hidden (drags, popovers), so layouts no longer flash empty.
 - [2.12] Several accounts per app: account dropdown in the tile header (+ Add account), each account with its own session; workspace v7.
 - [2.10] Zoom per app with Ctrl +/-/0 or Ctrl+wheel, remembered across restarts; a badge in the tile header shows and resets it.
 - [2.9] Apps hidden in other spaces sleep after a set time (default 30 min) and reload where they were; audible, call/mic and notifying apps stay awake.

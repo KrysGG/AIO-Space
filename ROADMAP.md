@@ -212,7 +212,7 @@ picker; verify on KDE and GNOME.
 Profiles per app (`partitionFor(appId, profile)`), picker in the tile header.
 **Done when:** Two Discord accounts can run side by side in two tiles.
 
-### - [ ] 2.13 Polish: snapshots during drag (parallel ok)
+### - [x] 2.13 Polish: snapshots during drag (parallel ok)
 Before hiding views for a drag, capture each with `webContents.capturePage()` and show the image
 in the placeholder so the layout doesn't flash empty.
 **Done when:** Dragging dividers looks continuous.
@@ -431,6 +431,10 @@ Add items found while working on other steps here, with the step where they were
   userData/app-name item).
 - (2.12) Rename and remove accounts (and clear an account's data) belong with 3.9. The owner can
   confirm two real Discord logins side by side when convenient (mechanism verified with Browser).
+- (2.12) The smoke test loads real sites (example.com, DuckDuckGo, Brave Search) and failed once in
+  CI without a reproducible cause (d7a6221; the rerun passed). Serve test pages from a local server
+  (or intercept with `protocol.handle` in a test-only session) so CI doesn't depend on outside sites.
+  CI failures now show up as readable annotations (89f73fd).
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

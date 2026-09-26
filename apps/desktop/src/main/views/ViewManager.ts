@@ -34,6 +34,8 @@ import type { WorkspaceStore } from '../store/workspaceStore';
 const SLEEP_CHECK_MS = 30_000;
 /** Minimum time between Ctrl+wheel zoom steps. */
 const WHEEL_ZOOM_MS = 150;
+/** Longest wait for a page snapshot before hiding views (a slow page shows the plain placeholder). */
+const SNAPSHOT_TIMEOUT_MS = 150;
 
 interface Entry {
   /** The tile the view currently sits in. Changes when tiles are swapped; the view doesn't. */
@@ -64,6 +66,7 @@ export class ViewManager {
   /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
   private readonly pendingUrl = new Map<string, string>();
   private lastPlacements: ViewPlacement[] = [];
+  private hideGeneration = 0;
   private lastKeep: string[] = [];
   /** Slept apps (ROADMAP 2.9): the page they were on, to reload when their space is shown again. */
   private readonly sleeping = new Map<string, { url: string; appId: string }>();
@@ -131,16 +134,53 @@ export class ViewManager {
     return undefined;
   }
 
+  /**
+   * Hide or show the active space's views (drags, popovers). Before hiding, each page is captured and
+   * the snapshots go to the UI, which shows them in the tiles so the layout doesn't flash empty
+   * (ROADMAP 2.13). A show that arrives while snapshots are being taken cancels the pending hide.
+   */
   setHidden(hidden: boolean): void {
-    this.hidden = hidden;
+    const generation = ++this.hideGeneration;
+    if (!hidden) {
+      this.hidden = false;
+      this.applyVisibility();
+      if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewsSnapshots, {}); // views are back on top
+      return;
+    }
+    void this.snapshot().then(() => {
+      if (generation !== this.hideGeneration) return; // shown again meanwhile
+      this.hidden = true;
+      this.applyVisibility();
+    });
+  }
+
+  private applyVisibility(): void {
     const shown = new Set(this.lastPlacements.map((p) => p.instanceId));
     for (const [instanceId, { view }] of this.views) {
       if (!shown.has(instanceId)) continue; // other spaces' views stay hidden
-      view.setVisible(!hidden);
+      view.setVisible(!this.hidden);
       // A static page may not paint for seconds after being shown again; until it does, the Wayland
       // compositor can show its old frame in the wrong place (torn strips after a divider drag).
-      if (!hidden) view.webContents.invalidate();
+      if (!this.hidden) view.webContents.invalidate();
     }
+  }
+
+  /** JPEG snapshots of the visible views, keyed by instance id; a slow page is simply skipped. */
+  private async snapshot(): Promise<void> {
+    const shown = new Set(this.lastPlacements.map((p) => p.instanceId));
+    const shots: Record<string, string> = {};
+    await Promise.all(
+      [...this.views]
+        .filter(([id, e]) => shown.has(id) && !e.view.webContents.isDestroyed())
+        .map(async ([id, e]) => {
+          const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), SNAPSHOT_TIMEOUT_MS));
+          const image = await Promise.race([e.view.webContents.capturePage().catch(() => null), timeout]);
+          if (!image || image.isEmpty()) return;
+          const { width } = e.view.getBounds();
+          shots[id] = `data:image/jpeg;base64,${image.resize({ width: Math.max(1, width) }).toJPEG(72).toString('base64')}`;
+        }),
+    );
+    if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewsSnapshots, shots);
   }
 
   /** Keyboard focus to a tile's view; the UI page when the tile is empty or `leafId` is null. */
