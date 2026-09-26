@@ -1,0 +1,33 @@
+{
+  "name": "@aio/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AIO Space desktop shell (Electron). Linux first, Windows in Phase 6.",
+  "main": "./out/main/index.js",
+  "author": "AIO Space",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "echo \"desktop: no unit tests yet (see ROADMAP 1.8)\"",
+    "dist:linux": "electron-vite build && electron-builder --linux",
+    "dist:win": "electron-vite build && electron-builder --win"
+  },
+  "dependencies": {
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@aio/core": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-vite": "^3.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^6.2.0"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@aio/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Platform-neutral logic shared by desktop and (later) mobile: layout tree, app catalog, privacy settings, workspace model. Must never import electron, node:*, or DOM-only APIs.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}

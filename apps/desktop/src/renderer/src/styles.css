@@ -1,0 +1,191 @@
+/*
+ * Design tokens. Phase 4 themes override these variables only.
+ * One loud element: the amber edge on the focused tile. Everything else stays quiet.
+ */
+:root {
+  --ink: #161b26;        /* window background, gutters */
+  --rail: #1c2231;       /* sidebar */
+  --tile: #212939;       /* tile header / placeholder */
+  --line: #2e384d;       /* hairlines */
+  --text: #e4e8f0;
+  --muted: #8f9ab0;
+  --focus: #f2b84b;      /* focused tile + keyboard focus */
+  --radius-tile: 10px;
+  --radius-ctl: 7px;
+  --font: 'Inter', 'Cantarell', 'Noto Sans', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--ink);
+  color: var(--text);
+  font: 13px/1.4 var(--font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.boot { height: 100%; background: var(--ink); }
+.fatal { padding: 24px; color: var(--text); }
+
+.shell { display: flex; height: 100%; }
+
+/* ---- Rail ---------------------------------------------------------------- */
+.rail {
+  width: 56px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  background: var(--rail);
+  border-right: 1px solid var(--line);
+}
+.rail-apps { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; flex: 1; }
+.rail-actions { display: flex; flex-direction: column; gap: 6px; }
+.rail-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-ctl);
+  background: transparent;
+  cursor: pointer;
+}
+.rail-btn:hover:not(:disabled) { background: var(--tile); border-color: var(--line); }
+.rail-btn:disabled { opacity: 0.35; cursor: default; }
+.rail-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.rail-menu { display: flex; flex-direction: column; gap: 3px; }
+.rail-menu span { display: block; width: 16px; height: 1.5px; background: var(--muted); }
+.app-glyph { font-weight: 650; font-size: 12px; letter-spacing: 0.02em; background: var(--tile); }
+
+/* ---- Tiles --------------------------------------------------------------- */
+.tiles { position: relative; flex: 1; margin: 6px; }
+.tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-tile);
+  background: var(--tile);
+  box-shadow: 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+.tile.is-focused { box-shadow: 0 0 0 1px var(--focus), inset 3px 0 0 var(--focus); }
+.tile-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.tile-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 550;
+}
+.tile.is-focused .tile-title { color: var(--focus); }
+.tile-tools { display: flex; gap: 2px; flex: none; }
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-btn:hover:not(:disabled) { background: var(--ink); color: var(--text); }
+.icon-btn:disabled { opacity: 0.3; cursor: default; }
+.icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.tile-body { position: relative; flex: 1; min-height: 0; }
+.tile-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 15px;
+}
+.tile-spinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tile-spinner { animation: none; } }
+
+/* ---- Dividers ------------------------------------------------------------ */
+.divider { position: absolute; z-index: 2; }
+.divider-row { cursor: col-resize; }
+.divider-column { cursor: row-resize; }
+.divider::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 120ms;
+}
+.divider-row::after { width: 2px; }
+.divider-column::after { height: 2px; }
+.divider:hover::after, .is-dragging .divider::after { background: var(--line); }
+.is-dragging { cursor: grabbing; }
+
+/* ---- Launcher (empty tile) ---------------------------------------------- */
+.launcher {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  overflow: auto;
+}
+.launcher-title { margin: 0; color: var(--muted); font-size: 14px; }
+.launcher-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 10px;
+  width: min(100%, 440px);
+}
+.launcher-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-ctl);
+  background: var(--ink);
+  cursor: pointer;
+}
+.launcher-item:hover { border-color: var(--muted); }
+.launcher-glyph {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--tile);
+  font-weight: 650;
+}
