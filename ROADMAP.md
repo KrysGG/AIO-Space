@@ -100,7 +100,7 @@ filling gaps, not writing it from scratch.
 - Closing the last tile leaves one empty tile.
 - Focused tile is marked with the amber edge; clicking a tile header or inside a web view focuses it.
 
-### - [ ] 1.4 Resize by dragging dividers
+### - [x] 1.4 Resize by dragging dividers
 **Goal:** Smooth resizing of any split.
 **Done when:**
 - Dragging a divider resizes both sides live; views reappear at the right size on release.
@@ -425,6 +425,3 @@ Add items found while working on other steps here, with the step where they were
   app may not be secure". Google blocks embedded browsers it detects. Look into it as part of 1.6
   (sign-in popups); likely suspects are UA client hints (`Sec-CH-UA` brands) and other
   Electron-specific signals.
-- (0.3) `react-hooks/exhaustive-deps` warns on the divider-drag effect in `TileLayout.tsx`: it
-  captures `props.onResize` from drag start. Don't add `props` to the deps (listeners and view
-  hiding would reset every render); keep the latest `onResize` in a ref instead. Do it in 1.4.

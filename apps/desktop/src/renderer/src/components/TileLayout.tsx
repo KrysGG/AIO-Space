@@ -68,13 +68,19 @@ export function TileLayout(props: Props) {
     window.aio.syncViews(placements);
   }, [computed, size]);
 
+  // Latest onResize for the drag listeners, so they aren't re-attached (and views re-shown) every render.
+  const onResizeRef = useRef(props.onResize);
+  useLayoutEffect(() => {
+    onResizeRef.current = props.onResize;
+  });
+
   // Divider drag. Native views are hidden while dragging, otherwise they swallow pointer events.
   useEffect(() => {
     if (!dragging) return;
     window.aio.setViewsHidden(true);
     const origin = containerRef.current!.getBoundingClientRect();
     const move = (e: PointerEvent): void =>
-      props.onResize(
+      onResizeRef.current(
         dragging.splitId,
         ratioFromPointer(dragging.direction, dragging.parentRect, {
           x: e.clientX - origin.left,
