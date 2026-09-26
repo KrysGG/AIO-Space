@@ -1,3 +1,5 @@
+import { hostMatches } from '@aio/core';
+
 /**
  * HTTPS upgrade fallback (ROADMAP 3.2). The https-only filter upgrades http:// page loads; if the
  * https:// version then fails to connect, the tile offers to continue over http once, and the site
@@ -32,16 +34,26 @@ export function allowHttpThisRun(host: string): void {
   allowedThisRun.add(host.toLowerCase());
 }
 
+/** Allowed this run: the host itself or a subdomain of an allowed site. */
 export function isHttpAllowedThisRun(host: string): boolean {
-  return allowedThisRun.has(host.toLowerCase());
+  return hostMatches(host.toLowerCase(), [...allowedThisRun]);
+}
+
+/**
+ * After a workspace save the saved list is the truth again: the UI records a site before asking to
+ * continue over http, so it's in the saved list, and a site the user removed must stop being allowed.
+ */
+export function clearHttpAllowedThisRun(): void {
+  allowedThisRun.clear();
 }
 
 /**
  * Chromium net errors that mean "the secure version isn't there": connection failures (-100..-199,
- * including TLS handshake errors), certificate errors (-200..-299), and timeouts (-7). Not DNS
- * failures (-105: http would fail too) or aborted loads (-3).
+ * including TLS handshake errors), certificate errors (-200..-299), timeouts (-7), and an empty
+ * reply (-324: the port accepts and closes, as http-only servers like neverssl.com do). Not DNS
+ * failures (-105: http would fail too), aborted loads (-3), or other HTTP errors (the server answered).
  */
 export function isFallbackError(code: number): boolean {
   if (code === -105) return false;
-  return code === -7 || (code <= -100 && code >= -299);
+  return code === -7 || code === -324 || (code <= -100 && code >= -299);
 }

@@ -223,3 +223,14 @@ pipeline reports cancelled requests per page (`onBlocked`); the tile header show
 each navigation. The panel lists only protections that exist today (ads, third-party cookies and
 fingerprinting join with 3.6, 3.3 and 3.4). Verified: with Shields down for YouTube, a tracker request
 from YouTube went through while the same request from the Browser tile stayed blocked.
+
+**D-029: HTTPS fallback: the panel lives in the UI, the allow list in the workspace.**
+The https-only filter records main-frame upgrades per page (`httpsFallback.ts`). If the upgraded load
+fails with a "no https here" error (connection/TLS -100..-199, certificate -200..-299, timeout -7,
+empty reply -324; not DNS -105 or aborts -3), the view is hidden and its tile shows a panel ("... doesn't
+offer a secure connection", Go back / Continue with HTTP). Web views have no IPC, so the panel can't be
+a page inside the view. Continuing adds the host to `workspace.httpAllowedHosts` (v9) and to an
+in-memory list that bridges the gap until the save lands; every save clears that list so removals in
+the menu take effect at once. An allowed site covers its subdomains. Verified with a local http-only
+server at 127.0.0.1.nip.io (neverssl.com is unreliable as a test: its https sometimes works and it
+hops between random subdomains).

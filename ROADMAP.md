@@ -228,7 +228,7 @@ for the current page. Changes apply live (filters already read settings per requ
 policy applies on next view creation, so reload the view when it changes.
 **Done when:** Turning Shields off for one app affects only that app, immediately.
 
-### - [ ] 3.2 HTTPS upgrade with fallback
+### - [x] 3.2 HTTPS upgrade with fallback
 If an upgraded request fails with a connection/certificate error, show an interstitial in the tile
 offering to continue over http once, remembering the choice per host.
 **Done when:** An http-only test site shows the interstitial instead of a broken page.

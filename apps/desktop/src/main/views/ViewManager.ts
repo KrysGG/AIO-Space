@@ -287,7 +287,8 @@ export class ViewManager {
       profile,
       () => this.store.privacyFor(appId),
       (id) => this.countBlocked(id),
-      (host) => this.store.get().httpAllowedHosts.includes(host) || isHttpAllowedThisRun(host),
+      // An allowed site covers its subdomains (http-only sites like neverssl.com hop between them).
+      (host) => hostMatches(host, this.store.get().httpAllowedHosts) || isHttpAllowedThisRun(host),
     );
     this.downloads.attach(ses);
 

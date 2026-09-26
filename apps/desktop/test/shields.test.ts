@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { OnBeforeRequestListenerDetails, OnBeforeSendHeadersListenerDetails } from 'electron';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '@aio/core';
 import { buildShieldFilters } from '../src/main/privacy/shields';
-import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, noteUpgrade, upgradedFrom } from '../src/main/privacy/httpsFallback';
+import { allowHttpThisRun, clearHttpAllowedThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, noteUpgrade, upgradedFrom } from '../src/main/privacy/httpsFallback';
 import type { RequestFilter } from '../src/main/privacy/requestPipeline';
 import { googleSignInFilter } from '../src/main/sessions/userAgent';
 
@@ -152,13 +152,17 @@ describe('httpsFallback', () => {
   });
 
   it('treats connection, TLS, certificate and timeout errors as "no https", not DNS or aborts', () => {
-    for (const code of [-7, -100, -102, -107, -118, -200, -202]) expect(isFallbackError(code)).toBe(true);
+    for (const code of [-7, -100, -102, -107, -118, -200, -202, -324]) expect(isFallbackError(code)).toBe(true);
     for (const code of [-3, -105, -300, -2, 0]) expect(isFallbackError(code)).toBe(false);
   });
 
-  it('remembers allowed sites for this run, case-insensitively', () => {
+  it('remembers allowed sites for this run, case-insensitively, until the next save', () => {
     allowHttpThisRun('NeverSSL.com');
     expect(isHttpAllowedThisRun('neverssl.com')).toBe(true);
+    expect(isHttpAllowedThisRun('random.neverssl.com')).toBe(true); // subdomains too
+    expect(isHttpAllowedThisRun('notneverssl.com')).toBe(false);
     expect(isHttpAllowedThisRun('example.com')).toBe(false);
+    clearHttpAllowedThisRun();
+    expect(isHttpAllowedThisRun('neverssl.com')).toBe(false);
   });
 });

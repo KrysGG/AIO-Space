@@ -1,6 +1,7 @@
 import { ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { BUILTIN_APPS } from '@aio/core';
 import { IPC } from '../../shared/ipc';
+import { clearHttpAllowedThisRun } from '../privacy/httpsFallback';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { ViewManager } from '../views/ViewManager';
@@ -39,6 +40,7 @@ export function registerIpc(
     guard(e);
     const ws = WorkspaceSchema.parse(raw);
     await store.save(ws);
+    clearHttpAllowedThisRun(); // the saved list is authoritative again (removals take effect)
     views.refresh(); // a custom app added just now can get its view
     views.applyPrivacy(); // WebRTC policy changes need a reload
   });
