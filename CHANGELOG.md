@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.4] Right-click menu in every web view: links, images, selected text, text fields with spelling suggestions, page navigation, Inspect in dev.
 - [2.3] Views follow running app instances (workspace v3), so swapping tiles keeps pages loaded; drag a tile header onto another tile to swap.
 - [4.2 partial] Brand icons for built-in apps in the rail, launcher and tile headers (custom-app favicons wait for 2.7).
 - [2.2] Browser tile: address bar (Ctrl+L), search engine picker (DuckDuckGo, Brave, Startpage), new-tab links open in a new tile; workspace v2 with migration.

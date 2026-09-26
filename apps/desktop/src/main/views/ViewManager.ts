@@ -1,8 +1,12 @@
 import {
+  app,
   BrowserWindow,
+  clipboard,
+  Menu,
   shell,
   WebContentsView,
   type BrowserWindowConstructorOptions,
+  type ContextMenuParams,
   type WebContents,
 } from 'electron';
 import { getApp, hostMatches, isWebUrl, MAX_TILES, SEARCH_ENGINES, type WebAppDef } from '@aio/core';
@@ -10,6 +14,7 @@ import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type Vie
 import { getAppSession } from '../sessions/appSession';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
+import { contextMenuTemplate } from './contextMenu';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
 interface Entry {
@@ -139,6 +144,7 @@ export class ViewManager {
     const entry: Entry = { leafId, appId, def, view };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
+    wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
 
     this.win.contentView.addChildView(view);
     const startUrl = def.kind === 'browser' ? this.pendingUrl.get(leafId) : undefined;
@@ -151,6 +157,36 @@ export class ViewManager {
 
     this.views.set(instanceId, entry);
     return entry;
+  }
+
+  /** Right-click menu (ROADMAP 2.4). Opened from a real right-click, so the native popup is allowed. */
+  private showContextMenu(entry: Entry, params: ContextMenuParams): void {
+    if (this.win.isDestroyed()) return;
+    const wc = entry.view.webContents;
+    const nav = wc.navigationHistory;
+    const engine = SEARCH_ENGINES[this.store.get().browser.searchEngine];
+    const template = contextMenuTemplate(params, {
+      canGoBack: nav.canGoBack(),
+      canGoForward: nav.canGoForward(),
+      back: () => nav.goBack(),
+      forward: () => nav.goForward(),
+      reload: () => wc.reload(),
+      copyText: (text) => clipboard.writeText(text),
+      openInNewTile: (url) => {
+        if (!isWebUrl(url) || this.win.isDestroyed()) return;
+        const request: OpenInNewTile = { fromLeafId: entry.leafId, url, background: false };
+        this.win.webContents.send(IPC.openInNewTile, request);
+      },
+      openExternal: (url) => {
+        if (isWebUrl(url)) void shell.openExternal(url);
+      },
+      copyImageAt: (x, y) => wc.copyImageAt(x, y),
+      replaceMisspelling: (word) => wc.replaceMisspelling(word),
+      addToDictionary: (word) => wc.session.addWordToSpellCheckerDictionary(word),
+      search: { name: engine.name, url: engine.searchUrl },
+      inspect: app.isPackaged ? undefined : (x, y) => wc.inspectElement(x, y),
+    });
+    Menu.buildFromTemplate(template).popup({ window: this.win });
   }
 
   private leafOf(wc: WebContents): string | undefined {

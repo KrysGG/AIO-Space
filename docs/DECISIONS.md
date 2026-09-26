@@ -104,7 +104,8 @@ are hidden behind the page there; hide the views first (like the shortcuts popov
 `<select>` is fine: Chromium opens its list as a separate popup above the views (the owner used the
 search engine dropdown in the Browser tile header and preferred it to an inline picker). Native
 `Menu.popup()` also draws on top; it was tried through an IPC round trip but not confirmed on Wayland,
-so check it on KDE when building the 2.4 context menu. Lesson from 2.2: the engine dropdown did save
+so check it on KDE when building the 2.4 context menu. (2.4: confirmed working on KDE Wayland when
+opened from a real right-click, via the view's `context-menu` event.) Lesson from 2.2: the engine dropdown did save
 the setting; it only looked broken because the open page didn't move, which is why switching engine
 now moves an engine page (D-015). When a UI test changes a value from code, also check what the user
 would see change.
@@ -127,3 +128,11 @@ is assigned again and starts a new one for a different app. View states are keye
 UI so titles follow the app. Schemas require an instance exactly when a tile has an app, and reject
 duplicate tile or instance ids. Tile headers are drag handles for swapping (6 px threshold so clicks
 still work; views hide during the drag as in D-006); Browser tiles use their header icon as the handle.
+
+**D-019: Web view context menu is a native menu built from a pure template.**
+`contextMenuTemplate(params, actions)` in `main/views/contextMenu.ts` picks sections for what was
+right-clicked (spelling, link, image, selection, text field, or page), so it is unit-tested without
+Electron. `ViewManager` shows it with `Menu.popup` from the view's `context-menu` event (works on KDE
+Wayland, D-016). Only http(s) links/images can be opened (new Browser tile via `view:open-in-new-tile`,
+or the system browser). "Search … for" uses the chosen engine in a new Browser tile. "Inspect" only in
+dev builds (`!app.isPackaged`).

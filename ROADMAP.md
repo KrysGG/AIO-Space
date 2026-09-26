@@ -165,7 +165,7 @@ Today views are keyed by tile id, so moving an app reloads it. Key views by an a
 stored on the leaf instead. Add drag-and-drop of tile headers to swap two tiles (`swapApps` in core).
 **Done when:** Swapping Discord and YouTube keeps both pages loaded (video keeps playing).
 
-### - [ ] 2.4 Context menu
+### - [x] 2.4 Context menu
 Right-click in a view: back, forward, reload, copy link, open link in browser tile, open in system
 browser, copy image, spell suggestions, Inspect (dev builds only).
 **Done when:** Menu appears in all views with correct items for links, images and text fields.
@@ -421,6 +421,10 @@ Add items found while working on other steps here, with the step where they were
 - (0.4) Views are square and cover the tile's rounded bottom corners and its 3px inset focus bar
   beside the body. Use `WebContentsView.setBorderRadius()` and/or inset the view bounds to match
   the tile style. Cosmetic.
+- (2.4, for Phase 3) Web views have spellcheck on, and Electron downloads the Hunspell dictionary
+  (`userData/Dictionaries/en-US-*.bdic`) from Google's CDN by default. No user data is sent, but it is
+  an outside connection the user didn't ask for. Bundle the dictionaries or set
+  `session.setSpellCheckerDictionaryDownloadURL` to a host we control; mention it in SECURITY.md.
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a
   second window. On mobile they should probably become a redirect in the same WebView (or the system
   browser, see 7.4) rather than a second window. Owner's request.
