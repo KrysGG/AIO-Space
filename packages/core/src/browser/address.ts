@@ -56,3 +56,31 @@ export function addressToUrl(text: string, engine: SearchEngineId): string | nul
   if (!/\s/.test(t) && HOST_LIKE.test(t) && isWebUrl(`https://${t}`)) return new URL(`https://${t}`).href;
   return SEARCH_ENGINES[engine].searchUrl(t);
 }
+
+/** Which engine a URL belongs to, and the search on it (null on its home or other pages). */
+export function engineOf(url: string): { engine: SearchEngineId; query: string | null } | null {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase();
+  const engine = (Object.values(SEARCH_ENGINES) as SearchEngine[]).find((e) => {
+    const home = new URL(e.home).hostname;
+    return host === home || host === home.replace(/^www\./, '');
+  });
+  if (!engine) return null;
+  const query = u.searchParams.get('q') ?? u.searchParams.get('query');
+  return { engine: engine.id, query: query && query.trim() ? query : null };
+}
+
+/**
+ * Where a Browser tile should go when the user switches engine: the same search (or the home page)
+ * on the new engine if it's showing a search engine now; null (stay put) on any other site.
+ */
+export function urlAfterEngineSwitch(currentUrl: string, to: SearchEngineId): string | null {
+  const on = engineOf(currentUrl);
+  if (!on || on.engine === to) return null;
+  return on.query ? SEARCH_ENGINES[to].searchUrl(on.query) : SEARCH_ENGINES[to].home;
+}

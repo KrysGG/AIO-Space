@@ -21,7 +21,8 @@ interface Props {
   focusedLeafId: string | null;
   viewStates: Record<string, ViewState>;
   searchEngine: SearchEngineId;
-  onSearchEngine(engine: SearchEngineId): void;
+  /** Engine picked in a Browser tile's header; the tile follows if it's showing a search engine. */
+  onSearchEngine(leafId: string, engine: SearchEngineId): void;
   /** Address bar input from a Browser tile. */
   onNavigate(leafId: string, text: string): void;
   onFocus(leafId: string): void;
@@ -133,7 +134,7 @@ export function TileLayout(props: Props) {
                     leafId={t.leafId}
                     url={state?.url ?? ''}
                     engine={props.searchEngine}
-                    onEngine={props.onSearchEngine}
+                    onEngine={(engine) => props.onSearchEngine(t.leafId, engine)}
                     onGo={(text) => props.onNavigate(t.leafId, text)}
                   />
                 </div>

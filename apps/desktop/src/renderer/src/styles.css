@@ -85,6 +85,7 @@ button { font: inherit; color: inherit; }
   gap: 8px;
   padding: 0 6px 0 12px;
   border-bottom: 1px solid var(--line);
+  overflow: hidden;
 }
 .tile-title {
   display: flex;
@@ -159,12 +160,12 @@ button { font: inherit; color: inherit; }
   justify-content: center;
   gap: 16px;
   padding: 16px;
-  overflow: auto;
+  overflow: hidden auto; /* never a horizontal scrollbar, even in a squeezed tile */
 }
 .launcher-title { margin: 0; color: var(--muted); font-size: 14px; }
 .launcher-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(88px, 100%), 1fr));
   gap: 10px;
   width: min(100%, 440px);
 }
@@ -229,7 +230,8 @@ button { font: inherit; color: inherit; }
   font: inherit;
   font-size: 12px;
 }
-.address-engine { flex: none; max-width: 120px; padding: 0 4px; color: var(--muted); }
+.address-engine { flex: none; max-width: 120px; padding: 0 4px; color: var(--muted); cursor: pointer; }
+.address-engine:hover { color: var(--text); border-color: var(--muted); }
 .address-input { flex: 1; min-width: 0; padding: 0 8px; user-select: text; }
 .address-input::placeholder { color: var(--muted); }
 .address-input:focus { outline: none; border-color: var(--focus); }

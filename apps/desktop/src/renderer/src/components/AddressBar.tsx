@@ -10,7 +10,10 @@ interface Props {
   onGo(text: string): void;
 }
 
-/** Browser tile header: search engine picker and address/search box. Ctrl+L focuses it. */
+/**
+ * Browser tile header: search engine dropdown and address/search box. Ctrl+L focuses the box.
+ * The <select> list opens as its own popup window, so it shows above the web views (D-016).
+ */
 export function AddressBar({ leafId, url, engine, onEngine, onGo }: Props) {
   // null = not editing: follow the page's URL. A string = what the user is typing.
   const [draft, setDraft] = useState<string | null>(null);

@@ -5,7 +5,7 @@ import {
   type BrowserWindowConstructorOptions,
   type WebContents,
 } from 'electron';
-import { getApp, hostMatches, isWebUrl, MAX_TILES, type WebAppDef } from '@aio/core';
+import { getApp, hostMatches, isWebUrl, MAX_TILES, SEARCH_ENGINES, type WebAppDef } from '@aio/core';
 import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import { getAppSession } from '../sessions/appSession';
 import { followSignInUserAgent } from '../sessions/userAgent';
@@ -57,7 +57,12 @@ export class ViewManager {
 
   setHidden(hidden: boolean): void {
     this.hidden = hidden;
-    for (const { view } of this.views.values()) view.setVisible(!hidden);
+    for (const { view } of this.views.values()) {
+      view.setVisible(!hidden);
+      // A static page may not paint for seconds after being shown again; until it does, the Wayland
+      // compositor can show its old frame in the wrong place (torn strips after a divider drag).
+      if (!hidden) view.webContents.invalidate();
+    }
   }
 
   /** Keyboard focus to a tile's view; the UI page when the tile is empty or `leafId` is null. */
@@ -90,7 +95,12 @@ export class ViewManager {
     if (cmd === 'back' && nav.canGoBack()) nav.goBack();
     else if (cmd === 'forward' && nav.canGoForward()) nav.goForward();
     else if (cmd === 'reload') wc.reload();
-    else if (cmd === 'home') void wc.loadURL(entry.def.url);
+    else if (cmd === 'home') void wc.loadURL(this.homeOf(entry.def));
+  }
+
+  /** The Browser tile starts on the chosen search engine; other apps on their own start page. */
+  private homeOf(def: WebAppDef): string {
+    return def.kind === 'browser' ? SEARCH_ENGINES[this.store.get().browser.searchEngine].home : def.url;
   }
 
   private create(leafId: string, appId: string): Entry | undefined {
@@ -122,7 +132,7 @@ export class ViewManager {
     this.win.contentView.addChildView(view);
     const startUrl = def.kind === 'browser' ? this.pendingUrl.get(leafId) : undefined;
     this.pendingUrl.delete(leafId);
-    void wc.loadURL(startUrl ?? def.url);
+    void wc.loadURL(startUrl ?? this.homeOf(def));
     if (this.pendingFocus === leafId) {
       this.pendingFocus = null;
       wc.focus();

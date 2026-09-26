@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addressToUrl, isWebUrl, SEARCH_ENGINES } from '../src/browser/address';
+import { addressToUrl, engineOf, isWebUrl, SEARCH_ENGINES, urlAfterEngineSwitch } from '../src/browser/address';
 import { defaultWorkspace, migrateWorkspace, WORKSPACE_VERSION } from '../src/workspace/workspace';
 
 describe('addressToUrl', () => {
@@ -44,6 +44,26 @@ describe('addressToUrl', () => {
 
   it('every engine searches over https', () => {
     for (const e of Object.values(SEARCH_ENGINES)) expect(e.searchUrl('q').startsWith('https://')).toBe(true);
+  });
+});
+
+describe('switching search engine', () => {
+  it('recognises engine pages and their query', () => {
+    expect(engineOf('https://duckduckgo.com/')).toEqual({ engine: 'duckduckgo', query: null });
+    expect(engineOf('https://duckduckgo.com/?q=tiling+wm&ia=web')).toEqual({ engine: 'duckduckgo', query: 'tiling wm' });
+    expect(engineOf('https://search.brave.com/search?q=a%26b')).toEqual({ engine: 'brave', query: 'a&b' });
+    expect(engineOf('https://www.startpage.com/do/search?query=x')).toEqual({ engine: 'startpage', query: 'x' });
+    expect(engineOf('https://startpage.com/')).toEqual({ engine: 'startpage', query: null });
+    expect(engineOf('https://example.com/?q=1')).toBeNull();
+    expect(engineOf('https://duckduckgo.com.evil.example/')).toBeNull();
+  });
+
+  it('moves engine pages to the new engine and leaves other sites alone', () => {
+    expect(urlAfterEngineSwitch('https://duckduckgo.com/', 'brave')).toBe('https://search.brave.com/');
+    expect(urlAfterEngineSwitch('https://duckduckgo.com/?q=tiling+wm', 'startpage')).toBe('https://www.startpage.com/do/search?q=tiling%20wm');
+    expect(urlAfterEngineSwitch('https://search.brave.com/search?q=x', 'brave')).toBeNull();
+    expect(urlAfterEngineSwitch('https://example.com/', 'brave')).toBeNull();
+    expect(urlAfterEngineSwitch('', 'brave')).toBeNull();
   });
 });
 

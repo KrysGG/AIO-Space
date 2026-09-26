@@ -13,6 +13,7 @@ import {
   setRatio,
   splitLeaf,
   updateActiveSpace,
+  urlAfterEngineSwitch,
   type SearchEngineId,
   type SplitDirection,
   type WebAppDef,
@@ -173,8 +174,12 @@ export function App() {
   const clear = (leafId: string): void =>
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: assignApp(s.layout, leafId, null) })));
 
-  const setSearchEngine = (searchEngine: SearchEngineId): void =>
+  const setSearchEngine = (leafId: string, searchEngine: SearchEngineId): void => {
     edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
+    // Make the switch visible: a tile showing a search engine moves to the new one (same search).
+    const next = urlAfterEngineSwitch(viewStates[leafId]?.url ?? '', searchEngine);
+    if (next) window.aio.navigate(leafId, next);
+  };
 
   const navigate = (leafId: string, text: string): void => {
     const url = addressToUrl(text, ws.browser.searchEngine);

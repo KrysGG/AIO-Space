@@ -53,6 +53,19 @@ describe('desktop smoke test', () => {
       .toBe(true);
   });
 
+  it('switching the search engine moves a search to the new engine', async () => {
+    const urls = () => app.evaluate(({ webContents }) => webContents.getAllWebContents().map((w) => w.getURL()));
+    const address = ui.getByRole('textbox', { name: 'Address or search' });
+    await address.fill('aio space test');
+    await address.press('Enter');
+    await expect.poll(async () => (await urls()).some((u) => u.startsWith('https://duckduckgo.com/?q=aio'))).toBe(true);
+
+    await ui.getByRole('combobox', { name: 'Search engine' }).selectOption('brave');
+    await expect
+      .poll(async () => (await urls()).some((u) => u.startsWith('https://search.brave.com/search?q=aio%20space%20test')))
+      .toBe(true);
+  });
+
   it('splits the tile, then closes both tiles back to one empty tile', async () => {
     await tiles().first().getByRole('button', { name: 'Split right' }).click();
     await expect.poll(() => tiles().count()).toBe(2);

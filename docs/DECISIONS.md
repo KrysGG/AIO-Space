@@ -94,3 +94,17 @@ The address bar turns input into an https URL or a search (`addressToUrl` in cor
 always searched, never loaded. `view:navigate` accepts only http(s) and only affects Browser tiles.
 Search engine (DuckDuckGo default, Brave Search, Startpage) lives in `workspace.browser`, added in
 `WORKSPACE_VERSION` 2 with a v1 migration.
+Browser tiles start (and "home") on the chosen engine. Switching engine moves a tile that is showing a
+search engine to the new one, rerunning its search (`urlAfterEngineSwitch`); on other sites it only
+changes what the address bar searches with.
+
+**D-016: Nothing drawn by the UI may overlap a tile body unless views are hidden.**
+The UI page sits below the native web views, so custom HTML menus or panels that overlap a tile body
+are hidden behind the page there; hide the views first (like the shortcuts popover). A native
+`<select>` is fine: Chromium opens its list as a separate popup above the views (the owner used the
+search engine dropdown in the Browser tile header and preferred it to an inline picker). Native
+`Menu.popup()` also draws on top; it was tried through an IPC round trip but not confirmed on Wayland,
+so check it on KDE when building the 2.4 context menu. Lesson from 2.2: the engine dropdown did save
+the setting; it only looked broken because the open page didn't move, which is why switching engine
+now moves an engine page (D-015). When a UI test changes a value from code, also check what the user
+would see change.

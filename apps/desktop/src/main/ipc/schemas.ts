@@ -3,6 +3,8 @@ import { isWebUrl, listLeaves, MAX_TILES, SEARCH_ENGINES, type LayoutNode, type 
 
 /** Every IPC payload from the renderer is untrusted until parsed here. */
 
+export const SearchEngineSchema = z.enum(Object.keys(SEARCH_ENGINES) as [SearchEngineId, ...SearchEngineId[]]);
+
 const Id = z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/);
 export { MAX_TILES };
 
@@ -51,7 +53,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   privacy: PrivacySchema,
   privacyOverrides: z.record(Id, PrivacySchema.partial()),
   browser: z.object({
-    searchEngine: z.enum(Object.keys(SEARCH_ENGINES) as [SearchEngineId, ...SearchEngineId[]]),
+    searchEngine: SearchEngineSchema,
   }),
 });
 

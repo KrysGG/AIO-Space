@@ -4,6 +4,7 @@ import {
   LayoutSchema,
   MAX_TILES,
   PlacementsSchema,
+  SearchEngineSchema,
   ViewCommandSchema,
   ViewFocusSchema,
   ViewNavigateSchema,
@@ -105,5 +106,13 @@ describe('ViewNavigateSchema', () => {
     }
     expect(ViewNavigateSchema.safeParse({ leafId: 'leaf_1', url: 'https://x.example/' + 'a'.repeat(9000) }).success).toBe(false);
     expect(ViewNavigateSchema.safeParse({ leafId: '../x', url: 'https://example.com/' }).success).toBe(false);
+  });
+});
+
+describe('SearchEngineSchema', () => {
+  it('accepts the three engines only', () => {
+    for (const id of ['duckduckgo', 'brave', 'startpage']) expect(SearchEngineSchema.safeParse(id).success).toBe(true);
+    expect(SearchEngineSchema.safeParse('google').success).toBe(false);
+    expect(SearchEngineSchema.safeParse(null).success).toBe(false);
   });
 });
