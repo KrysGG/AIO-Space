@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [3.4 built] Fingerprinting protection (standard/strict) for canvas, WebGL and audio, `navigator.globalPrivacyControl`, hidden `webdriver`; a choice in both Shields panels (D-033). Waiting for the owner to check YouTube, Discord and X.
 - [UI polish] White/grey focus outline instead of amber, liquid-glass panels and snapshots, web pages as inset rounded cards (no more square corners), menu icon centered in its button, subtle scrollbars (D-032).
 - [2.13 fix] Frosted-glass look for tile snapshots while resizing/dragging (hides upscale blur instead of looking pixelated); views force-repaint on window focus to clear smeared frames left by other apps dragged over ours.
 - [3.2] When the HTTPS upgrade fails, the tile offers "Continue with HTTP (not secure)" and remembers the site (removable in the menu); workspace v9.

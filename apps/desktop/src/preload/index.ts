@@ -1,5 +1,5 @@
 /**
- * Preload for the UI window ONLY. Web app views get no preload in Phase 1.
+ * Preload for the UI window ONLY. Web app views get `webapp.ts` instead (no IPC there).
  * Runs sandboxed: may only import 'electron' (everything else is bundled in).
  * Never expose ipcRenderer itself or any generic "send anything" function.
  */

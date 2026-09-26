@@ -268,3 +268,18 @@ diagonal sheen and inner highlights. (3) Native views sit `VIEW_INSET` (4px) ins
 and bottom with `setBorderRadius(VIEW_RADIUS)` (8px), concentric with the 12px tile radius; the
 `.tile-body` card has the same inset and radius so launcher, snapshots and panels line up with the
 view. The constants live in `shared/ipc.ts` and must match `--view-inset`/`--radius-view`.
+
+**D-033: Fingerprinting protection through a web app preload and `executeInMainWorld`.**
+ROADMAP 3.4. Web app views get `preload/webapp.ts`; it runs `contextBridge.executeInMainWorld`
+(Electron 44; `webFrame.executeJavaScript` would be async and could run after page scripts) with
+`preload/farble.ts`, a self-contained function whose state lives only in closures. Wrapped methods
+keep their native `name`, `length` and `toString()`. The seed is FNV-1a of a random per-partition,
+per-run key (made in main) and the page's registrable domain (tldts, bundled into the preload since
+sandboxed preloads can't load packages: `externalizeDeps.exclude`). Web views have no IPC, so settings
+travel as `--aio-webapp=level,gpc,key` in `additionalArguments` (`shared/webapp.ts`); a changed level
+or GPC setting replaces the app's views, reopening their pages. Noise: the low bit of one channel in
+~1/32 pixels (canvas reads, WebGL `readPixels`), audio samples scaled by 1 ± ~1e-7. Strict adds
+hardwareConcurrency 4/8, deviceMemory 8, screen size snapped to a common resolution, no getBattery.
+Preloads run in main frames only; subframes, workers and `about:blank` iframes are not covered yet
+(Backlog). Verified with a local test page: hashes stable across reloads, different after a restart,
+real with protection off; WebGL checked with SwiftShader.

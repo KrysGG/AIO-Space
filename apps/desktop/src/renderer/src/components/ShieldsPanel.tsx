@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import {
   resolvePrivacy,
+  FINGERPRINT_CHOICES,
   SHIELD_SWITCHES,
   WEBRTC_CHOICES,
   type PrivacySettings,
@@ -64,6 +65,19 @@ export function ShieldsPanel({ ws, app, blocked, onSet, onReset, onClose, onClos
               <input type="checkbox" checked={up[s.key]} onChange={(e) => onSet(s.key, e.target.checked)} />
             </label>
           ))}
+          <label className="shield-switch">
+            <span>
+              Block fingerprinting
+              <small>Adds invisible noise to canvas, WebGL and audio so sites can’t recognise you across visits. Reloads the app.</small>
+            </span>
+            <select value={up.fingerprinting} onChange={(e) => onSet('fingerprinting', e.target.value as PrivacySettings['fingerprinting'])}>
+              {FINGERPRINT_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="shield-switch">
             <span>
               WebRTC IP protection

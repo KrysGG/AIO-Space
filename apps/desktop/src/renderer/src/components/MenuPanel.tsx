@@ -4,6 +4,7 @@ import {
   MAX_SPACE_NAME,
   MAX_SPACES,
   SEARCH_ENGINES,
+  FINGERPRINT_CHOICES,
   SHIELD_SWITCHES,
   SLEEP_CHOICES,
   WEBRTC_CHOICES,
@@ -177,6 +178,19 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               <input type="checkbox" checked={ws.privacy[s.key]} onChange={(e) => onShieldDefault(s.key, e.target.checked)} />
             </label>
           ))}
+          <label className="shield-switch">
+            <span>
+              Block fingerprinting
+              <small>Adds invisible noise to canvas, WebGL and audio so sites can’t recognise you across visits. Reloads the app.</small>
+            </span>
+            <select value={ws.privacy.fingerprinting} onChange={(e) => onShieldDefault('fingerprinting', e.target.value as PrivacySettings['fingerprinting'])}>
+              {FINGERPRINT_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="shield-switch">
             <span>WebRTC IP protection</span>
             <select value={ws.privacy.webrtcPolicy} onChange={(e) => onShieldDefault('webrtcPolicy', e.target.value as PrivacySettings['webrtcPolicy'])}>

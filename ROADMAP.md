@@ -450,6 +450,12 @@ Add items found while working on other steps here, with the step where they were
   ~3 s loses it). Candidates still open: the blocked `/api/v*/science` telemetry (test with only
   "Block trackers" off for Discord for a few days), Electron's `Sec-CH-UA` brands (Chromium, no
   "Google Chrome"), and frequent new-device logins feeding Discord's risk score.
+- (3.4) Built and tested on a local fingerprint page (stable within a run, different across runs), but
+  not ticked: this environment can't reach YouTube, Discord or X, so the owner should check they still
+  work with fingerprinting on Standard.
+- (3.4) Farbling covers main frames only. Cross-origin iframes (preload with
+  `nodeIntegrationInSubFrames`, which with sandbox gives no Node), same-origin `about:blank` iframes
+  (their fresh prototypes are unpatched), workers and `OffscreenCanvas` are not covered yet.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

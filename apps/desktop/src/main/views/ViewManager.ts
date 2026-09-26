@@ -21,6 +21,8 @@ import {
   type Unread,
   type WebAppDef,
 } from '@aio/core';
+import { randomBytes } from 'node:crypto';
+import { join } from 'node:path';
 import { IPC, VIEW_RADIUS, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
@@ -29,6 +31,7 @@ import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
+import { webAppArgs, type WebAppArgs } from '../../shared/webapp';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
 /** How often hidden apps are checked for sleeping. */
@@ -51,6 +54,8 @@ interface Entry {
   blocked: number;
   /** Pending throttled state update for the blocked count. */
   blockedTimer?: NodeJS.Timeout;
+  /** What the web app preload was started with (ROADMAP 3.4); a change needs a new view. */
+  preloadArgs: WebAppArgs;
   /** The upgraded https:// load failed: view hidden, tile offers http (ROADMAP 3.2). */
   httpsFailed?: { host: string; url: string; error: string };
   appId: string;
@@ -79,6 +84,8 @@ export class ViewManager {
   private readonly sleeping = new Map<string, { url: string; appId: string }>();
   private pendingFocus: string | null = null;
   private lastUnread = '';
+  /** Fingerprint noise key per session partition, new every run (ROADMAP 3.4). */
+  private readonly farbleKeys = new Map<string, string>();
 
   /** Total unread across all views changed (from page titles like "(3) Discord"). */
   onUnreadChange: (unread: Unread) => void = () => {};
@@ -304,6 +311,7 @@ export class ViewManager {
     );
     this.downloads.attach(ses);
 
+    const preloadArgs = this.preloadArgsFor(appId, profile);
     const view = new WebContentsView({
       webPreferences: {
         session: ses,
@@ -312,7 +320,9 @@ export class ViewManager {
         nodeIntegration: false,
         webSecurity: true,
         spellcheck: true,
-        // No preload for web apps in Phase 1. Fingerprint shields add one in ROADMAP 3.4.
+        // Fingerprinting protection only (ROADMAP 3.4): no IPC, nothing exposed to the page.
+        preload: join(__dirname, '../preload/webapp.js'),
+        additionalArguments: webAppArgs(preloadArgs),
       },
     });
     // Rounded like the tile body it sits in; native views are otherwise square and poke past it.
@@ -324,7 +334,7 @@ export class ViewManager {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
-    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0 };
+    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
@@ -410,19 +420,42 @@ export class ViewManager {
     }
   }
 
+  private preloadArgsFor(appId: string, profile: string): WebAppArgs {
+    const privacy = this.store.privacyFor(appId);
+    const partition = `${appId}/${profile}`;
+    let key = this.farbleKeys.get(partition);
+    if (!key) {
+      key = randomBytes(16).toString('hex');
+      this.farbleKeys.set(partition, key);
+    }
+    return { fingerprinting: privacy.fingerprinting, gpc: privacy.globalPrivacyControl, key };
+  }
+
   /**
    * After settings are saved: an app whose WebRTC policy changed gets it, and its pages reload
-   * (the policy only fully applies to new connections). Other Shields settings apply per request.
+   * (the policy only fully applies to new connections). A changed fingerprinting or GPC setting is
+   * fixed into the view's preload, so that view is replaced, reopening the page it was on.
+   * Other Shields settings apply per request.
    */
   applyPrivacy(): void {
-    for (const entry of this.views.values()) {
+    let replaced = false;
+    for (const [instanceId, entry] of [...this.views]) {
       const wc = entry.view.webContents;
       if (wc.isDestroyed()) continue;
+      const want = this.preloadArgsFor(entry.appId, entry.profile);
+      if (want.fingerprinting !== entry.preloadArgs.fingerprinting || want.gpc !== entry.preloadArgs.gpc) {
+        const url = wc.getURL();
+        this.sleeping.set(instanceId, { url: isWebUrl(url) ? url : this.homeOf(entry.def), appId: entry.appId });
+        this.destroy(instanceId);
+        replaced = true;
+        continue;
+      }
       const policy = this.store.privacyFor(entry.appId).webrtcPolicy;
       if (wc.getWebRTCIPHandlingPolicy() === policy) continue;
       wc.setWebRTCIPHandlingPolicy(policy);
       wc.reload();
     }
+    if (replaced) this.sync(this.lastPlacements, this.lastKeep);
   }
 
   private leafOf(wc: WebContents): string | undefined {
