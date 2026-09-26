@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "description": "All-in-one tiled workspace for web apps. Make the app your space.",
   "packageManager": "pnpm@10.0.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "pnpm --filter @aio/desktop dev",
     "build": "pnpm --filter @aio/desktop build",
@@ -17,6 +19,7 @@
   "devDependencies": {
     "@eslint/js": "^9.20.0",
     "eslint": "^9.20.0",
+    "eslint-plugin-react-hooks": "^7",
     "prettier": "^3.5.0",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.24.0"

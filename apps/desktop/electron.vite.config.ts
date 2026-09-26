@@ -1,12 +1,12 @@
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 
 /**
- * @aio/core is a devDependency on purpose: externalizeDepsPlugin only externalizes
- * `dependencies`, so core (shipped as TypeScript source) gets bundled into main/preload.
+ * electron-vite 5 externalizes `dependencies` in main/preload by default (`build.externalizeDeps`).
+ * @aio/core is a devDependency on purpose so it (shipped as TypeScript source) gets bundled instead.
  */
 export default defineConfig({
-  main: { plugins: [externalizeDepsPlugin()] },
-  preload: { plugins: [externalizeDepsPlugin()] },
+  main: {},
+  preload: {},
   renderer: { plugins: [react()] },
 });

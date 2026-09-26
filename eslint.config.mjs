@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/out/**', '**/release/**', '**/node_modules/**'] },
@@ -16,5 +17,9 @@ export default tseslint.config(
         { selector: "Property[key.name='webSecurity'][value.value=false]", message: 'webSecurity must stay true. See docs/SECURITY.md.' }
       ]
     }
+  },
+  {
+    files: ['apps/desktop/src/renderer/**/*.{ts,tsx}'],
+    ...reactHooks.configs.flat.recommended,
   }
 );

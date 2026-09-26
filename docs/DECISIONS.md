@@ -36,3 +36,15 @@ Isolates cookies and storage per service. `profile` enables multiple accounts la
 
 **D-008: zod for IPC and file validation.**
 Everything crossing from the renderer or read from disk is untrusted until parsed.
+
+**D-009: Vite stays on the major electron-vite supports.**
+electron-vite 5 accepts Vite 5–7 only, so Vite is pinned to 7 (and `@vitejs/plugin-react` to 5, since
+6 needs Vite 8) even though Vite 8 exists. Upgrade Vite only together with an electron-vite release
+that supports it. electron-vite 5 externalizes `dependencies` by default; keep `@aio/core` a
+devDependency so it is bundled. Electron 44 has no postinstall: the binary downloads on first
+`pnpm dev` (or `node -e "require('electron')"`), so an offline first run fails until it is fetched.
+
+**D-010: `eslint-plugin-react-hooks` for the renderer.**
+Catches broken hook rules and stale effect dependencies in React code. Its flat `recommended`
+config applies only to `apps/desktop/src/renderer/**`. CI (`.github/workflows/ci.yml`) runs
+install, typecheck, test and lint on `ubuntu-latest`; warnings don't fail the build, errors do.

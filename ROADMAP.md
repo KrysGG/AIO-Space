@@ -26,7 +26,7 @@ filling gaps, not writing it from scratch.
 
 ## Phase 0: Foundation
 
-### - [ ] 0.1 Install and pin dependencies
+### - [x] 0.1 Install and pin dependencies
 **Goal:** `pnpm install` succeeds with current stable versions.
 **Files:** `package.json`, `apps/desktop/package.json`, `packages/core/package.json`, `pnpm-lock.yaml`
 **Tasks:**
@@ -40,7 +40,7 @@ filling gaps, not writing it from scratch.
 - `pnpm typecheck` passes in both packages.
 - `pnpm test` runs the core tests and they pass.
 
-### - [ ] 0.2 First launch on CachyOS
+### - [x] 0.2 First launch on CachyOS
 **Goal:** `pnpm dev` opens the window with the rail and one empty tile showing the launcher.
 **Files:** anything needed under `apps/desktop`
 **Tasks:**
@@ -412,4 +412,15 @@ Share settings model with desktop.
 
 Add items found while working on other steps here, with the step where they were found.
 
-- (empty)
+- (0.2) In dev, userData is `~/.config/@aio/desktop` (package name), not `~/.config/AIO Space` as
+  ARCHITECTURE.md says. Set `productName` in `apps/desktop/package.json` or call `app.setName()`
+  early so dev and packaged builds share the documented path.
+- (0.1) `pnpm install` warns that `esbuild` and `electron-winstaller` build scripts were ignored:
+  pnpm 10.0 reads `onlyBuiltDependencies` from `package.json` only, so the list in
+  `pnpm-workspace.yaml` has no effect. Pick one place. Electron 44 no longer needs to be listed.
+- (0.2) Chromium logs `'--ozone-platform=wayland' is not compatible with Vulkan` at startup on
+  KDE Wayland (Electron 44). `--disable-features=Vulkan` does not silence it. The UI renders fine.
+  Look at it in 0.4.
+- (0.3) `react-hooks/exhaustive-deps` warns on the divider-drag effect in `TileLayout.tsx`: it
+  captures `props.onResize` from drag start. Don't add `props` to the deps (listeners and view
+  hiding would reset every render); keep the latest `onResize` in a ref instead. Do it in 1.4.
