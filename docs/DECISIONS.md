@@ -256,3 +256,15 @@ over the window by another app could leave a smeared/stale frame on a view (a Wa
 compositor damage-tracking quirk external to our code, distinct from D-024's own hide/show cycle):
 `ViewManager` now invalidates every visible view when the window regains focus, forcing a clean
 repaint at the next natural opportunity to notice.
+
+**D-032: Premium look: neutral focus outline, liquid-glass surfaces, web views as inset rounded cards.**
+Owner feedback after D-031: the frosted glass looked cheap, the amber focus edge should be white/grey,
+and page corners poked out square. (1) `--focus` is now near-white and the focused tile gets a soft
+white outline, a faint halo and a drop shadow instead of the amber edge and 3px inset bar (the tray
+icon's focused tile follows). (2) Liquid-glass tokens in `styles.css` (`--glass-fill/-sheen/-edge/
+-blur`): popovers and panels use a translucent fill with `backdrop-filter: blur(28px) saturate(1.8)`,
+a top sheen and a bright top edge; tile snapshots use a heavier blur with boosted saturation, a
+diagonal sheen and inner highlights. (3) Native views sit `VIEW_INSET` (4px) inside the tile's sides
+and bottom with `setBorderRadius(VIEW_RADIUS)` (8px), concentric with the 12px tile radius; the
+`.tile-body` card has the same inset and radius so launcher, snapshots and panels line up with the
+view. The constants live in `shared/ipc.ts` and must match `--view-inset`/`--radius-view`.

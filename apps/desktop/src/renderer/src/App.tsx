@@ -143,7 +143,7 @@ export function App() {
       const space = activeSpace(ws);
       const focused = space.focusedLeafId;
       if (!focused) return;
-      // Moves the amber edge and keyboard focus together, so typing goes to the tile you see focused.
+      // Moves the focus outline and keyboard focus together, so typing goes to the tile you see focused.
       const focusTile = (leafId: string | null): void => {
         if (leafId) edit((w) => updateActiveSpace(w, (s) => ({ ...s, focusedLeafId: leafId })));
         window.aio.focusView(leafId);

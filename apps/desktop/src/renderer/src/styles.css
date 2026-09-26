@@ -1,6 +1,6 @@
 /*
  * Design tokens. Phase 4 themes override these variables only.
- * One loud element: the amber edge on the focused tile. Everything else stays quiet.
+ * Quiet, glassy surfaces. The focused tile gets a soft white outline, not a colour.
  */
 :root {
   --ink: #161b26;        /* window background, gutters */
@@ -9,9 +9,17 @@
   --line: #2e384d;       /* hairlines */
   --text: #e4e8f0;
   --muted: #8f9ab0;
-  --focus: #f2b84b;      /* focused tile + keyboard focus */
-  --radius-tile: 10px;
+  --focus: #e6e9ef;      /* accents + keyboard focus: near-white, no colour */
+  --focus-ring: rgb(255 255 255 / 0.55); /* focused tile outline */
+  --view-inset: 4px;     /* web view card inside the tile body; = VIEW_INSET in shared/ipc.ts */
+  --radius-view: 8px;    /* = VIEW_RADIUS; concentric with --radius-tile */
+  --radius-tile: 12px;
   --radius-ctl: 7px;
+  /* Liquid glass: translucent fill, strong backdrop blur and saturation, a bright top edge. */
+  --glass-fill: rgb(30 36 52 / 0.52);
+  --glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0) 42%);
+  --glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.22), inset 0 0 0 1px rgb(255 255 255 / 0.09), inset 0 -1px 0 rgb(0 0 0 / 0.25);
+  --glass-blur: blur(28px) saturate(1.8);
   --font: 'Inter', 'Cantarell', 'Noto Sans', system-ui, sans-serif;
   color-scheme: dark;
 }
@@ -28,6 +36,12 @@ body {
 }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* Thin, translucent scrollbars that sit on glass instead of the bright default ones. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 5px; background: rgb(255 255 255 / 0.18) padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: rgb(255 255 255 / 0.3); }
+::-webkit-scrollbar-button { display: none; }
 
 .boot { height: 100%; background: var(--ink); }
 .fatal { padding: 24px; color: var(--text); }
@@ -61,7 +75,7 @@ button { font: inherit; color: inherit; }
 .rail-btn:hover:not(:disabled) { background: var(--tile); border-color: var(--line); }
 .rail-btn:disabled { opacity: 0.35; cursor: default; }
 .rail-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; }
-.rail-menu { display: flex; flex-direction: column; gap: 3px; }
+.rail-menu { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
 .rail-menu span { display: block; width: 16px; height: 1.5px; background: var(--muted); }
 .app-glyph { font-weight: 650; font-size: 12px; letter-spacing: 0.02em; background: var(--tile); color: var(--text); }
 
@@ -72,11 +86,18 @@ button { font: inherit; color: inherit; }
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-tile);
-  background: var(--tile);
-  box-shadow: 0 0 0 1px var(--line);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0) 34px), var(--tile);
+  box-shadow: 0 0 0 1px var(--line), inset 0 1px 0 rgb(255 255 255 / 0.05);
   overflow: hidden;
+  transition: box-shadow 160ms ease;
 }
-.tile.is-focused { box-shadow: 0 0 0 1px var(--focus), inset 3px 0 0 var(--focus); }
+.tile.is-focused {
+  box-shadow:
+    0 0 0 1px var(--focus-ring),
+    0 0 0 4px rgb(255 255 255 / 0.05),
+    0 10px 28px rgb(0 0 0 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
 .tile-head {
   flex: none;
   display: flex;
@@ -84,7 +105,6 @@ button { font: inherit; color: inherit; }
   justify-content: space-between;
   gap: 8px;
   padding: 0 6px 0 12px;
-  border-bottom: 1px solid var(--line);
   overflow: hidden;
 }
 .tile-title {
@@ -97,7 +117,7 @@ button { font: inherit; color: inherit; }
   text-overflow: ellipsis;
   font-weight: 550;
 }
-.tile.is-focused .tile-title { color: var(--focus); }
+.tile.is-focused .tile-title { color: #fff; }
 .tile-tools { display: flex; gap: 2px; flex: none; }
 .icon-btn {
   width: 26px;
@@ -113,7 +133,16 @@ button { font: inherit; color: inherit; }
 .icon-btn:hover:not(:disabled) { background: var(--ink); color: var(--text); }
 .icon-btn:disabled { opacity: 0.3; cursor: default; }
 .icon-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.tile-body { position: relative; flex: 1; min-height: 0; }
+/* The web view card: native views get the same inset and radius from main (VIEW_INSET/VIEW_RADIUS). */
+.tile-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 0 var(--view-inset) var(--view-inset);
+  border-radius: var(--radius-view);
+  background: var(--ink);
+  overflow: hidden;
+}
 .tile-placeholder {
   position: absolute;
   inset: 0;
@@ -220,10 +249,13 @@ button { font: inherit; color: inherit; }
   bottom: 12px;
   width: 340px;
   padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-tile);
-  background: var(--rail);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+.shortcuts, .popover {
+  border: 0;
+  border-radius: 16px;
+  background: var(--glass-sheen), var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-edge), 0 24px 60px rgb(0 0 0 / 0.5);
 }
 .shortcuts-title { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
 .shortcuts-list { margin: 0; display: grid; gap: 6px; }
@@ -297,10 +329,6 @@ button { font: inherit; color: inherit; }
   left: 64px;
   bottom: 12px;
   padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-tile);
-  background: var(--rail);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
 }
 .popover-title { margin: 0; font-size: 14px; font-weight: 600; }
 .popover-hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
@@ -415,9 +443,10 @@ button { font: inherit; color: inherit; }
 .tile-placeholder:has(.tile-snapshot) { padding: 0; }
 /*
  * The snapshot is a still image at its capture resolution; growing the tile mid-drag scales it up,
- * which would look blurry/pixelated at 100% clarity ("dragged out" pixels). A frosted-glass blur
- * turns that unavoidable softness into a deliberate look instead of a rendering glitch. The slight
- * scale-up keeps blurred edges from showing past the tile's rounded corners (.tile has overflow: hidden).
+ * which would look soft or pixelated. A liquid-glass treatment makes that softness deliberate: heavy
+ * blur with boosted saturation (colour glows through instead of going muddy), a diagonal sheen, a
+ * bright top edge and a soft inner shade at the bottom. The scale-up keeps blurred edges from
+ * fading to transparent inside the card (.tile-body clips to its rounded corners).
  */
 .tile-snapshot {
   display: block;
@@ -426,15 +455,21 @@ button { font: inherit; color: inherit; }
   object-fit: cover;
   object-position: top left;
   pointer-events: none;
-  filter: blur(9px) saturate(1.05) brightness(0.9);
-  transform: scale(1.08);
+  filter: blur(22px) saturate(1.8) brightness(1.06);
+  transform: scale(1.15);
 }
 .tile-placeholder:has(.tile-snapshot)::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgb(22 27 38 / 0.28); /* --ink, translucent: the glass tint */
-  border: 1px solid rgb(255 255 255 / 0.06);
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.16) 0%, rgb(255 255 255 / 0.04) 35%, rgb(255 255 255 / 0) 55%, rgb(255 255 255 / 0.06) 100%),
+    rgb(22 27 38 / 0.2);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 0 -24px 40px -24px rgb(0 0 0 / 0.35);
 }
 
 /* ---- Shields (ROADMAP 3.1) -------------------------------------------------- */

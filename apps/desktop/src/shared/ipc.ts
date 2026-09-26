@@ -24,6 +24,14 @@ export const IPC = {
   shortcut: 'shortcut',
 } as const;
 
+/**
+ * Web views sit inside the tile body as a rounded card: inset from the tile's sides and bottom so
+ * the tile's own rounded corners and outline stay visible, with corners concentric to the tile's.
+ * Must match `--view-inset` / `--radius-view` in the renderer's styles.css.
+ */
+export const VIEW_INSET = 4;
+export const VIEW_RADIUS = 8;
+
 /** Where a native web view should sit, in window content coordinates (DIP). */
 export interface ViewPlacement {
   leafId: string;

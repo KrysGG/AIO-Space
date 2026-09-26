@@ -4,8 +4,8 @@ import { unreadLabel, type Unread } from '@aio/core';
 const SIZE = 32;
 const SAMPLES = 4; // per axis, for anti-aliased edges
 type RGB = [number, number, number];
-const AMBER: RGB = [0xf2, 0xb8, 0x4b];
-const TILE: RGB = [0xe4, 0xe8, 0xf0];
+const FOCUSED: RGB = [0xff, 0xff, 0xff];
+const TILE: RGB = [0x8f, 0x9a, 0xb0];
 const RED: RGB = [0xe5, 0x3e, 0x3e];
 
 /** Signed distance to a rounded rectangle (negative inside). */
@@ -17,12 +17,12 @@ function roundRect(x: number, y: number, rx: number, ry: number, w: number, h: n
 
 /**
  * The tray icon, drawn in code so no image assets are needed yet (real branding comes with
- * packaging, ROADMAP 5.1): a 2x2 grid of tiles, the focused one in amber; a red dot when unread.
+ * packaging, ROADMAP 5.1): a 2x2 grid of tiles, the focused one in white; a red dot when unread.
  */
 function drawIcon(unread: boolean): NativeImage {
   const buf = Buffer.alloc(SIZE * SIZE * 4);
   const tiles: Array<[number, number, RGB]> = [
-    [3, 3, AMBER],
+    [3, 3, FOCUSED],
     [17, 3, TILE],
     [3, 17, TILE],
     [17, 17, TILE],

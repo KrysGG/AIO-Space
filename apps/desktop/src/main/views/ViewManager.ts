@@ -21,7 +21,7 @@ import {
   type Unread,
   type WebAppDef,
 } from '@aio/core';
-import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
+import { IPC, VIEW_RADIUS, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
 import { getAppSession, hasUsedMedia } from '../sessions/appSession';
@@ -315,6 +315,8 @@ export class ViewManager {
         // No preload for web apps in Phase 1. Fingerprint shields add one in ROADMAP 3.4.
       },
     });
+    // Rounded like the tile body it sits in; native views are otherwise square and poke past it.
+    view.setBorderRadius(VIEW_RADIUS);
     const wc = view.webContents;
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
     followSignInUserAgent(wc);

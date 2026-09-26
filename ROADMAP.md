@@ -98,7 +98,7 @@ filling gaps, not writing it from scratch.
 - Close tile removes it; its neighbor fills the space; its view is destroyed (check memory in the
   task manager drops).
 - Closing the last tile leaves one empty tile.
-- Focused tile is marked with the amber edge; clicking a tile header or inside a web view focuses it.
+- Focused tile is marked with the focus outline (amber until D-032, now white/grey); clicking a tile header or inside a web view focuses it.
 
 ### - [x] 1.4 Resize by dragging dividers
 **Goal:** Smooth resizing of any split.
@@ -418,9 +418,6 @@ Add items found while working on other steps here, with the step where they were
 - (0.1) `pnpm install` warns that `esbuild` and `electron-winstaller` build scripts were ignored:
   pnpm 10.0 reads `onlyBuiltDependencies` from `package.json` only, so the list in
   `pnpm-workspace.yaml` has no effect. Pick one place. Electron 44 no longer needs to be listed.
-- (0.4) Views are square and cover the tile's rounded bottom corners and its 3px inset focus bar
-  beside the body. Use `WebContentsView.setBorderRadius()` and/or inset the view bounds to match
-  the tile style. Cosmetic.
 - (2.4, for Phase 3) Web views have spellcheck on, and Electron downloads the Hunspell dictionary
   (`userData/Dictionaries/en-US-*.bdic`) from Google's CDN by default. No user data is sent, but it is
   an outside connection the user didn't ask for. Bundle the dictionaries or set
@@ -447,6 +444,12 @@ Add items found while working on other steps here, with the step where they were
   entirely, even unrelated scripts). Needs the owner to reproduce with DevTools open (or describe
   exactly what's shown: a plain email/password form, a "Continue as ..." button, or a Cloudflare
   challenge) before guessing further at a real session.
+  Update (D-032 round): the owner now sees a "prove you're not a bot" captcha on re-login, so Discord
+  most likely ends the session server-side. Ruled out local storage loss: localStorage written in a
+  tile survives Ctrl+C/SIGINT, SIGTERM and a hard kill 8 s after the write (only a hard kill within
+  ~3 s loses it). Candidates still open: the blocked `/api/v*/science` telemetry (test with only
+  "Block trackers" off for Discord for a few days), Electron's `Sec-CH-UA` brands (Chromium, no
+  "Google Chrome"), and frequent new-device logins feeding Discord's risk score.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a
