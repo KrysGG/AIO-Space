@@ -56,4 +56,35 @@ describe('desktop smoke test', () => {
     await expect.poll(viewCount).toBe(0);
     await expect.poll(() => tiles().first().getAttribute('aria-label')).toBe('Empty tile');
   });
+
+  it('handles keyboard shortcuts (split, focus, help, close)', async () => {
+    // Through Electron's native input path, like a real keypress; this is what before-input-event sees.
+    const press = (keyCode: string, modifiers: string[]) =>
+      app.evaluate(
+        ({ BrowserWindow }, k) => {
+          const wc = BrowserWindow.getAllWindows()[0]!.webContents;
+          wc.sendInputEvent({ type: 'keyDown', keyCode: k.keyCode, modifiers: k.modifiers as Electron.InputEvent['modifiers'] });
+          wc.sendInputEvent({ type: 'keyUp', keyCode: k.keyCode, modifiers: k.modifiers as Electron.InputEvent['modifiers'] });
+        },
+        { keyCode, modifiers },
+      );
+    const focusedIndex = () => ui.locator('.tile').evaluateAll((ts) => ts.findIndex((t) => t.classList.contains('is-focused')));
+
+    await press('D', ['control', 'shift']);
+    await expect.poll(() => tiles().count()).toBe(2);
+    expect(await focusedIndex()).toBe(1);
+
+    await press('Left', ['control', 'alt']);
+    await expect.poll(focusedIndex).toBe(0);
+    await press('2', ['control']);
+    await expect.poll(focusedIndex).toBe(1);
+
+    await press('/', ['control']);
+    await ui.getByRole('dialog', { name: 'Keyboard shortcuts' }).waitFor();
+    await press('Escape', []);
+    await ui.getByRole('dialog', { name: 'Keyboard shortcuts' }).waitFor({ state: 'detached' });
+
+    await press('W', ['control']);
+    await expect.poll(() => tiles().count()).toBe(1);
+  });
 });

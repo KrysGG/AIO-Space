@@ -5,6 +5,7 @@ import {
   MAX_TILES,
   PlacementsSchema,
   ViewCommandSchema,
+  ViewFocusSchema,
   WorkspaceSchema,
 } from '../src/main/ipc/schemas';
 
@@ -77,5 +78,15 @@ describe('ViewCommandSchema', () => {
     expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1', command: 'reload' }).success).toBe(true);
     expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1', command: 'navigate' }).success).toBe(false);
     expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1' }).success).toBe(false);
+  });
+});
+
+describe('ViewFocusSchema', () => {
+  it('accepts a tile id or null (the UI), nothing else', () => {
+    expect(ViewFocusSchema.safeParse({ leafId: 'leaf_1' }).success).toBe(true);
+    expect(ViewFocusSchema.safeParse({ leafId: null }).success).toBe(true);
+    expect(ViewFocusSchema.safeParse({}).success).toBe(false);
+    expect(ViewFocusSchema.safeParse({ leafId: '<script>' }).success).toBe(false);
+    expect(ViewFocusSchema.safeParse({ leafId: 5 }).success).toBe(false);
   });
 });

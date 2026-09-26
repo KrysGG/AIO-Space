@@ -4,6 +4,7 @@ import {
   computeLayout,
   createLeaf,
   listLeaves,
+  neighborTile,
   ratioFromPointer,
   removeLeaf,
   setRatio,
@@ -65,6 +66,30 @@ describe('layout tree', () => {
     expect(listLeaves(swapped).map((l) => l.appId)).toEqual(['b', 'a']);
     const cleared = assignApp(swapped, a.id, null);
     expect(listLeaves(cleared)[0]!.appId).toBeNull();
+  });
+});
+
+describe('neighborTile', () => {
+  // [A | [B / C]] : A on the left, B top-right, C bottom-right.
+  const a = createLeaf('a');
+  const s1 = splitLeaf(a, a.id, 'row', 'b');
+  const b = s1.newLeafId!;
+  const s2 = splitLeaf(s1.root, b, 'column', 'c');
+  const c = s2.newLeafId!;
+  const { tiles } = computeLayout(s2.root, { x: 0, y: 0, width: 1000, height: 800 });
+
+  it('moves across and down the grid', () => {
+    expect(neighborTile(tiles, a.id, 'right')).toBe(b); // B and C tie; the first in tree order wins
+    expect(neighborTile(tiles, b, 'down')).toBe(c);
+    expect(neighborTile(tiles, c, 'up')).toBe(b);
+    expect(neighborTile(tiles, c, 'left')).toBe(a.id);
+  });
+
+  it('returns null at the edges and for unknown tiles', () => {
+    expect(neighborTile(tiles, a.id, 'left')).toBeNull();
+    expect(neighborTile(tiles, a.id, 'up')).toBeNull();
+    expect(neighborTile(tiles, b, 'right')).toBeNull();
+    expect(neighborTile(tiles, 'nope', 'right')).toBeNull();
   });
 });
 

@@ -7,6 +7,9 @@
  */
 export type SplitDirection = 'row' | 'column';
 
+/** Direction for moving focus between tiles. */
+export type FocusDirection = 'left' | 'right' | 'up' | 'down';
+
 export interface LeafNode {
   type: 'leaf';
   id: string;

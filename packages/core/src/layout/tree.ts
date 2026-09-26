@@ -3,6 +3,7 @@ import {
   MAX_RATIO,
   MIN_RATIO,
   type ComputedLayout,
+  type FocusDirection,
   type LayoutNode,
   type LeafNode,
   type Rect,
@@ -133,6 +134,39 @@ export function computeLayout(root: LayoutNode, area: Rect, gutter = 6): Compute
   };
   walk(root, area);
   return out;
+}
+
+/**
+ * The tile next to `fromLeafId` in `dir`, or null at the edge. Picks the closest tile beyond that
+ * edge which overlaps it on the other axis; ties go to the larger overlap.
+ */
+export function neighborTile(
+  tiles: ComputedLayout['tiles'],
+  fromLeafId: string,
+  dir: FocusDirection,
+): string | null {
+  const from = tiles.find((t) => t.leafId === fromLeafId)?.rect;
+  if (!from) return null;
+  const horizontal = dir === 'left' || dir === 'right';
+  const overlap = (r: Rect): number =>
+    horizontal
+      ? Math.min(from.y + from.height, r.y + r.height) - Math.max(from.y, r.y)
+      : Math.min(from.x + from.width, r.x + r.width) - Math.max(from.x, r.x);
+  const gap = (r: Rect): number => {
+    if (dir === 'left') return from.x - (r.x + r.width);
+    if (dir === 'right') return r.x - (from.x + from.width);
+    if (dir === 'up') return from.y - (r.y + r.height);
+    return r.y - (from.y + from.height);
+  };
+  let best: { id: string; gap: number; overlap: number } | null = null;
+  for (const t of tiles) {
+    if (t.leafId === fromLeafId) continue;
+    const g = gap(t.rect);
+    const o = overlap(t.rect);
+    if (g < 0 || o <= 0) continue;
+    if (!best || g < best.gap || (g === best.gap && o > best.overlap)) best = { id: t.leafId, gap: g, overlap: o };
+  }
+  return best?.id ?? null;
 }
 
 /** Convert a pointer position over a divider's parent split into a ratio. */

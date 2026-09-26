@@ -4,7 +4,7 @@
  * Never expose ipcRenderer itself or any generic "send anything" function.
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type AioApi, type ViewState } from '../shared/ipc';
+import { IPC, type AioApi, type ShortcutAction, type ViewState } from '../shared/ipc';
 
 const api: AioApi = {
   getWorkspace: () => ipcRenderer.invoke(IPC.workspaceGet),
@@ -13,6 +13,7 @@ const api: AioApi = {
   syncViews: (placements) => ipcRenderer.send(IPC.viewsSync, placements),
   setViewsHidden: (hidden) => ipcRenderer.send(IPC.viewsSetHidden, hidden),
   viewCommand: (leafId, command) => ipcRenderer.send(IPC.viewCommand, { leafId, command }),
+  focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
   onViewState: (cb) => {
     const listener = (_e: IpcRendererEvent, s: ViewState): void => cb(s);
     ipcRenderer.on(IPC.viewState, listener);
@@ -22,6 +23,11 @@ const api: AioApi = {
     const listener = (_e: IpcRendererEvent, leafId: string): void => cb(leafId);
     ipcRenderer.on(IPC.viewFocused, listener);
     return () => ipcRenderer.removeListener(IPC.viewFocused, listener);
+  },
+  onShortcut: (cb) => {
+    const listener = (_e: IpcRendererEvent, action: ShortcutAction): void => cb(action);
+    ipcRenderer.on(IPC.shortcut, listener);
+    return () => ipcRenderer.removeListener(IPC.shortcut, listener);
   },
 };
 

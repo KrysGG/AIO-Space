@@ -189,3 +189,31 @@ button { font: inherit; color: inherit; }
   background: var(--tile);
   font-weight: 650;
 }
+
+/* ---- Shortcuts popover ---------------------------------------------------- */
+.popover-backdrop { position: fixed; inset: 0; z-index: 10; }
+.shortcuts {
+  position: absolute;
+  left: 64px;
+  bottom: 12px;
+  width: 340px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+  background: var(--rail);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+.shortcuts-title { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+.shortcuts-list { margin: 0; display: grid; gap: 6px; }
+.shortcuts-row { display: flex; justify-content: space-between; gap: 12px; }
+.shortcuts-row dt, .shortcuts-row dd { margin: 0; }
+.shortcuts-row dd { color: var(--muted); text-align: right; }
+.shortcuts kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--ink);
+  font: 12px/1.5 var(--font);
+  white-space: nowrap;
+}
+.shortcuts-hint { margin: 12px 0 0; color: var(--muted); font-size: 12px; }

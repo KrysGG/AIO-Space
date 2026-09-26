@@ -1,5 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
+import { IPC } from '../shared/ipc';
+import { forwardShortcuts } from './shortcuts';
 
 const BG = '#161B26';
 
@@ -28,6 +30,7 @@ export function createMainWindow(): BrowserWindow {
   // The UI window only ever shows our own bundled page.
   win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  forwardShortcuts(win.webContents, (action) => win.webContents.send(IPC.shortcut, action));
 
   const devUrl = process.env['ELECTRON_RENDERER_URL'];
   if (devUrl && !app.isPackaged) {

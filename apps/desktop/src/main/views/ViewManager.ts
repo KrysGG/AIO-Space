@@ -3,6 +3,7 @@ import { getApp, hostMatches, type WebAppDef } from '@aio/core';
 import { IPC, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import { getAppSession } from '../sessions/appSession';
 import { followSignInUserAgent } from '../sessions/userAgent';
+import { forwardShortcuts } from '../shortcuts';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
 interface Entry {
@@ -50,6 +51,14 @@ export class ViewManager {
     for (const { view } of this.views.values()) view.setVisible(!hidden);
   }
 
+  /** Keyboard focus to a tile's view; the UI page when the tile is empty or `leafId` is null. */
+  focus(leafId: string | null): void {
+    if (this.win.isDestroyed()) return;
+    const entry = leafId ? this.views.get(leafId) : undefined;
+    if (entry && !this.hidden) entry.view.webContents.focus();
+    else this.win.webContents.focus();
+  }
+
   command(leafId: string, cmd: ViewCommand): void {
     const entry = this.views.get(leafId);
     if (!entry) return;
@@ -80,6 +89,9 @@ export class ViewManager {
     const wc = view.webContents;
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
     followSignInUserAgent(wc);
+    forwardShortcuts(wc, (action) => {
+      if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
+    });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
     this.guardNavigation(def, view);
     this.wireState(leafId, appId, view);

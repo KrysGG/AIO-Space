@@ -68,3 +68,6 @@ export const ViewCommandSchema = z.object({
   leafId: Id,
   command: z.enum(['back', 'forward', 'reload', 'home']),
 });
+
+/** `null` means "give keyboard focus to the UI". */
+export const ViewFocusSchema = z.object({ leafId: Id.nullable() });

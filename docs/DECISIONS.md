@@ -73,3 +73,12 @@ downloads (`@playwright/test` would add a second runner). `pnpm test` builds the
 both. The smoke test sets `AIO_USER_DATA_DIR` to a temp folder; main honours it (before the
 single-instance lock) so tests never touch real logins or layouts. CI runs tests under `xvfb-run` and
 re-enables unprivileged user namespaces, which Ubuntu 24.04 blocks and Electron's sandbox needs.
+
+**D-014: Keyboard shortcuts are caught in main, handled in the UI.**
+`before-input-event` on the UI window and every web view (`main/shortcuts.ts`) catches app shortcuts
+and cancels them, so pages and Electron's default menu (which also binds Ctrl+W/Ctrl+R) never see
+them; the action goes to the UI over the `shortcut` channel. Letters match by `key` (layout-aware),
+digits and arrows by `code` (Ctrl+1 on AZERTY reports "&"); auto-repeat is ignored. When a shortcut
+moves focus, the UI also calls `view:focus` so keyboard focus follows the amber edge. New shortcuts:
+add them to `shortcutFor()` and to the list in `ShortcutsHelp.tsx`. Tests must send keys with
+`webContents.sendInputEvent` (CDP `Input.dispatchKeyEvent` bypasses `before-input-event`).

@@ -2,7 +2,7 @@
  * The ONLY contract between renderer (UI) and main. Keep it small.
  * Every channel added here must also get a zod schema in main/ipc/schemas.ts.
  */
-import type { Rect, WebAppDef, Workspace } from '@aio/core';
+import type { FocusDirection, Rect, SplitDirection, WebAppDef, Workspace } from '@aio/core';
 
 export const IPC = {
   workspaceGet: 'workspace:get',
@@ -13,6 +13,8 @@ export const IPC = {
   viewCommand: 'view:command',
   viewState: 'view:state',
   viewFocused: 'view:focused',
+  viewFocus: 'view:focus',
+  shortcut: 'shortcut',
 } as const;
 
 /** Where a native web view should sit, in window content coordinates (DIP). */
@@ -36,6 +38,15 @@ export interface ViewState {
   crashed: boolean;
 }
 
+/** A keyboard shortcut caught in main (from the UI or any web view) and handled by the UI. */
+export type ShortcutAction =
+  | { kind: 'focus-direction'; direction: FocusDirection }
+  | { kind: 'focus-index'; index: number }
+  | { kind: 'split'; direction: SplitDirection }
+  | { kind: 'close' }
+  | { kind: 'reload' }
+  | { kind: 'help' };
+
 /** Exposed on window.aio by the preload script. */
 export interface AioApi {
   getWorkspace(): Promise<Workspace>;
@@ -44,7 +55,10 @@ export interface AioApi {
   syncViews(placements: ViewPlacement[]): void;
   setViewsHidden(hidden: boolean): void;
   viewCommand(leafId: string, command: ViewCommand): void;
+  /** Give keyboard focus to a tile's web view, or to the UI when `leafId` is null or the tile is empty. */
+  focusView(leafId: string | null): void;
   /** Returns an unsubscribe function. */
   onViewState(cb: (state: ViewState) => void): () => void;
   onViewFocused(cb: (leafId: string) => void): () => void;
+  onShortcut(cb: (action: ShortcutAction) => void): () => void;
 }

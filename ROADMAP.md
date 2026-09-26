@@ -147,7 +147,7 @@ restored after restart, with separate logins.
 
 ## Phase 2: Daily-driver UX
 
-### - [ ] 2.1 Keyboard shortcuts
+### - [x] 2.1 Keyboard shortcuts
 Ctrl+Alt+Arrow to move focus between tiles, Ctrl+Shift+D/E to split right/down, Ctrl+W to close
 tile, Ctrl+R reload focused, Ctrl+1..9 focus nth tile. Shortcuts must work while a web view has
 focus (use `before-input-event` on each view in main and forward to the UI).
