@@ -70,10 +70,17 @@ export const SHIELD_SWITCHES: Array<{ key: ShieldSwitch; label: string; hint: st
   { key: 'httpsOnly', label: 'Upgrade connections to HTTPS', hint: 'Loads secure versions of sites when you follow http:// links.' },
   { key: 'stripTrackingParams', label: 'Remove tracking from links', hint: 'Drops utm_, fbclid and similar tags from addresses.' },
   { key: 'trimReferrers', label: 'Hide the page you came from', hint: 'Other sites only learn the site, not the exact page.' },
+  { key: 'blockThirdPartyCookies', label: 'Block third-party cookies', hint: 'Other sites embedded in a page can’t set or read their cookies.' },
   { key: 'globalPrivacyControl', label: 'Ask sites not to sell or share your data', hint: 'Sends the Global Privacy Control signal.' },
-  // TODO(ROADMAP 3.3, 3.4, 3.6): third-party cookies, fingerprinting, ads join this list when built.
+  // TODO(ROADMAP 3.4, 3.6): fingerprinting and ads join this list when built.
 ];
-export type ShieldSwitch = 'blockTrackers' | 'httpsOnly' | 'stripTrackingParams' | 'trimReferrers' | 'globalPrivacyControl';
+export type ShieldSwitch =
+  | 'blockTrackers'
+  | 'httpsOnly'
+  | 'stripTrackingParams'
+  | 'trimReferrers'
+  | 'blockThirdPartyCookies'
+  | 'globalPrivacyControl';
 
 export const WEBRTC_CHOICES: Array<{ value: PrivacySettings['webrtcPolicy']; label: string }> = [
   { value: 'default_public_interface_only', label: 'Hide local address (recommended)' },
