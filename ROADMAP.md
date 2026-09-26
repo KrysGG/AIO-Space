@@ -464,6 +464,8 @@ Add items found while working on other steps here, with the step where they were
   environment's TLS proxy blocks; the same code was verified with a Node fetcher.
 - (3.6) Not done yet: scriptlet injection (`+js()`, needed for YouTube video ads), cosmetic filtering in
   subframes, redirect surrogates (uBlock resources) instead of plain blocking.
+- (3.8) Built; the warning is verified on a system without a keyring (this environment: `basic_text`).
+  Not ticked until the owner confirms it does not appear on their normal KDE setup.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

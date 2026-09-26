@@ -20,16 +20,19 @@ interface Props {
   downloadsOpen: boolean;
   /** Downloads in progress, for the badge on the downloads button. */
   activeDownloads: number;
+  /** Something in the menu needs the user's attention once (ROADMAP 3.8): a dot on the menu button. */
+  menuNotice: boolean;
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads }: Props) {
+export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice }: Props) {
   return (
     <nav className="rail" aria-label="Apps">
       <button className="rail-btn rail-menu" title={`Menu (space: ${spaceName})`} aria-label={`Menu, space ${spaceName}`} aria-expanded={menuOpen} onClick={onMenu}>
         <span />
         <span />
         <span />
+        {menuNotice && <i className="rail-notice" aria-label="Needs attention" />}
       </button>
       {showSpaceName && (
         <button className="rail-space" onClick={onMenu} title={`Space: ${spaceName}`} aria-hidden tabIndex={-1}>

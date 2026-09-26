@@ -27,6 +27,9 @@ interface Props {
   onShieldDefault<K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]): void;
   /** Stop allowing a site over http (it gets upgraded to https again). */
   onDisallowHttp(host: string): void;
+  /** Logins aren't protected by a system keyring (ROADMAP 3.8), and the user hasn't dismissed it. */
+  keyringNotice: boolean;
+  onDismissKeyring(): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -35,7 +38,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
@@ -138,6 +141,19 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
 
         <section>
           <h2 className="popover-title">Settings</h2>
+          {keyringNotice && (
+            <div className="notice" role="alert">
+              <strong>Your logins aren’t protected by a keyring</strong>
+              <p>
+                AIO Space couldn’t use KWallet or GNOME Keyring, so cookies and logins are saved with a fixed key. Anyone who can read
+                your files could use them. Install and unlock KWallet (KDE) or GNOME Keyring (<code>gnome-keyring</code>,{' '}
+                <code>libsecret</code>), then restart AIO Space.
+              </p>
+              <button className="text-btn" onClick={onDismissKeyring}>
+                Got it
+              </button>
+            </div>
+          )}
           <label className="setting">
             <span>Search engine for the Browser tile</span>
             <select value={ws.browser.searchEngine} onChange={(e) => onSearchEngine(e.target.value as SearchEngineId)}>

@@ -9,6 +9,7 @@ import {
   catalogOf,
   computeLayout,
   disallowHttpHost,
+  dismissNotice,
   ensureFocus,
   findLeaf,
   listLeaves,
@@ -66,6 +67,11 @@ export function App() {
   const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
   // Tile whose Shields panel is open (ROADMAP 3.1).
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
+  /** Logins stored without a system keyring (ROADMAP 3.8); shown in the menu until dismissed. */
+  const [weakKeyring, setWeakKeyring] = useState(false);
+  useEffect(() => {
+    void window.aio.getStorageStatus().then((s) => setWeakKeyring(s.weak));
+  }, []);
   const saveTimer = useRef<number | undefined>(undefined);
   // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
@@ -212,6 +218,7 @@ export function App() {
   if (!ws) return <div className="boot" />;
 
   const space = activeSpace(ws);
+  const keyringNotice = weakKeyring && !ws.dismissedNotices.includes('weak-keyring');
   const focused = space.focusedLeafId;
   const catalog = catalogOf(ws, builtins);
   // Apps in the other spaces keep running (hidden) so switching is instant (ROADMAP 2.8).
@@ -348,6 +355,7 @@ export function App() {
         onDownloads={() => setDownloadsOpen(!downloadsOpen)}
         downloadsOpen={downloadsOpen}
         activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
+        menuNotice={keyringNotice}
       />
       <TileLayout
         layout={space.layout}
@@ -385,6 +393,8 @@ export function App() {
           onSearchEngine={(engine) => edit((w) => ({ ...w, browser: { ...w.browser, searchEngine: engine } }))}
           onShieldDefault={setShieldDefault}
           onDisallowHttp={(host) => edit((w) => disallowHttpHost(w, host))}
+          keyringNotice={keyringNotice}
+          onDismissKeyring={() => edit((w) => dismissNotice(w, 'weak-keyring'))}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}

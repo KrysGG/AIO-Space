@@ -9,6 +9,7 @@ import {
   MAX_TILES,
   MAX_ZOOM,
   MIN_ZOOM,
+  NOTICE_IDS,
   SEARCH_ENGINES,
   type AppPermission,
   type LayoutNode,
@@ -119,6 +120,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
     )
     .refine((p) => Object.keys(p).length <= 100, 'too many apps with accounts'),
   httpAllowedHosts: z.array(Host).max(200).refine(unique, 'duplicate host'),
+  dismissedNotices: z.array(z.enum(NOTICE_IDS)).max(NOTICE_IDS.length).refine(unique, 'duplicate notice'),
   customApps: z
     .array(CustomAppSchema)
     .max(MAX_CUSTOM_APPS)
@@ -168,5 +170,5 @@ export const DownloadActionSchema = z.object({
   action: z.enum(['open', 'show', 'cancel', 'clear']),
 });
 
-/** Channels that take no payload (filters:status, filters:update): anything sent along is rejected. */
+/** Channels that take no payload (filters:status, filters:update, security:storage): anything sent along is rejected. */
 export const NoPayloadSchema = z.undefined();

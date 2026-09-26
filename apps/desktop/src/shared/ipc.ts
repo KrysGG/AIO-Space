@@ -24,7 +24,16 @@ export const IPC = {
   shortcut: 'shortcut',
   filtersStatus: 'filters:status',
   filtersUpdate: 'filters:update',
+  securityStorage: 'security:storage',
 } as const;
+
+/** How logins are encrypted on disk (ROADMAP 3.8). */
+export interface StorageStatus {
+  /** Linux: Chromium's backend ('kwallet6', 'gnome_libsecret', 'basic_text', ...); 'os' elsewhere. */
+  backend: string;
+  /** No system keyring in use: cookies are stored with a fixed key. */
+  weak: boolean;
+}
 
 /** Ad and tracker filter lists (ROADMAP 3.5/3.6). */
 export type FilterListKind = 'ads' | 'trackers';
@@ -154,4 +163,5 @@ export interface AioApi {
   getFilterListStatus(): Promise<FilterListStatus>;
   /** Download the filter lists now; resolves with the new status when done. */
   updateFilterLists(): Promise<FilterListStatus>;
+  getStorageStatus(): Promise<StorageStatus>;
 }

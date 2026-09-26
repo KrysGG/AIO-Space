@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 9;
+export const WORKSPACE_VERSION = 10;
 
 export interface Space {
   id: string;
@@ -53,6 +53,16 @@ export interface Workspace {
    * exempt from the HTTPS upgrade. Added in version 9.
    */
   httpAllowedHosts: string[];
+  /** One-time notices the user dismissed (ROADMAP 3.8). Added in version 10. */
+  dismissedNotices: NoticeId[];
+}
+
+/** Notices shown until dismissed, e.g. 'weak-keyring': logins stored without the system keyring. */
+export const NOTICE_IDS = ['weak-keyring'] as const;
+export type NoticeId = (typeof NOTICE_IDS)[number];
+
+export function dismissNotice(ws: Workspace, id: NoticeId): Workspace {
+  return ws.dismissedNotices.includes(id) ? ws : { ...ws, dismissedNotices: [...ws.dismissedNotices, id] };
 }
 
 export interface AppProfile {
@@ -74,6 +84,7 @@ export function defaultWorkspace(): Workspace {
     zoom: {},
     profiles: {},
     httpAllowedHosts: [],
+    dismissedNotices: [],
   };
 }
 
@@ -122,6 +133,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
     w = { ...w, version: 8, privacy: { ...privacy, shields: true } };
   }
   if (w['version'] === 8) w = { ...w, version: 9, httpAllowedHosts: [] };
+  if (w['version'] === 9) w = { ...w, version: 10, dismissedNotices: [] };
   return w as unknown as Workspace;
 }
 

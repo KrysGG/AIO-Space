@@ -312,3 +312,11 @@ CSP header on HTML; dev still uses Vite's http URL. That allows the `GrantFilePr
 fuse to be off. Fuses are flipped with `@electron/fuses` (new dev dependency, Electron's own package)
 in `scripts/afterPack.cjs`, rather than electron-builder's `electronFuses` option, so the list lives in
 one readable file next to its reasons. Packaged Linux executable is named `aio-space`.
+
+**D-036: Keyring check: backend and availability, one-time notice in the menu.**
+ROADMAP 3.8. `security/keyring.ts` reads `safeStorage.getSelectedStorageBackend()` and
+`isEncryptionAvailable()` after ready. Weak means `basic_text`/`unknown`, or a keyring that was picked
+but can't be used (tested: with `--password-store=gnome-libsecret` and no daemon the backend still
+reads `gnome_libsecret` while encryption is unavailable). New IPC `security:storage`. The menu's
+Settings show a warning with how to fix it, and the menu button a small dot, until "Got it"; the
+dismissal is stored in `workspace.dismissedNotices` (v10, a general list for later one-time notices).

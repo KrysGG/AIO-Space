@@ -25,6 +25,7 @@ const api: AioApi = {
   downloadAction: (id, action) => ipcRenderer.send(IPC.downloadsAction, { id, action }),
   getFilterListStatus: () => ipcRenderer.invoke(IPC.filtersStatus),
   updateFilterLists: () => ipcRenderer.invoke(IPC.filtersUpdate),
+  getStorageStatus: () => ipcRenderer.invoke(IPC.securityStorage),
   onViewState: (cb) => {
     const listener = (_e: IpcRendererEvent, s: ViewState): void => cb(s);
     ipcRenderer.on(IPC.viewState, listener);

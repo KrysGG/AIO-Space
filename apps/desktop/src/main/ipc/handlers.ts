@@ -5,6 +5,7 @@ import { clearHttpAllowedThisRun } from '../privacy/httpsFallback';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
+import { storageStatus } from '../security/keyring';
 import type { ViewManager } from '../views/ViewManager';
 import {
   DownloadActionSchema,
@@ -99,5 +100,11 @@ export function registerIpc(
     NoPayloadSchema.parse(raw);
     await filterLists.update();
     return filterLists.status();
+  });
+
+  ipcMain.handle(IPC.securityStorage, (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    return storageStatus();
   });
 }

@@ -98,6 +98,12 @@ Also run `electronegativity` and go through Electron's security checklist before
 | 19 | Check fuses | Flipped in `afterPack` (table above). |
 | 20 | Don't expose Electron APIs to web content | Web views get no IPC; their preload exposes nothing. |
 
+## Storage encryption (ROADMAP 3.8)
+
+Cookies and logins are encrypted with a key from the system keyring (KWallet or GNOME Keyring via
+libsecret on Linux). Without one, Chromium falls back to a fixed key; AIO Space detects this
+(`main/security/keyring.ts`) and warns once in the menu with how to fix it.
+
 ## Privacy features ("Shields")
 
 Settings live in `packages/core/src/privacy/settings.ts`; implementation in
