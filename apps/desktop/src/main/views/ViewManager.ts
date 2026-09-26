@@ -131,7 +131,8 @@ export class ViewManager {
         return { action: 'deny' };
       }
       if (hostMatches(host(url), def.popupHosts)) {
-        // Sign-in popups. Child inherits this app's session; hardening applies to it too.        return {
+        // Sign-in popups. Child inherits this app's session; hardening applies to it too.
+        return {
           action: 'allow',
           overrideBrowserWindowOptions: {
             parent: this.win,
