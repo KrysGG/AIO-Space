@@ -83,7 +83,7 @@ filling gaps, not writing it from scratch.
 - "Change app" (grid icon in the tile header) returns the tile to the launcher and destroys the view.
 - Tile header shows the page title and a loading indicator while loading.
 
-### - [ ] 1.2 Separate, persistent logins
+### - [x] 1.2 Separate, persistent logins
 **Goal:** Each app keeps its own login across restarts; apps can't see each other's cookies.
 **Files:** `main/sessions/appSession.ts`
 **Done when:**
@@ -421,6 +421,10 @@ Add items found while working on other steps here, with the step where they were
 - (0.4) Views are square and cover the tile's rounded bottom corners and its 3px inset focus bar
   beside the body. Use `WebContentsView.setBorderRadius()` and/or inset the view bounds to match
   the tile style. Cosmetic.
+- (1.2) Google sign-in (YouTube, and "Sign in with Google" elsewhere) fails with "This browser or
+  app may not be secure". Google blocks embedded browsers it detects. Look into it as part of 1.6
+  (sign-in popups); likely suspects are UA client hints (`Sec-CH-UA` brands) and other
+  Electron-specific signals.
 - (0.3) `react-hooks/exhaustive-deps` warns on the divider-drag effect in `TileLayout.tsx`: it
   captures `props.onResize` from drag start. Don't add `props` to the deps (listeners and view
   hiding would reset every render); keep the latest `onResize` in a ref instead. Do it in 1.4.
