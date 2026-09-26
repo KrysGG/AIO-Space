@@ -108,7 +108,7 @@ filling gaps, not writing it from scratch.
 - Resizing the whole window keeps all views aligned.
 - No stuck-hidden views after a drag ends outside the window (test releasing over another app).
 
-### - [ ] 1.5 Layout persistence and recovery
+### - [x] 1.5 Layout persistence and recovery
 **Goal:** The layout survives restarts and bad files.
 **Files:** `main/store/workspaceStore.ts`, `packages/core/src/workspace/workspace.ts`
 **Done when:**

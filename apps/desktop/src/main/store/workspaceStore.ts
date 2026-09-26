@@ -4,6 +4,7 @@ import {
   defaultWorkspace,
   migrateWorkspace,
   resolvePrivacy,
+  WORKSPACE_VERSION,
   type PrivacySettings,
   type Workspace,
 } from '@aio/core';
@@ -22,11 +23,17 @@ export class WorkspaceStore {
   async load(): Promise<void> {
     try {
       const raw: unknown = JSON.parse(await fs.readFile(this.file, 'utf8'));
+      const version = raw && typeof raw === 'object' ? (raw as { version?: unknown }).version : undefined;
+      if (version !== WORKSPACE_VERSION) console.warn('[store] unsupported workspace version, using defaults:', version);
       const parsed = WorkspaceSchema.safeParse(migrateWorkspace(raw));
       this.ws = parsed.success ? parsed.data : defaultWorkspace();
       if (!parsed.success) console.warn('[store] invalid workspace, using defaults', parsed.error.issues);
-    } catch {
+    } catch (err) {
       this.ws = defaultWorkspace();
+      // A missing file is a normal first run; anything else (unreadable, not JSON) is worth a warning.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.warn('[store] unreadable workspace, using defaults:', err instanceof Error ? err.message : err);
+      }
     }
   }
 
