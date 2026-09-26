@@ -2,6 +2,7 @@ import { BrowserWindow, shell, WebContentsView } from 'electron';
 import { getApp, hostMatches, type WebAppDef } from '@aio/core';
 import { IPC, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import { getAppSession } from '../sessions/appSession';
+import { followSignInUserAgent } from '../sessions/userAgent';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
 interface Entry {
@@ -78,6 +79,8 @@ export class ViewManager {
     });
     const wc = view.webContents;
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
+    followSignInUserAgent(wc);
+    wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
     this.guardNavigation(def, view);
     this.wireState(leafId, appId, view);
 
@@ -129,6 +132,7 @@ export class ViewManager {
       }
       if (hostMatches(host(url), def.popupHosts)) {
         // Sign-in popups. Child inherits this app's session; hardening applies to it too.
+        // TODO(ROADMAP 1.6): Reddit's "Continue with Google" popup opens but sign-in doesn't complete.
         return {
           action: 'allow',
           overrideBrowserWindowOptions: {

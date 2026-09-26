@@ -56,3 +56,12 @@ bounds match tile bodies and screenshots show no gaps. Chromium logs
 `'--ozone-platform=wayland' is not compatible with Vulkan` at startup; it is emitted while probing
 Vulkan (for WebGPU). Vulkan is `disabled_off` and GPU compositing, rasterization, WebGL and WebGPU
 stay enabled, so it is harmless. Don't switch to X11 or add GPU flags to silence it.
+
+**D-012: Firefox User-Agent on Google sign-in pages.**
+Google blocks sign-in from browsers it detects as embedded ("This browser or app may not be
+secure"), even with a clean Chrome UA. For `accounts.google.com` only, requests get a Firefox UA
+with `Sec-CH-UA*` client hints removed (`google-sign-in-ua` filter in `appSession.ts`), and tiles and
+sign-in popups switch `navigator.userAgent` to the same Firefox UA while their main frame is on that
+host (`followSignInUserAgent`). Every other page keeps the normal Chrome UA. The Firefox major is
+derived from Electron's Chrome major + 1 so it stays current across Electron upgrades. Verified with
+YouTube sign-in on Electron 44. If Google starts rejecting it, revisit here first.

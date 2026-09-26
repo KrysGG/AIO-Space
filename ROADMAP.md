@@ -421,7 +421,7 @@ Add items found while working on other steps here, with the step where they were
 - (0.4) Views are square and cover the tile's rounded bottom corners and its 3px inset focus bar
   beside the body. Use `WebContentsView.setBorderRadius()` and/or inset the view bounds to match
   the tile style. Cosmetic.
-- (1.2) Google sign-in (YouTube, and "Sign in with Google" elsewhere) fails with "This browser or
-  app may not be secure". Google blocks embedded browsers it detects. Look into it as part of 1.6
-  (sign-in popups); likely suspects are UA client hints (`Sec-CH-UA` brands) and other
-  Electron-specific signals.
+- (1.6) Reddit "Continue with Google" opens its popup, but sign-in doesn't complete (the Google UA
+  fix, D-012, works for in-tile sign-in like YouTube). The owner wants this revisited at the end of
+  Phase 1. For mobile (Phase 7), sign-in popups should probably become a redirect in the same
+  WebView (or the system browser, see 7.4) rather than a second window.
