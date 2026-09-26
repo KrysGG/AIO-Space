@@ -23,6 +23,7 @@ import {
 import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import { getAppSession } from '../sessions/appSession';
+import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
@@ -50,6 +51,7 @@ export class ViewManager {
   private hidden = false;
   /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
   private readonly pendingUrl = new Map<string, string>();
+  private lastPlacements: ViewPlacement[] = [];
   private pendingFocus: string | null = null;
   private lastUnread = '';
 
@@ -63,6 +65,7 @@ export class ViewManager {
   ) {}
 
   sync(placements: ViewPlacement[]): void {
+    this.lastPlacements = placements;
     const wanted = new Set(placements.map((p) => p.instanceId));
     for (const instanceId of [...this.views.keys()]) {
       if (!wanted.has(instanceId)) this.destroy(instanceId);
@@ -79,6 +82,14 @@ export class ViewManager {
       entry.view.setBounds(p.bounds);
       entry.view.setVisible(!this.hidden);
     }
+  }
+
+  /**
+   * Re-apply the last placements, e.g. after the workspace (and so the app catalog) was saved: a
+   * custom app added a moment ago may have been placed before main knew about it.
+   */
+  refresh(): void {
+    this.sync(this.lastPlacements);
   }
 
   private byLeaf(leafId: string): Entry | undefined {
@@ -135,7 +146,7 @@ export class ViewManager {
   }
 
   private create(leafId: string, instanceId: string, appId: string): Entry | undefined {
-    const def = getApp(appId);
+    const def = getApp(appId, this.store.catalog());
     if (!def) return undefined;
     const ses = getAppSession(def, () => this.store.privacyFor(appId));
     this.downloads.attach(ses);
@@ -162,6 +173,7 @@ export class ViewManager {
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
+    if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(def, wc);
 
     this.win.contentView.addChildView(view);
     const startUrl = def.kind === 'browser' ? this.pendingUrl.get(leafId) : undefined;
@@ -174,6 +186,15 @@ export class ViewManager {
 
     this.views.set(instanceId, entry);
     return entry;
+  }
+
+  /** A custom app's icon: its own favicon, fetched once through its own session (ROADMAP 2.7/4.2). */
+  private fetchIconOnce(def: WebAppDef, wc: WebContents): void {
+    wc.once('page-favicon-updated', (_e, favicons) => {
+      void fetchFavicon(wc.session, favicons).then((icon) => {
+        if (icon && !this.win.isDestroyed()) this.win.webContents.send(IPC.appIcon, def.id, icon);
+      });
+    });
   }
 
   /** Right-click menu (ROADMAP 2.4). Opened from a real right-click, so the native popup is allowed. */

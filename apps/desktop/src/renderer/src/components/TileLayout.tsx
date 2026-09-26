@@ -38,6 +38,9 @@ interface Props {
   onClear(leafId: string): void;
   /** A tile header was dragged onto another tile. */
   onSwap(fromLeafId: string, toLeafId: string): void;
+  /** "Add app" in an empty tile's launcher: the new app opens in that tile. */
+  onAddApp(leafId: string): void;
+  onRemoveApp(appId: string): void;
 }
 
 /** Pointer travel before a header press becomes a tile drag (so clicks still work). */
@@ -263,7 +266,12 @@ export function TileLayout(props: Props) {
             </header>
             <div className="tile-body">
               {t.appId === null ? (
-                <Launcher catalog={catalog} onPick={(id) => props.onOpenApp(id, t.leafId)} />
+                <Launcher
+                  catalog={catalog}
+                  onPick={(id) => props.onOpenApp(id, t.leafId)}
+                  onAddApp={() => props.onAddApp(t.leafId)}
+                  onRemoveApp={props.onRemoveApp}
+                />
               ) : (
                 // The native view covers this area. It shows only while views are hidden or loading.
                 <div className="tile-placeholder">

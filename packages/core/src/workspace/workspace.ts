@@ -1,4 +1,5 @@
 import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
+import type { WebAppDef } from '../catalog/apps';
 import { createLeaf, listLeaves, newInstanceId } from '../layout/tree';
 import type { LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
@@ -7,7 +8,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 3;
+export const WORKSPACE_VERSION = 4;
 
 export interface Space {
   id: string;
@@ -29,6 +30,8 @@ export interface Workspace {
   privacyOverrides: Record<string, Partial<PrivacySettings>>;
   /** Added in version 2. */
   browser: BrowserSettings;
+  /** User-added apps (ROADMAP 2.7). Added in version 4. */
+  customApps: WebAppDef[];
 }
 
 export function defaultWorkspace(): Workspace {
@@ -40,7 +43,13 @@ export function defaultWorkspace(): Workspace {
     privacy: { ...DEFAULT_PRIVACY },
     privacyOverrides: {},
     browser: { searchEngine: DEFAULT_SEARCH_ENGINE },
+    customApps: [],
   };
+}
+
+/** Built-in apps plus the user's own. */
+export function catalogOf(ws: Workspace, builtins: WebAppDef[]): WebAppDef[] {
+  return [...builtins, ...ws.customApps];
 }
 
 export function activeSpace(ws: Workspace): Space {
@@ -74,6 +83,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (!isSupportedWorkspaceVersion(w['version'])) return defaultWorkspace();
   if (w['version'] === 1) w = { ...w, version: 2, browser: { searchEngine: DEFAULT_SEARCH_ENGINE } };
   if (w['version'] === 2) w = { ...w, version: 3, spaces: addInstanceIds(w['spaces']) };
+  if (w['version'] === 3) w = { ...w, version: 4, customApps: [] };
   return w as unknown as Workspace;
 }
 

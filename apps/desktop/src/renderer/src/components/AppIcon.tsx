@@ -4,8 +4,8 @@ import type { WebAppDef } from '@aio/core';
 /**
  * Brand marks from Simple Icons (CC0 SVG paths; the logos remain their owners' trademarks), shown
  * in brand colour. X's brand colour is black, so it uses the text colour to stay visible on the
- * dark UI. Apps without an icon fall back to their text glyph.
- * TODO(ROADMAP 4.2): favicons for custom apps (2.7), fetched once through the app's own session.
+ * dark UI. Custom apps show their own favicon (fetched once through the app's session, D-022);
+ * anything else falls back to its text glyph.
  */
 const BRAND: Record<string, { path: string; color: string }> = {
   discord: { path: siDiscord.path, color: `#${siDiscord.hex}` },
@@ -15,7 +15,9 @@ const BRAND: Record<string, { path: string; color: string }> = {
   instagram: { path: siInstagram.path, color: `#${siInstagram.hex}` },
 };
 
-export function AppIcon({ app, size = 20 }: { app: Pick<WebAppDef, 'id' | 'glyph' | 'kind'>; size?: number }) {
+export function AppIcon({ app, size = 20 }: { app: Pick<WebAppDef, 'id' | 'glyph' | 'kind' | 'icon'>; size?: number }) {
+  // Custom apps: their own favicon (a data: URL checked by main's schema).
+  if (app.icon) return <img className="app-icon" src={app.icon} alt="" style={{ width: size, height: size, borderRadius: 4 }} />;
   const brand = BRAND[app.id];
   if (brand) {
     return (

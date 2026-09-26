@@ -3,6 +3,7 @@ import {
   activeSpace,
   addressToUrl,
   assignApp,
+  catalogOf,
   computeLayout,
   ensureFocus,
   findLeaf,
@@ -24,6 +25,7 @@ import {
   type Workspace,
 } from '@aio/core';
 import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
+import { AddAppDialog } from './components/AddAppDialog';
 import { DownloadsPanel } from './components/DownloadsPanel';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
@@ -35,7 +37,8 @@ const UNIT_AREA = { x: 0, y: 0, width: 1000, height: 1000 };
 
 export function App() {
   const [ws, setWs] = useState<Workspace | null>(null);
-  const [catalog, setCatalog] = useState<WebAppDef[]>([]);
+  // Built-in apps from main; the full catalog adds the user's own (workspace.customApps).
+  const [builtins, setBuiltins] = useState<WebAppDef[]>([]);
   // Keyed by instance id, so a page's title and state follow it when tiles are swapped.
   const [viewStates, setViewStates] = useState<Record<string, ViewState>>({});
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +46,8 @@ export function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [downloads, setDownloads] = useState<DownloadInfo[]>([]);
   const [downloadsOpen, setDownloadsOpen] = useState(false);
+  // Open "Add app" dialog; leafId = the empty tile it was opened from (the new app opens there).
+  const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
@@ -53,7 +58,7 @@ export function App() {
     Promise.all([window.aio.getWorkspace(), window.aio.getCatalog()])
       .then(([w, c]) => {
         setWs(w);
-        setCatalog(c);
+        setBuiltins(c);
       })
       .catch((e: unknown) => setError(String(e)));
     const offState = window.aio.onViewState((s) => setViewStates((prev) => ({ ...prev, [s.instanceId]: s })));
@@ -63,7 +68,13 @@ export function App() {
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
     const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
     const offDownloads = window.aio.onDownloads(setDownloads);
+    const offIcon = window.aio.onAppIcon((appId, icon) =>
+      setWs((prev) =>
+        prev ? { ...prev, customApps: prev.customApps.map((a) => (a.id === appId && !a.icon ? { ...a, icon } : a)) } : prev,
+      ),
+    );
     return () => {
+      offIcon();
       offDownloads();
       offState();
       offFocus();
@@ -87,6 +98,7 @@ export function App() {
 
   const closeHelp = useCallback(() => setHelpOpen(false), []);
   const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
+  const closeAdding = useCallback(() => setAdding(null), []);
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
   const refocusTile = useCallback(() => window.aio.focusView(focusedRef.current), []);
 
@@ -165,6 +177,7 @@ export function App() {
 
   const space = activeSpace(ws);
   const focused = space.focusedLeafId;
+  const catalog = catalogOf(ws, builtins);
 
   // Unread per app for the rail, from every tile's page title (all spaces: they all run).
   const unreadByApp: Record<string, Unread> = {};
@@ -195,6 +208,36 @@ export function App() {
   // Focus follows the app you dragged. Views are keyed by instance, so neither page reloads.
   const swap = (from: string, to: string): void =>
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: swapApps(s.layout, from, to), focusedLeafId: to })));
+
+  const addApp = (app: WebAppDef): void => {
+    const leafId = adding?.leafId ?? null;
+    edit((w) => {
+      const withApp = { ...w, customApps: [...w.customApps, app] };
+      return leafId
+        ? updateActiveSpace(withApp, (s) => ({ ...s, layout: assignApp(s.layout, leafId, app.id), focusedLeafId: leafId }))
+        : withApp;
+    });
+    setAdding(null);
+  };
+
+  const removeApp = (appId: string): void => {
+    const app = ws.customApps.find((a) => a.id === appId);
+    if (!app) return;
+    const ok = window.confirm(
+      `Remove ${app.name}? Tiles showing it will be emptied. Its login and site data stay on this computer until you clear app data.`,
+    );
+    if (!ok) return;
+    edit((w) => ({
+      ...w,
+      customApps: w.customApps.filter((a) => a.id !== appId),
+      spaces: w.spaces.map((s) => ({
+        ...s,
+        layout: listLeaves(s.layout)
+          .filter((l) => l.appId === appId)
+          .reduce((layout, l) => assignApp(layout, l.id, null), s.layout),
+      })),
+    }));
+  };
 
   const setSearchEngine = (leafId: string, searchEngine: SearchEngineId): void => {
     edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
@@ -240,8 +283,11 @@ export function App() {
         onClose={close}
         onClear={clear}
         onSwap={swap}
+        onAddApp={(leafId) => setAdding({ leafId })}
+        onRemoveApp={removeApp}
       />
       {helpOpen && <ShortcutsHelp onClose={closeHelp} onClosed={refocusTile} />}
+      {adding && <AddAppDialog catalog={catalog} onAdd={addApp} onClose={closeAdding} onClosed={refocusTile} />}
       {downloadsOpen && <DownloadsPanel downloads={downloads} onClose={closeDownloads} onClosed={refocusTile} />}
     </div>
   );

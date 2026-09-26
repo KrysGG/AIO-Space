@@ -2,6 +2,8 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.7] Custom apps: add any https site (name, address, allowed sites, permissions off by default) from the launcher; own session, favicon icon, saved in workspace v4.
+- [4.2] App icons complete: custom apps show their own favicon.
 - [2.6] Downloads to ~/Downloads (unique names) with progress, cancel, open / show in folder in a rail panel; risky file types are never opened from the app.
 - [2.4] Right-click menu in every web view: links, images, selected text, text fields with spelling suggestions, page navigation, Inspect in dev.
 - [2.3] Views follow running app instances (workspace v3), so swapping tiles keeps pages loaded; drag a tile header onto another tile to swap.

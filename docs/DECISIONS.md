@@ -117,7 +117,7 @@ brand black is invisible on the dark UI). It is a desktop devDependency: named i
 tree-shaken, adding ~18 kB to the renderer bundle. The Browser tile uses our own globe. Apps without
 an icon keep their text glyph. Colours are set with inline styles because stylesheet rules such as
 `.rail-btn svg { fill: none }` override SVG attributes. Done ahead of order at the owner's request;
-favicons for custom apps wait for 2.7 (TODO(ROADMAP 4.2) in `AppIcon.tsx`).
+favicons for custom apps arrived with 2.7 (D-022).
 
 **D-018: Views belong to running app instances, not tiles (workspace v3).**
 Each tile with an app stores an `instanceId` (core `LeafNode`), added in `WORKSPACE_VERSION` 3 with a
@@ -154,3 +154,14 @@ in main; the UI gets file names and byte counts. Actions (`downloads:action`: op
 clear) are validated with zod; "open" is refused in main for risky types (`isRiskyToOpen`: scripts,
 `.desktop`, installers, `.bin`...), not just hidden in the UI (SECURITY invariant 11). The list lives
 for the session only. The panel is a rail popover that hides views, like the shortcuts list.
+
+**D-022: Custom apps live in the workspace (v4) and are held to stricter rules than built-ins.**
+`workspace.customApps` (added in `WORKSPACE_VERSION` 4) holds user-added `WebAppDef`s. `makeCustomApp`
+(core) validates input and fills defaults: https start page, allowed sites = the site's domain
+(`siteDomain`, editable), permissions all off, sign-in popups for the app's sites plus Google, Apple
+and Microsoft sign-in. `CustomAppSchema` re-checks everything main stores: `custom-` ids, https,
+real hostnames only (never `*`), known permissions, icon = small raster data URL (no SVG). Main's
+catalog is built-ins + custom (`store.catalog()`); the UI merges the same way. Views are re-synced
+after every save, so a just-added app opens at once. The icon is the page's own favicon, fetched once
+through the app's session (`views/favicon.ts`: https, raster types, <= 100 KB). Removing an app
+empties its tiles; its partition data stays until "clear data" (3.9).

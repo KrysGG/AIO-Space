@@ -24,8 +24,10 @@ export interface WebAppDef {
   /** Hostnames allowed to open as popup windows (OAuth / sign-in flows). */
   popupHosts: string[];
   permissions: AppPermission[];
-  /** Short glyph used until real icons land (Phase 4). */
+  /** Short text glyph, shown when there's no icon. */
   glyph: string;
+  /** Custom apps: the site's favicon as a data: URL, fetched once through the app's own session. */
+  icon?: string;
 }
 
 export const BUILTIN_APPS: WebAppDef[] = [

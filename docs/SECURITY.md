@@ -31,6 +31,8 @@ These are enforced by review, and several by ESLint. Do not break them.
 11. Downloads only come from app sessions (the UI session cancels every download), are saved into the
     Downloads folder under a sanitized, never-overwriting name, and file types the desktop could run
     (scripts, `.desktop`, installers, binaries) are never opened from the app, only shown in the folder.
+12. User-added apps are validated like IPC input: https start page, real hostnames (never `*`),
+    permissions off unless granted, icons only as small raster data URLs.
 
 ## Packaging hardening (ROADMAP 5.3)
 

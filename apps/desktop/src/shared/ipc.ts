@@ -18,6 +18,7 @@ export const IPC = {
   openInNewTile: 'view:open-in-new-tile',
   downloadsUpdate: 'downloads:update',
   downloadsAction: 'downloads:action',
+  appIcon: 'app:icon',
   shortcut: 'shortcut',
 } as const;
 
@@ -98,6 +99,8 @@ export interface AioApi {
   onOpenInNewTile(cb: (request: OpenInNewTile) => void): () => void;
   /** Full list of this session's downloads, newest first, whenever it changes. */
   onDownloads(cb: (downloads: DownloadInfo[]) => void): () => void;
+  /** A custom app's favicon was fetched (data: URL); the UI stores it on the app. */
+  onAppIcon(cb: (appId: string, icon: string) => void): () => void;
   /** `clear` removes finished downloads from the list (the files stay); `id` is ignored for it. */
   downloadAction(id: string, action: DownloadAction): void;
 }

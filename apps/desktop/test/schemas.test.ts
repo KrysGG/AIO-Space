@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createLeaf, defaultWorkspace, splitLeaf, type LayoutNode } from '@aio/core';
+import { createLeaf, defaultWorkspace, makeCustomApp, splitLeaf, type LayoutNode, type WebAppDef } from '@aio/core';
 import {
+  CustomAppSchema,
   DownloadActionSchema,
   LayoutSchema,
   MAX_TILES,
@@ -149,4 +150,39 @@ describe('DownloadActionSchema', () => {
     expect(DownloadActionSchema.safeParse({ id: '/etc/passwd', action: 'open' }).success).toBe(false);
     expect(DownloadActionSchema.safeParse({ action: 'open' }).success).toBe(false);
   });
+});
+
+describe('CustomAppSchema', () => {
+  const made = makeCustomApp({ name: 'WhatsApp', url: 'web.whatsapp.com', permissions: ['notifications'] });
+  if (!made.ok) throw new Error(made.error);
+  const app: WebAppDef = made.app;
+  const ok = (a: unknown) => CustomAppSchema.safeParse(a).success;
+
+  it('accepts what makeCustomApp builds, with or without an icon', () => {
+    expect(ok(app)).toBe(true);
+    expect(ok({ ...app, icon: 'data:image/png;base64,iVBORw0KGgo=' })).toBe(true);
+  });
+
+  it('never lets a custom app go everywhere or start off https', () => {
+    expect(ok({ ...app, allowedHosts: ['*'] })).toBe(false);
+    expect(ok({ ...app, popupHosts: ['*'] })).toBe(false);
+    expect(ok({ ...app, allowedHosts: [] })).toBe(false);
+    expect(ok({ ...app, url: 'http://web.whatsapp.com/' })).toBe(false);
+    expect(ok({ ...app, url: 'javascript:alert(1)' })).toBe(false);
+    expect(ok({ ...app, kind: 'browser' })).toBe(false);
+  });
+
+  it('rejects built-in ids, unknown permissions and non-raster icons', () => {
+    expect(ok({ ...app, id: 'discord' })).toBe(false);
+    expect(ok({ ...app, permissions: ['geolocation'] })).toBe(false);
+    expect(ok({ ...app, icon: 'data:image/svg+xml;base64,PHN2Zz4=' })).toBe(false);
+    expect(ok({ ...app, icon: 'https://evil.example/x.png' })).toBe(false);
+    expect(ok({ ...app, icon: 'data:image/png;base64,' + 'A'.repeat(150_000) })).toBe(false);
+  });
+
+  it('is part of the workspace, with unique ids', () => {
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), customApps: [app] }).success).toBe(true);
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), customApps: [app, app] }).success).toBe(false);
+  });
+
 });

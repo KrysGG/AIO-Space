@@ -181,6 +181,27 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .launcher-item:hover { border-color: var(--muted); }
+.launcher-cell { position: relative; display: grid; }
+.launcher-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.launcher-add .launcher-glyph { font-size: 22px; font-weight: 400; color: var(--muted); }
+.launcher-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  display: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: var(--tile);
+  color: var(--muted);
+  cursor: pointer;
+}
+.launcher-cell:hover .launcher-remove, .launcher-remove:focus-visible { display: grid; }
+.launcher-remove:hover { color: var(--text); }
+.launcher-remove svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .launcher-glyph {
   width: 40px;
   height: 40px;
@@ -299,3 +320,33 @@ button { font: inherit; color: inherit; }
 .text-btn { padding: 2px 0; border: 0; background: none; color: var(--focus); font-size: 12px; cursor: pointer; }
 .text-btn:hover { text-decoration: underline; }
 .rail-badge-info { background: var(--focus); color: var(--ink); }
+
+/* ---- Add app dialog --------------------------------------------------------- */
+.modal-backdrop { display: grid; place-items: center; background: rgb(0 0 0 / 0.35); }
+.popover.modal { position: static; }
+.add-app { width: min(440px, calc(100vw - 32px)); display: grid; gap: 12px; }
+.add-app .popover-hint { margin: 0; }
+.field { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.field > span, .field > legend { padding: 0; font-size: 12px; font-weight: 600; }
+.field small { color: var(--muted); font-size: 11px; }
+.field input:not([type='checkbox']) {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--text);
+  font: inherit;
+  user-select: text;
+}
+.field input:not([type='checkbox']):focus { outline: none; border-color: var(--focus); }
+.field input::placeholder { color: var(--muted); }
+.checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin: 2px 0; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.check input { accent-color: var(--focus); }
+.form-error { margin: 0; color: #f08a8a; font-size: 12px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.btn { height: 30px; padding: 0 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--ink); color: var(--text); cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn-primary { border-color: var(--focus); background: var(--focus); color: var(--ink); font-weight: 600; }
+.btn-primary:hover { filter: brightness(1.08); border-color: var(--focus); }

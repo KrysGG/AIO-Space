@@ -1,5 +1,17 @@
 import { z } from 'zod';
-import { isWebUrl, listLeaves, MAX_TILES, SEARCH_ENGINES, type LayoutNode, type SearchEngineId, type Workspace } from '@aio/core';
+import {
+  isValidHostname,
+  isWebUrl,
+  listLeaves,
+  MAX_CUSTOM_APPS,
+  MAX_TILES,
+  SEARCH_ENGINES,
+  type AppPermission,
+  type LayoutNode,
+  type SearchEngineId,
+  type WebAppDef,
+  type Workspace,
+} from '@aio/core';
 
 /** Every IPC payload from the renderer is untrusted until parsed here. */
 
@@ -27,6 +39,30 @@ export const LayoutSchema: z.ZodType<LayoutNode> = z.lazy(() =>
     }),
   ]),
 );
+
+const Host = z.string().max(253).refine(isValidHostname, 'not a hostname');
+const PERMISSIONS: [AppPermission, ...AppPermission[]] = ['media', 'notifications', 'fullscreen', 'clipboard-sanitized-write', 'display-capture'];
+/** Favicon stored as a data URL: small raster images only (no SVG). */
+const IconDataUrl = z
+  .string()
+  .max(140_000)
+  .regex(/^data:image\/(png|x-icon|vnd\.microsoft\.icon|gif|webp|jpeg);base64,[A-Za-z0-9+/]+=*$/);
+
+/**
+ * User-added apps (ROADMAP 2.7). Stricter than built-ins: https start page, real hostnames only
+ * (never '*', which only the Browser may use), known permissions.
+ */
+export const CustomAppSchema: z.ZodType<WebAppDef> = z.object({
+  id: z.string().regex(/^custom-[a-z0-9-]{1,40}$/),
+  name: z.string().trim().min(1).max(40),
+  url: z.string().max(2048).refine((u) => isWebUrl(u) && u.startsWith('https://'), 'https only'),
+  kind: z.literal('app'),
+  allowedHosts: z.array(Host).min(1).max(20),
+  popupHosts: z.array(Host).max(30),
+  permissions: z.array(z.enum(PERMISSIONS)).max(PERMISSIONS.length),
+  glyph: z.string().min(1).max(3),
+  icon: IconDataUrl.optional(),
+});
 
 export const PrivacySchema = z.object({
   blockAds: z.boolean(),
@@ -62,6 +98,10 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   browser: z.object({
     searchEngine: SearchEngineSchema,
   }),
+  customApps: z
+    .array(CustomAppSchema)
+    .max(MAX_CUSTOM_APPS)
+    .refine((apps) => unique(apps.map((a) => a.id)), 'duplicate app id'),
 });
 
 const Bound = z.number().int().min(0).max(20000);

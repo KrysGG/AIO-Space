@@ -39,6 +39,7 @@ export function registerIpc(
     guard(e);
     const ws = WorkspaceSchema.parse(raw);
     await store.save(ws);
+    views.refresh(); // a custom app added just now can get its view
   });
 
   ipcMain.handle(IPC.catalogGet, (e) => {

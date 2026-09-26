@@ -86,7 +86,7 @@ describe('migrateWorkspace', () => {
       spaces: [{ id: 'space_main', name: 'Main', focusedLeafId: 'leaf_a', layout: { type: 'split', id: 'split_1', direction: 'row', ratio: 0.5, first: leaf('leaf_a', 'discord'), second: leaf('leaf_b', null) } }],
     };
     const out = migrateWorkspace(v2);
-    expect(out.version).toBe(3);
+    expect(out.version).toBe(WORKSPACE_VERSION); // v2 -> v3 -> ... current
     const layout = out.spaces[0]!.layout as { first: { instanceId: string | null }; second: { instanceId: string | null } };
     expect(layout.first.instanceId).toMatch(/^app_[a-z0-9]+$/);
     expect(layout.second.instanceId).toBeNull();

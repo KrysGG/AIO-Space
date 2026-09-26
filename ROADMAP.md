@@ -180,7 +180,7 @@ Handle `will-download` per session: save to `~/Downloads`, progress in a small d
 the rail, open file / show in folder. Reject downloads from the UI session.
 **Done when:** Downloading a file from any tile works and shows progress.
 
-### - [ ] 2.7 Custom apps
+### - [x] 2.7 Custom apps
 Add any https site as an app: name, URL, allowed hosts (defaults to the site's domain),
 permissions (all off by default), glyph or favicon. Stored in the workspace (bump
 `WORKSPACE_VERSION`, add migration). Catalog in main merges built-ins and custom apps.
@@ -293,7 +293,7 @@ All colors in `styles.css` are CSS variables. Theme = JSON of variable values; b
 light, high contrast; user themes importable. Respect system light/dark by default.
 **Done when:** Switching theme restyles the whole UI instantly and persists.
 
-### - [ ] 4.2 Real app icons
+### - [x] 4.2 Real app icons
 Bundled SVG icons for built-ins; favicon fetched once and cached for custom apps (fetched through
 the app's own session). Replace text glyphs.
 **Done when:** Rail and launcher show proper icons.

@@ -1,11 +1,14 @@
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
 import {
+  BUILTIN_APPS,
+  catalogOf,
   defaultWorkspace,
   isSupportedWorkspaceVersion,
   migrateWorkspace,
   resolvePrivacy,
   type PrivacySettings,
+  type WebAppDef,
   type Workspace,
 } from '@aio/core';
 import { WorkspaceSchema } from '../ipc/schemas';
@@ -52,6 +55,11 @@ export class WorkspaceStore {
       await fs.rename(tmp, this.file);
     });
     return this.writing.catch((err) => console.error('[store] save failed', err));
+  }
+
+  /** Built-in apps plus the user's own (ROADMAP 2.7). */
+  catalog(): WebAppDef[] {
+    return catalogOf(this.ws, BUILTIN_APPS);
   }
 
   privacyFor(appId: string): PrivacySettings {
