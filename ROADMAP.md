@@ -116,7 +116,7 @@ filling gaps, not writing it from scratch.
 - Replacing `workspace.json` with garbage starts with the default layout and logs a warning.
 - Killing the app mid-save never corrupts the file (writes are atomic).
 
-### - [ ] 1.6 Verify navigation and popup rules
+### - [x] 1.6 Verify navigation and popup rules
 **Goal:** Apps stay in their lane.
 **Done when:**
 - A link to an outside site from Reddit opens in the system browser, not inside the tile.
@@ -421,7 +421,6 @@ Add items found while working on other steps here, with the step where they were
 - (0.4) Views are square and cover the tile's rounded bottom corners and its 3px inset focus bar
   beside the body. Use `WebContentsView.setBorderRadius()` and/or inset the view bounds to match
   the tile style. Cosmetic.
-- (1.6) Reddit "Continue with Google" opens its popup, but sign-in doesn't complete (the Google UA
-  fix, D-012, works for in-tile sign-in like YouTube). The owner wants this revisited at the end of
-  Phase 1. For mobile (Phase 7), sign-in popups should probably become a redirect in the same
-  WebView (or the system browser, see 7.4) rather than a second window.
+- (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a
+  second window. On mobile they should probably become a redirect in the same WebView (or the system
+  browser, see 7.4) rather than a second window. Owner's request.

@@ -131,9 +131,7 @@ export class ViewManager {
         return { action: 'deny' };
       }
       if (hostMatches(host(url), def.popupHosts)) {
-        // Sign-in popups. Child inherits this app's session; hardening applies to it too.
-        // TODO(ROADMAP 1.6): Reddit's "Continue with Google" popup opens but sign-in doesn't complete.
-        return {
+        // Sign-in popups. Child inherits this app's session; hardening applies to it too.        return {
           action: 'allow',
           overrideBrowserWindowOptions: {
             parent: this.win,

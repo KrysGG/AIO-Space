@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [1.6] Verified navigation rules (outside links to system browser, no javascript:/file:, Browser tile goes anywhere) and Google sign-in in tiles and popups via a Firefox UA on accounts.google.com (D-012).
 - [1.8] Desktop tests: vitest for schemas, UA and shield filters; Electron smoke test (launch, open Browser, split, close) in `pnpm test` and CI via xvfb-run.
 - [1.7] Verified Discord voice both ways over PipeWire (mic granted by app permissions); Browser tile gets NotAllowedError for the mic.
 - [1.5] Verified layout restore after relaunch and atomic saves (15/15 SIGKILL-mid-save runs valid); unreadable or wrong-version workspace files now log a warning.
