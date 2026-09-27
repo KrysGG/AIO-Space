@@ -16,6 +16,9 @@ import {
   MAX_TILES,
   nextZoom,
   partitionFor,
+  computeLayout,
+  tileBodyRect,
+  type Rect,
   SEARCH_ENGINES,
   sumUnread,
   unreadFromTitle,
@@ -24,7 +27,7 @@ import {
 } from '@aio/core';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
-import { IPC, VIEW_RADIUS, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
+import { IPC, TILE_GUTTER, TILE_HEADER, VIEW_INSET, VIEW_RADIUS, type ViewFrame, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
 import { getDomain } from 'tldts';
@@ -95,6 +98,8 @@ export class ViewManager {
   /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
   private readonly pendingUrl = new Map<string, string>();
   private lastPlacements: ViewPlacement[] = [];
+  /** The UI's layout and tile-area margins, for placing views on window resize without waiting for it. */
+  private lastFrame: ViewFrame | undefined;
   private hideGeneration = 0;
   private lastKeep: string[] = [];
   /** Slept apps (ROADMAP 2.9): the page they were on, to reload when their space is shown again. */
@@ -118,6 +123,24 @@ export class ViewManager {
     // dragged over ours and away again (a compositor damage-tracking quirk, not our layout code).
     // Regaining focus is the reliable moment to force a clean repaint of what's on screen.
     this.win.on('focus', () => this.invalidateVisible());
+    // Move views with the window edge as it resizes: main knows the layout, so no round trip to the UI
+    // (whose own update arrives a few frames later and then matches).
+    this.win.on('resize', () => {
+      if (this.lastFrame) this.sync(this.lastPlacements, this.lastKeep);
+    });
+  }
+
+  /** View bounds per tile for the current window size, from the UI's layout and margins. */
+  private boundsFromFrame(frame: ViewFrame): Map<string, Rect> {
+    const { width, height } = this.win.getContentBounds();
+    const { left, top, right, bottom } = frame.insets;
+    const area = { x: 0, y: 0, width: Math.max(0, width - left - right), height: Math.max(0, height - top - bottom) };
+    const out = new Map<string, Rect>();
+    for (const t of computeLayout(frame.layout, area, TILE_GUTTER).tiles) {
+      const body = tileBodyRect(t.rect, TILE_HEADER, VIEW_INSET);
+      out.set(t.leafId, { x: Math.round(body.x + left), y: Math.round(body.y + top), width: body.width, height: body.height });
+    }
+    return out;
   }
 
   /** Force every currently-visible view to repaint (see the focus handler above). */
@@ -133,9 +156,12 @@ export class ViewManager {
    * `keep`, which belong to other spaces (ROADMAP 2.8); destroy everything else. Views for `keep`
    * apps that aren't running yet are only created once their space is shown.
    */
-  sync(placements: ViewPlacement[], keep: string[] = this.lastKeep): void {
+  sync(placements: ViewPlacement[], keep: string[] = this.lastKeep, frame: ViewFrame | undefined = this.lastFrame): void {
     this.lastPlacements = placements;
     this.lastKeep = keep;
+    this.lastFrame = frame;
+    // Positions for the window as it is now (the UI measured it a moment ago, possibly smaller or larger).
+    const current = frame ? this.boundsFromFrame(frame) : undefined;
     const shown = new Set(placements.map((p) => p.instanceId));
     const kept = new Set(keep);
     for (const [instanceId, entry] of [...this.views]) {
@@ -160,7 +186,7 @@ export class ViewManager {
       entry ??= this.create(p.leafId, p.instanceId, p.appId, p.profile, this.wake(p.instanceId, p.appId));
       if (!entry) continue;
       entry.leafId = p.leafId;
-      entry.view.setBounds(p.bounds);
+      entry.view.setBounds(current?.get(p.leafId) ?? p.bounds);
       entry.view.setVisible(!this.hidden && !entry.httpsFailed);
     }
   }
@@ -191,7 +217,9 @@ export class ViewManager {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewsSnapshots, {}); // views are back on top
       return;
     }
-    void this.snapshot().then(() => {
+    // "Reduce animations and effects": no snapshots (they cost a capture and encode per page).
+    const shots = this.store.get().ui.reduceMotion ? this.sendNoSnapshots() : this.snapshot();
+    void shots.then(() => {
       if (generation !== this.hideGeneration) return; // shown again meanwhile
       this.hidden = true;
       this.applyVisibility();
@@ -207,6 +235,10 @@ export class ViewManager {
       // compositor can show its old frame in the wrong place (torn strips after a divider drag).
       if (!this.hidden) view.webContents.invalidate();
     }
+  }
+
+  private async sendNoSnapshots(): Promise<void> {
+    if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewsSnapshots, {});
   }
 
   /** JPEG snapshots of the visible views, keyed by instance id; a slow page is simply skipped. */

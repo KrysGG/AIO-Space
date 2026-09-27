@@ -2,7 +2,7 @@
  * The ONLY contract between renderer (UI) and main. Keep it small.
  * Every channel added here must also get a zod schema in main/ipc/schemas.ts.
  */
-import type { FocusDirection, Rect, SplitDirection, WebAppDef, Workspace, ZoomChange } from '@aio/core';
+import type { FocusDirection, LayoutNode, Rect, SplitDirection, WebAppDef, Workspace, ZoomChange } from '@aio/core';
 
 export const IPC = {
   workspaceGet: 'workspace:get',
@@ -56,6 +56,19 @@ export interface FilterListStatus {
  */
 export const VIEW_INSET = 4;
 export const VIEW_RADIUS = 8;
+/** Tile header height and the gap between tiles (px). */
+export const TILE_HEADER = 34;
+export const TILE_GUTTER = 6;
+
+/**
+ * The active space's layout and where the tile area sits in the window (distance from each edge).
+ * With it, main recomputes view positions itself when the window resizes, instead of waiting a few
+ * frames for the UI to measure and send them (which made pages lag behind their tiles).
+ */
+export interface ViewFrame {
+  layout: LayoutNode;
+  insets: { left: number; top: number; right: number; bottom: number };
+}
 
 /** Where a native web view should sit, in window content coordinates (DIP). */
 export interface ViewPlacement {
@@ -137,7 +150,7 @@ export interface AioApi {
    * Where the active space's views go, plus `keep`: instance ids of apps in other spaces, which
    * main hides but keeps running (ROADMAP 2.8). Any other view is destroyed.
    */
-  syncViews(placements: ViewPlacement[], keep: string[]): void;
+  syncViews(placements: ViewPlacement[], keep: string[], frame?: ViewFrame): void;
   setViewsHidden(hidden: boolean): void;
   viewCommand(leafId: string, command: ViewCommand): void;
   /** Give keyboard focus to a tile's web view, or to the UI when `leafId` is null or the tile is empty. */

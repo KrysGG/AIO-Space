@@ -344,3 +344,16 @@ their tiles), so toggling first hides the views behind snapshots (as for drags, 
 sharp and 1:1), animates the rail width (220 ms) with the buttons fading out and the edge fading in,
 then shows the views at their final size. With a popover open, no apps, or reduced motion it just
 switches.
+
+**D-039: Seamless resizing and one motion system, with a "Reduce animations and effects" switch.**
+Owner feedback: tiles lagged when resizing. (1) Window resize: the UI now sends its layout tree and
+the tile area's margins with each `views:sync` (`ViewFrame`), and main recomputes every view's bounds
+on `win.on('resize')` with the same core math (`computeLayout` + `tileBodyRect`), in the same tick as
+the resize; main also prefers these over the UI's (possibly a frame old) numbers. Verified: bounds match
+the DOM's tile bodies to the pixel at several sizes. (2) Drags and the rail animation: snapshots are
+now shown sharp at 1:1, pinned top-left like the live page (cropped or revealing a strip, never
+scaled), over a blurred stretched copy that fills revealed strips; the frosted look (D-031) is gone.
+(3) Motion tokens (`--ease-out`, `--ease-spring`, `--dur-*`): panels slide/pop in from their anchor,
+modals settle, badges pop, controls press; tiles fade in (opacity only, since their views appear at
+full size at once). (4) `workspace.ui.reduceMotion` (v13, Settings): instant transitions, no glass
+blur, and main skips page snapshots; the system reduced-motion preference also turns animations off.

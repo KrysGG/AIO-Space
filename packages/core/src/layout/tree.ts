@@ -143,6 +143,20 @@ export function swapApps(root: LayoutNode, a: string, b: string): LayoutNode {
  * Turn the tree into absolute rectangles. `gutter` is the divider thickness in px.
  * Results are rounded to whole pixels so native views line up exactly.
  */
+/**
+ * Where a tile's web view goes: the tile minus its header, inset from its sides and bottom so the
+ * tile's rounded frame shows around it. Shared by the UI and the desktop main process, which both
+ * place views and must agree to the pixel.
+ */
+export function tileBodyRect(tile: Rect, header: number, inset: number): Rect {
+  return {
+    x: tile.x + inset,
+    y: tile.y + header,
+    width: Math.max(0, tile.width - 2 * inset),
+    height: Math.max(0, tile.height - header - inset),
+  };
+}
+
 export function computeLayout(root: LayoutNode, area: Rect, gutter = 6): ComputedLayout {
   const out: ComputedLayout = { tiles: [], dividers: [] };
   const walk = (n: LayoutNode, r: Rect): void => {

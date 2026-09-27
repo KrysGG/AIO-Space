@@ -2,24 +2,28 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   computeLayout,
   ratioFromPointer,
+  tileBodyRect,
   titleWithoutUnread,
   zoomLabel,
   unreadFromTitle,
   type DividerRect,
   type AppProfile,
   type LayoutNode,
+  type Rect,
   type SearchEngineId,
   type SplitDirection,
   type WebAppDef,
 } from '@aio/core';
-import { VIEW_INSET, type ViewPlacement, type ViewState } from '../../../shared/ipc';
+import { TILE_GUTTER, TILE_HEADER, VIEW_INSET, type ViewFrame, type ViewPlacement, type ViewState } from '../../../shared/ipc';
 import { AddressBar } from './AddressBar';
 import { AppIcon } from './AppIcon';
 import { UnreadBadge } from './UnreadBadge';
 import { Launcher } from './Launcher';
 
-const GUTTER = 6;
-const HEADER = 34;
+const GUTTER = TILE_GUTTER;
+const HEADER = TILE_HEADER;
+
+const offset = (r: Rect, dx: number, dy: number): Rect => ({ x: Math.round(r.x + dx), y: Math.round(r.y + dy), width: r.width, height: r.height });
 
 interface Props {
   layout: LayoutNode;
@@ -109,15 +113,19 @@ export function TileLayout(props: Props) {
         instanceId: t.instanceId,
         appId: t.appId,
         profile: t.profile,
-        bounds: {
-          x: Math.round(origin.left + t.rect.x + VIEW_INSET),
-          y: Math.round(origin.top + t.rect.y + HEADER),
-          width: Math.max(0, t.rect.width - 2 * VIEW_INSET),
-          height: Math.max(0, t.rect.height - HEADER - VIEW_INSET),
-        },
+        bounds: offset(tileBodyRect(t.rect, HEADER, VIEW_INSET), origin.left, origin.top),
       }));
-    window.aio.syncViews(placements, keepKey ? keepKey.split('|') : []);
-  }, [computed, size, keepKey]);
+    const frame: ViewFrame = {
+      layout,
+      insets: {
+        left: origin.left,
+        top: origin.top,
+        right: Math.max(0, window.innerWidth - origin.right),
+        bottom: Math.max(0, window.innerHeight - origin.bottom),
+      },
+    };
+    window.aio.syncViews(placements, keepKey ? keepKey.split('|') : [], frame);
+  }, [computed, size, keepKey, layout]);
 
   // Latest onResize for the drag listeners, so they aren't re-attached (and views re-shown) every render.
   const onResizeRef = useRef(props.onResize);
@@ -358,7 +366,11 @@ export function TileLayout(props: Props) {
                       <small>The choice is remembered for {state.httpsFailed.host}. You can undo it in the menu.</small>
                     </div>
                   ) : t.instanceId && props.snapshots[t.instanceId] ? (
-                    <img className="tile-snapshot" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
+                    <>
+                      {/* Blurred fill for any area the still doesn't cover yet (the tile grew), under the sharp still. */}
+                      <img className="tile-snapshot-fill" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
+                      <img className="tile-snapshot" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
+                    </>
                   ) : state?.crashed ? (
                     'This app stopped. Press reload to restart it.'
                   ) : (

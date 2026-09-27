@@ -59,7 +59,7 @@ export function registerIpc(
   ipcMain.on(IPC.viewsSync, (e, raw: unknown) => {
     if (!fromUi(e)) return;
     const parsed = ViewsSyncSchema.safeParse(raw);
-    if (parsed.success) views.sync(parsed.data.placements, parsed.data.keep);
+    if (parsed.success) views.sync(parsed.data.placements, parsed.data.keep, parsed.data.frame);
   });
 
   ipcMain.on(IPC.viewsSetHidden, (e, raw: unknown) => {

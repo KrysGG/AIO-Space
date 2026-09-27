@@ -78,6 +78,11 @@ export function App() {
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
   /** The rail is animating (D-038): views are hidden and sharp snapshots stand in for them. */
   const [railMoving, setRailMoving] = useState(false);
+  // "Reduce animations and effects": one class on <html> turns off every transition and the glass blur.
+  const reduceMotion = ws?.ui.reduceMotion ?? false;
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('instant', reduceMotion);
+  }, [reduceMotion]);
   const snapshotWaiter = useRef<(() => void) | null>(null);
   /** Logins stored without a system keyring (ROADMAP 3.8); shown in the menu until dismissed. */
   const [weakKeyring, setWeakKeyring] = useState(false);
@@ -168,7 +173,7 @@ export function App() {
       const flip = (): void => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const hasViews = activeSpaceHasApps(ws);
       const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null;
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const reduceMotion = ws.ui.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // Views already hidden (a popover is open), none to hide, or no animation wanted: just switch.
       if (!hasViews || popoverOpen || reduceMotion) return flip();
       setRailMoving(true);
@@ -444,6 +449,7 @@ export function App() {
           keyringNotice={keyringNotice}
           onDismissKeyring={() => edit((w) => dismissNotice(w, 'weak-keyring'))}
           onClearAll={() => window.aio.clearData({ all: true })}
+          onReduceMotion={(on) => edit((w) => ({ ...w, ui: { ...w.ui, reduceMotion: on } }))}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}

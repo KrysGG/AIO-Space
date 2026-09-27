@@ -120,7 +120,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
     )
     .refine((p) => Object.keys(p).length <= 100, 'too many apps with accounts'),
   httpAllowedHosts: z.array(Host).max(200).refine(unique, 'duplicate host'),
-  ui: z.object({ railCollapsed: z.boolean() }),
+  ui: z.object({ railCollapsed: z.boolean(), reduceMotion: z.boolean() }),
   forgetOnClose: z.array(Id).max(200).refine(unique, 'duplicate app id'),
   dismissedNotices: z.array(z.enum(NOTICE_IDS)).max(NOTICE_IDS.length).refine(unique, 'duplicate notice'),
   customApps: z
@@ -145,8 +145,15 @@ export const PlacementsSchema = z
   .refine((ps) => unique(ps.map((p) => p.instanceId)) && unique(ps.map((p) => p.leafId)), 'duplicate tile or instance');
 
 /** `views:sync`: the active space's placements, and instance ids of other spaces' apps to keep alive. */
+const Inset = z.number().min(0).max(20000);
+export const ViewFrameSchema = z.object({
+  layout: LayoutSchema,
+  insets: z.object({ left: Inset, top: Inset, right: Inset, bottom: Inset }),
+});
+
 export const ViewsSyncSchema = z.object({
   placements: PlacementsSchema,
+  frame: ViewFrameSchema.optional(),
   keep: z
     .array(Id)
     .max(MAX_TILES * MAX_SPACES)

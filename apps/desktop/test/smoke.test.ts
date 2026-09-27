@@ -152,4 +152,25 @@ describe('desktop smoke test', () => {
     await expect.poll(railWidth).toBe(before.rail);
     await expect.poll(tileLeft).toBe(before.tile);
   });
+
+  it('keeps web views on their tiles while the window resizes, without waiting for the UI', async () => {
+    await ui.locator('.tile-body button', { hasText: 'Browser' }).first().click();
+    await expect.poll(viewCount).toBe(1);
+    await tiles().first().getByRole('button', { name: 'Split right' }).click();
+    await expect.poll(() => tiles().count()).toBe(2);
+    // Resize and read the view in the same tick: main has already moved it (the UI hasn't re-rendered yet).
+    const sameTick = await app.evaluate(({ BaseWindow }) => {
+      const win = BaseWindow.getAllWindows()[0]!;
+      win.setContentSize(1100, 720);
+      return (win.contentView.children[0] as Electron.WebContentsView).getBounds();
+    });
+    const body = async () => {
+      const r = (await tiles().first().locator('.tile-body').boundingBox())!;
+      return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) };
+    };
+    await expect.poll(body).toEqual(sameTick);
+    await tiles().nth(1).getByRole('button', { name: 'Close tile' }).click();
+    await tiles().first().getByRole('button', { name: 'Close tile' }).click();
+    await expect.poll(viewCount).toBe(0);
+  });
 });

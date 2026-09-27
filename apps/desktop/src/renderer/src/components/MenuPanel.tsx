@@ -31,6 +31,7 @@ interface Props {
   keyringNotice: boolean;
   onDismissKeyring(): void;
   onClearAll(): Promise<void>;
+  onReduceMotion(on: boolean): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -39,7 +40,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
@@ -161,6 +162,13 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               </button>
             </div>
           )}
+          <label className="shield-switch">
+            <span>
+              Reduce animations and effects
+              <small>Instant transitions, no glass blur or page previews. Saves CPU and GPU on slower machines.</small>
+            </span>
+            <input type="checkbox" checked={ws.ui.reduceMotion} onChange={(e) => onReduceMotion(e.target.checked)} />
+          </label>
           <label className="setting">
             <span>Search engine for the Browser tile</span>
             <select value={ws.browser.searchEngine} onChange={(e) => onSearchEngine(e.target.value as SearchEngineId)}>

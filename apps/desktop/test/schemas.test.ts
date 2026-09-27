@@ -276,3 +276,22 @@ describe('ClearDataSchema (data:clear)', () => {
     }
   });
 });
+
+describe('ViewsSyncSchema frame (window-resize placement)', () => {
+  const layout = createLeaf(null);
+  it('accepts a layout with the tile area margins, and stays optional', () => {
+    expect(ViewsSyncSchema.safeParse({ placements: [], keep: [] }).success).toBe(true);
+    expect(ViewsSyncSchema.safeParse({ placements: [], keep: [], frame: { layout, insets: { left: 62, top: 6, right: 6, bottom: 6 } } }).success).toBe(true);
+  });
+
+  it('rejects bad layouts and margins', () => {
+    for (const frame of [
+      { layout, insets: { left: -1, top: 6, right: 6, bottom: 6 } },
+      { layout, insets: { left: 6, top: 6, right: 6 } },
+      { layout: { type: 'leaf' }, insets: { left: 6, top: 6, right: 6, bottom: 6 } },
+      { insets: { left: 6, top: 6, right: 6, bottom: 6 } },
+    ]) {
+      expect(ViewsSyncSchema.safeParse({ placements: [], keep: [], frame }).success, JSON.stringify(frame)).toBe(false);
+    }
+  });
+});
