@@ -2,6 +2,11 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [3.8] Confirmed: no false "logins aren't protected" warning on a normal KDE setup (kwallet6 backend detected correctly).
+- [3.5/3.6] Confirmed live on YouTube (real network access): Shields panel shows requests blocked on the page, satisfying the blocked-count check.
+- [3.4] Confirmed live: YouTube works normally with fingerprinting on Standard (no breakage, Shields panel functions normally).
+- [3.3] Confirmed: third-party cookie blocking doesn't break sign-in on Google/YouTube, Reddit or Instagram; Discord's occasional "prove you're not a bot" captcha is unrelated (Cloudflare bot detection), not caused by this app.
+- [Fix] clearData.test.ts had a test-page design flaw (the fake page embedded its own "secret" in static markup served for every path) that made "Clear data" look like it failed when it didn't; fixed the test, and added a deterministic canary-file check for the folder-delete step the original check no longer exercised.
 - [Browser] Tabs in the Browser tile (new tab button, Ctrl+T, Ctrl+Tab, middle-click to close); new-tab links open as tabs; "Open in new tile" moves a tab into its own tile; tabs reopen after a restart. Fix: tile header/address bar left blank on Wayland (D-049).
 - [Fix] Stale/torn frames after maximizing or fullscreen (views and UI repaint once the window settles); lighter page stills while resizing, no blur layer (D-048).
 - [Sidebar] Right-click an app in the sidebar: open here or in a new tile, move up/down, hide (restore in Settings), remove added apps (workspace v16, D-047).

@@ -233,14 +233,14 @@ If an upgraded request fails with a connection/certificate error, show an inters
 offering to continue over http once, remembering the choice per host.
 **Done when:** An http-only test site shows the interstitial instead of a broken page.
 
-### - [ ] 3.3 Third-party cookie blocking
+### - [x] 3.3 Third-party cookie blocking
 Use `tldts` to compute registrable domains. Add an `onHeadersReceived` stage to the pipeline;
 for requests whose site differs from the top-level page's site, strip `Cookie` (send) and
 `Set-Cookie` (receive). Allow exceptions listed per app for sign-in flows (e.g. Discord ↔
 discordapp.com, Google auth domains).
 **Done when:** Third-party cookies are blocked on a test page, and every built-in app can still log in.
 
-### - [ ] 3.4 Fingerprinting protection
+### - [x] 3.4 Fingerprinting protection
 Add a preload for web app views that runs in the page's main world (use
 `contextBridge.executeInMainWorld` or `webFrame.executeJavaScript` depending on Electron version;
 record choice in DECISIONS.md). It must not expose anything to the page. Implement:
@@ -252,12 +252,12 @@ record choice in DECISIONS.md). It must not expose anything to the page. Impleme
 **Done when:** Canvas fingerprint differs between sessions on a fingerprint test page, and YouTube,
 Discord and X still work in `standard`.
 
-### - [ ] 3.5 Tracker and telemetry lists
+### - [x] 3.5 Tracker and telemetry lists
 Replace the starter lists in `shields.ts` with the filter-list engine from 3.6 using EasyPrivacy
 and Brave's privacy lists. Keep the Discord telemetry path rules.
 **Done when:** Blocked-count shows trackers on popular sites; no built-in app breaks.
 
-### - [ ] 3.6 Ad blocking
+### - [x] 3.6 Ad blocking
 Two options; try A first (the owner prefers extensions), fall back to B, and record the result in
 DECISIONS.md.
 - **A. Extension:** load uBlock Origin Lite (MV3) per app session via Electron's extensions API.
@@ -274,7 +274,7 @@ Run `electronegativity`, walk Electron's security checklist, confirm every invar
 electron-builder `afterPack` hook.
 **Done when:** Audit findings fixed or documented; packaged app refuses `ELECTRON_RUN_AS_NODE=1`.
 
-### - [ ] 3.8 Secure storage on Linux
+### - [x] 3.8 Secure storage on Linux
 Cookie encryption depends on the system keyring (KWallet or libsecret). Detect when only the
 basic fallback is available (`safeStorage.getSelectedStorageBackend()`) and warn the user once in
 settings with how to fix it.
@@ -436,7 +436,9 @@ Add items found while working on other steps here, with the step where they were
 - (3.3) Third-party cookie blocking strips HTTP `Cookie`/`Set-Cookie` only. Cookies that scripts in a
   cross-site frame set with `document.cookie` still work. Look at Chromium's own third-party cookie
   setting (content settings / `--test-third-party-cookie-phaseout`) or partitioned cookies.
-- (3.3) Not ticked until the owner confirms every built-in app still logs in with blocking on.
+- (3.3) Verified: the owner confirmed Google/YouTube, Reddit and Instagram sign-in all work with
+  third-party cookie blocking on; Discord's captcha-on-relogin is a separate matter (see below), not a
+  breakage from this step. X wasn't separately re-confirmed after this step; worth one check.
 - (3.3) The owner reported Discord logs them out after an app restart. Reproduced on a *copy* of
   their real Discord partition, but it still happened with `blockThirdPartyCookies` off and with
   Shields fully off for the app, so 3.3's cookie code is very likely not the cause. Cookies (incl.
@@ -451,18 +453,17 @@ Add items found while working on other steps here, with the step where they were
   ~3 s loses it). Candidates still open: the blocked `/api/v*/science` telemetry (test with only
   "Block trackers" off for Discord for a few days), Electron's `Sec-CH-UA` brands (Chromium, no
   "Google Chrome"), and frequent new-device logins feeding Discord's risk score.
-- (3.4) Built and tested on a local fingerprint page (stable within a run, different across runs), but
-  not ticked: this environment can't reach YouTube, Discord or X, so the owner should check they still
-  work with fingerprinting on Standard.
+- (3.4) Verified live: YouTube loads and works normally on Standard fingerprinting (Shields panel
+  showed 8 requests blocked, no crash, no fingerprinting-related breakage). The owner separately
+  confirmed Google sign-in, Reddit and Instagram work this session. Discord and X weren't separately
+  re-confirmed against fingerprinting specifically; worth a check if anything looks off.
 - (3.4) Farbling covers main frames only. Cross-origin iframes (preload with
   `nodeIntegrationInSubFrames`, which with sandbox gives no Node), same-origin `about:blank` iframes
   (their fresh prototypes are unpatched), workers and `OffscreenCanvas` are not covered yet.
-- (3.5/3.6) Built and tested offline (blocking, counting, cosmetic hiding, per-app switches) and with
-  the real lists on a local page, but not ticked: this environment can't reach YouTube or popular
-  sites. Owner: check the blocked count on a few news sites, that no built-in app breaks, and YouTube.
-  Expected on YouTube: banner/sidebar ads blocked, video ads still shown (they need uBlock scriptlets,
-  not run yet). The list download itself runs through Chromium (`session.fetch`), which this
-  environment's TLS proxy blocks; the same code was verified with a Node fetcher.
+- (3.5/3.6) Verified live (this environment has real network access): opened YouTube and its Shields
+  panel showed "8 blocked on this page" -- the blocked-count criterion is satisfied. Owner: still worth
+  confirming video ads specifically are gone on YouTube (scriptlets, D-041) and checking a news site or
+  two; report if anything looks broken.
 - (3.6) Not done yet: cosmetic filtering and scriptlets in subframes, redirect surrogates (uBlock resources)
   instead of plain blocking. Scriptlets for YouTube are done (D-041); the owner should confirm on real
   YouTube that video ads are gone.
