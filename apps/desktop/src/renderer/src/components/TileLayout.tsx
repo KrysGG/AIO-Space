@@ -368,11 +368,7 @@ export function TileLayout(props: Props) {
                       <small>The choice is remembered for {state.httpsFailed.host}. You can undo it in the menu.</small>
                     </div>
                   ) : t.instanceId && props.snapshots[t.instanceId] ? (
-                    <>
-                      {/* Blurred fill for any area the still doesn't cover yet (the tile grew), under the sharp still. */}
-                      <img className="tile-snapshot-fill" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
-                      <img className="tile-snapshot" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
-                    </>
+                    <img className="tile-snapshot" src={props.snapshots[t.instanceId]} alt="" draggable={false} />
                   ) : state?.crashed ? (
                     'This app stopped. Press reload to restart it.'
                   ) : (

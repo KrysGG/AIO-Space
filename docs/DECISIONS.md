@@ -459,3 +459,14 @@ not listed follow in catalog order, so new apps join at the end) and `hidden` (s
 restorable under Settings > "Hidden from the sidebar"). Core: `railApps`, `moveInRail`,
 `setHiddenInRail`. The menu is a small glass popover at the pointer (views hidden while open, like
 other popovers); "Remove app..." appears for added apps only.
+
+**D-048: Repaint after the window settles; page stills without a blur layer.**
+Owner report on a 5120x1440 screen: after maximizing, a tile header stayed blank and a page showed
+torn stripes; the resize blur looked broken. (1) Since D-039 main moves views on the first `resize`
+event, which on Wayland can come before a one-jump maximize is committed; the UI's later update then
+changes nothing, so nothing repaints the stale frame. Now, 150 ms after the last resize (and on
+maximize, unmaximize, restore, fullscreen changes), main re-places the views and invalidates every
+visible view and the UI itself. (2) The blurred fill behind page stills (a 24px blur over a
+tile-sized image, every frame of a drag) is gone: the still is shown at its own size and its right
+and bottom edges fade (14px mask) into the tile. Checked at 5120x1440: views match the tiles, stills
+stay crisp mid-drag. Not reproducible here: real Wayland maximize (owner to confirm).

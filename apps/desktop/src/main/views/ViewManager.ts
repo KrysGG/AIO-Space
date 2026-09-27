@@ -135,7 +135,27 @@ export class ViewManager {
     // (whose own update arrives a few frames later and then matches).
     this.win.on('resize', () => {
       if (this.lastFrame) this.sync(this.lastPlacements, this.lastKeep);
+      this.settleAfterResize();
     });
+    // Maximize/restore/fullscreen can land in one jump; on Wayland the first resize event may arrive
+    // before the window's new size is committed, leaving stale or torn frames (seen maximizing on a
+    // 5120x1440 screen). Once the window has settled: place everything again and force a repaint.
+    for (const event of ['maximize', 'unmaximize', 'restore', 'enter-full-screen', 'leave-full-screen'] as const) {
+      this.win.on(event as 'maximize', () => this.settleAfterResize());
+    }
+  }
+
+  private settleTimer: NodeJS.Timeout | undefined;
+
+  /** After the last resize event (150 ms of quiet): re-place views and repaint them and the UI. */
+  private settleAfterResize(): void {
+    clearTimeout(this.settleTimer);
+    this.settleTimer = setTimeout(() => {
+      if (this.win.isDestroyed()) return;
+      if (this.lastFrame) this.sync(this.lastPlacements, this.lastKeep);
+      this.invalidateVisible();
+      this.win.webContents.invalidate();
+    }, 150);
   }
 
   /** View bounds per tile for the current window size, from the UI's layout and margins. */
