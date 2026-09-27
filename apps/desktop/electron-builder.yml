@@ -39,4 +39,9 @@ pacman:
   depends: [gtk3, nss, alsa-lib, libxss, libxtst, libnotify, libsecret, at-spi2-core, xdg-utils]
 win:
   target: nsis
-# Phase 5: add publish/update config.
+# Where releases live (ROADMAP 5.4/5.5): electron-builder writes latest-linux.yml and the app's
+# update config from this. It never uploads anything itself (`--publish never`); the release workflow does.
+publish:
+  provider: github
+  owner: KrysGG
+  repo: AIO-Space

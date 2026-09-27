@@ -1,0 +1,80 @@
+name: Release
+
+# ROADMAP 5.5 (D-060). Pushing a tag like v0.1.0 builds, tests, checks and publishes a GitHub release with
+# the AppImage, the pacman package, the tar.gz (for the AUR), SHA256SUMS, latest-linux.yml (for the
+# AppImage updater, 5.4) and the updated AUR files. "Run workflow" by hand does everything except
+# publishing: the files are kept as a workflow artifact for a week.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # create the release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Tag matches the app version
+        id: version
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match apps/desktop/package.json version $version. Bump the version, commit, and tag v$version."
+            exit 1
+          fi
+
+      - run: pnpm typecheck
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Electron's sandbox needs.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: xvfb-run -a pnpm test
+      - run: pnpm lint
+
+      # bsdtar is used by electron-builder's pacman target.
+      - run: sudo apt-get install -y --no-install-recommends libarchive-tools
+      - run: pnpm dist:linux
+      - name: Check the release files (fuses, app.asar)
+        run: pnpm --filter @aio/desktop verify:release
+
+      - name: Checksums and AUR files
+        working-directory: apps/desktop/release
+        run: |
+          v=${{ steps.version.outputs.version }}
+          sha256sum "spaceaio-$v-x86_64.AppImage" "spaceaio-$v-x64.pacman" "spaceaio-$v-x64.tar.gz" > SHA256SUMS
+          node ../../../packaging/aur/update.cjs "$v" "spaceaio-$v-x64.tar.gz" ../build/icon.svg aur
+          cat SHA256SUMS
+
+      - name: Keep the files (dry runs and failed publishes)
+        uses: actions/upload-artifact@v4
+        with:
+          name: spaceaio-${{ steps.version.outputs.version }}
+          retention-days: 7
+          path: |
+            apps/desktop/release/spaceaio-*
+            apps/desktop/release/latest-linux.yml
+            apps/desktop/release/SHA256SUMS
+            apps/desktop/release/aur/
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        working-directory: apps/desktop/release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=${{ steps.version.outputs.version }}
+          cp aur/PKGBUILD PKGBUILD && cp aur/.SRCINFO SRCINFO
+          gh release create "$GITHUB_REF_NAME" \
+            --title "SpaceAIO $v" \
+            --generate-notes \
+            "spaceaio-$v-x86_64.AppImage" "spaceaio-$v-x64.pacman" "spaceaio-$v-x64.tar.gz" \
+            latest-linux.yml SHA256SUMS PKGBUILD SRCINFO
