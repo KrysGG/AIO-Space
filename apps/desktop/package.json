@@ -15,11 +15,13 @@
     "dist:win": "electron-vite build && electron-builder --win"
   },
   "dependencies": {
+    "@ghostery/adblocker": "^2.18.2",
     "tldts": "^7.4.15",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@aio/core": "workspace:*",
+    "@electron/fuses": "^2.1.3",
     "@types/node": "^22.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

@@ -137,4 +137,19 @@ describe('desktop smoke test', () => {
     await press('W', ['control']);
     await expect.poll(() => tiles().count()).toBe(1);
   });
+
+  it('hides the sidebar to a thin edge, giving the tiles its space, and brings it back', async () => {
+    const railWidth = async () => (await ui.locator('.rail').boundingBox())!.width;
+    const tileLeft = async () => (await tiles().first().boundingBox())!.x;
+    const before = { rail: await railWidth(), tile: await tileLeft() };
+
+    await ui.getByRole('button', { name: 'Hide sidebar' }).click();
+    await expect.poll(railWidth).toBeLessThan(20);
+    await expect.poll(tileLeft).toBeLessThan(before.tile - 30);
+    await expect.poll(() => ui.evaluate(async () => (await window.aio.getWorkspace()).ui.railCollapsed)).toBe(true);
+
+    await ui.getByRole('button', { name: 'Show sidebar' }).click();
+    await expect.poll(railWidth).toBe(before.rail);
+    await expect.poll(tileLeft).toBe(before.tile);
+  });
 });

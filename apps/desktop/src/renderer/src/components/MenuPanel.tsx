@@ -4,6 +4,7 @@ import {
   MAX_SPACE_NAME,
   MAX_SPACES,
   SEARCH_ENGINES,
+  FINGERPRINT_CHOICES,
   SHIELD_SWITCHES,
   SLEEP_CHOICES,
   WEBRTC_CHOICES,
@@ -12,6 +13,7 @@ import {
   type SleepAfterMinutes,
   type Workspace,
 } from '@aio/core';
+import { FilterListStatus } from './FilterListStatus';
 
 interface Props {
   ws: Workspace;
@@ -25,6 +27,10 @@ interface Props {
   onShieldDefault<K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]): void;
   /** Stop allowing a site over http (it gets upgraded to https again). */
   onDisallowHttp(host: string): void;
+  /** Logins aren't protected by a system keyring (ROADMAP 3.8), and the user hasn't dismissed it. */
+  keyringNotice: boolean;
+  onDismissKeyring(): void;
+  onClearAll(): Promise<void>;
   onClose(): void;
   onClosed(): void;
 }
@@ -33,9 +39,15 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
+  const clearAll = (): void => {
+    if (!window.confirm('Clear data for every app? You’ll be logged out everywhere, and all cookies, site storage and caches are deleted. Your tiles and settings stay.')) return;
+    setClearedAll('busy');
+    void onClearAll().then(() => setClearedAll('done'));
+  };
 
   useEffect(() => {
     window.aio.setViewsHidden(true);
@@ -136,6 +148,19 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
 
         <section>
           <h2 className="popover-title">Settings</h2>
+          {keyringNotice && (
+            <div className="notice" role="alert">
+              <strong>Your logins aren’t protected by a keyring</strong>
+              <p>
+                AIO Space couldn’t use KWallet or GNOME Keyring, so cookies and logins are saved with a fixed key. Anyone who can read
+                your files could use them. Install and unlock KWallet (KDE) or GNOME Keyring (<code>gnome-keyring</code>,{' '}
+                <code>libsecret</code>), then restart AIO Space.
+              </p>
+              <button className="text-btn" onClick={onDismissKeyring}>
+                Got it
+              </button>
+            </div>
+          )}
           <label className="setting">
             <span>Search engine for the Browser tile</span>
             <select value={ws.browser.searchEngine} onChange={(e) => onSearchEngine(e.target.value as SearchEngineId)}>
@@ -178,6 +203,19 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
             </label>
           ))}
           <label className="shield-switch">
+            <span>
+              Block fingerprinting
+              <small>Adds invisible noise to canvas, WebGL and audio so sites can’t recognise you across visits. Reloads the app.</small>
+            </span>
+            <select value={ws.privacy.fingerprinting} onChange={(e) => onShieldDefault('fingerprinting', e.target.value as PrivacySettings['fingerprinting'])}>
+              {FINGERPRINT_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="shield-switch">
             <span>WebRTC IP protection</span>
             <select value={ws.privacy.webrtcPolicy} onChange={(e) => onShieldDefault('webrtcPolicy', e.target.value as PrivacySettings['webrtcPolicy'])}>
               {WEBRTC_CHOICES.map((c) => (
@@ -187,6 +225,13 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               ))}
             </select>
           </label>
+          <FilterListStatus />
+          <div className="site-data-row">
+            <button className="btn btn-danger" onClick={clearAll} disabled={clearedAll === 'busy'}>
+              {clearedAll === 'busy' ? 'Clearing…' : 'Clear data for all apps…'}
+            </button>
+            {clearedAll === 'done' && <small role="status">Cleared. Every app starts fresh.</small>}
+          </div>
           {ws.httpAllowedHosts.length > 0 && (
             <div className="http-allowed">
               <span>Sites allowed without HTTPS</span>

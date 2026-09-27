@@ -12,6 +12,8 @@ import {
   ViewNavigateSchema,
   ViewsSyncSchema,
   WorkspaceSchema,
+  NoPayloadSchema,
+  ClearDataSchema,
 } from '../src/main/ipc/schemas';
 
 /** A layout with `n` leaves, built by repeatedly splitting the newest leaf. */
@@ -243,5 +245,34 @@ describe('http-allowed sites', () => {
     expect(WorkspaceSchema.safeParse({ ...ws, httpAllowedHosts: ['*'] }).success).toBe(false);
     expect(WorkspaceSchema.safeParse({ ...ws, httpAllowedHosts: ['a.com', 'a.com'] }).success).toBe(false);
     expect(ViewCommandSchema.safeParse({ leafId: 'leaf_1', command: 'allow-http' }).success).toBe(true);
+  });
+});
+
+describe('NoPayloadSchema (filters:status, filters:update)', () => {
+  it('accepts no payload and rejects anything else', () => {
+    expect(NoPayloadSchema.safeParse(undefined).success).toBe(true);
+    for (const bad of [null, {}, 'update', 1, []]) expect(NoPayloadSchema.safeParse(bad).success).toBe(false);
+  });
+});
+
+describe('ClearDataSchema (data:clear)', () => {
+  it('accepts one app account or everything', () => {
+    expect(ClearDataSchema.safeParse({ appId: 'discord', profile: 'default' }).success).toBe(true);
+    expect(ClearDataSchema.safeParse({ appId: 'custom-ab12', profile: 'p3' }).success).toBe(true);
+    expect(ClearDataSchema.safeParse({ all: true }).success).toBe(true);
+  });
+
+  it('rejects anything else', () => {
+    for (const bad of [
+      undefined,
+      {},
+      { all: false },
+      { appId: 'discord' },
+      { appId: '../x', profile: 'default' },
+      { appId: 'discord', profile: 'evil' },
+      { appId: 'discord', profile: 'default', all: true },
+    ]) {
+      expect(ClearDataSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
   });
 });

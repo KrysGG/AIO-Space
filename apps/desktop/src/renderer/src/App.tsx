@@ -9,6 +9,8 @@ import {
   catalogOf,
   computeLayout,
   disallowHttpHost,
+  dismissNotice,
+  setForgetOnClose,
   ensureFocus,
   findLeaf,
   listLeaves,
@@ -66,6 +68,11 @@ export function App() {
   const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
   // Tile whose Shields panel is open (ROADMAP 3.1).
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
+  /** Logins stored without a system keyring (ROADMAP 3.8); shown in the menu until dismissed. */
+  const [weakKeyring, setWeakKeyring] = useState(false);
+  useEffect(() => {
+    void window.aio.getStorageStatus().then((s) => setWeakKeyring(s.weak));
+  }, []);
   const saveTimer = useRef<number | undefined>(undefined);
   // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
@@ -140,10 +147,11 @@ export function App() {
     shortcutRef.current = (action) => {
       if (!ws) return;
       if (action.kind === 'help') return setHelpOpen((open) => !open);
+      if (action.kind === 'toggle-rail') return edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const space = activeSpace(ws);
       const focused = space.focusedLeafId;
       if (!focused) return;
-      // Moves the amber edge and keyboard focus together, so typing goes to the tile you see focused.
+      // Moves the focus outline and keyboard focus together, so typing goes to the tile you see focused.
       const focusTile = (leafId: string | null): void => {
         if (leafId) edit((w) => updateActiveSpace(w, (s) => ({ ...s, focusedLeafId: leafId })));
         window.aio.focusView(leafId);
@@ -212,6 +220,7 @@ export function App() {
   if (!ws) return <div className="boot" />;
 
   const space = activeSpace(ws);
+  const keyringNotice = weakKeyring && !ws.dismissedNotices.includes('weak-keyring');
   const focused = space.focusedLeafId;
   const catalog = catalogOf(ws, builtins);
   // Apps in the other spaces keep running (hidden) so switching is instant (ROADMAP 2.8).
@@ -348,6 +357,9 @@ export function App() {
         onDownloads={() => setDownloadsOpen(!downloadsOpen)}
         downloadsOpen={downloadsOpen}
         activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
+        menuNotice={keyringNotice}
+        collapsed={ws.ui.railCollapsed}
+        onToggleCollapsed={() => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }))}
       />
       <TileLayout
         layout={space.layout}
@@ -385,6 +397,9 @@ export function App() {
           onSearchEngine={(engine) => edit((w) => ({ ...w, browser: { ...w.browser, searchEngine: engine } }))}
           onShieldDefault={setShieldDefault}
           onDisallowHttp={(host) => edit((w) => disallowHttpHost(w, host))}
+          keyringNotice={keyringNotice}
+          onDismissKeyring={() => edit((w) => dismissNotice(w, 'weak-keyring'))}
+          onClearAll={() => window.aio.clearData({ all: true })}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}
@@ -397,6 +412,10 @@ export function App() {
           blocked={(shieldsLeafNode.instanceId && viewStates[shieldsLeafNode.instanceId]?.blocked) || 0}
           onSet={(key, value) => setAppShield(shieldsApp.id, key, value)}
           onReset={() => resetAppShields(shieldsApp.id)}
+          profile={profilesOf(ws, shieldsApp.id).find((p) => p.id === (shieldsLeafNode.profile ?? 'default')) ?? profilesOf(ws, shieldsApp.id)[0]!}
+          accounts={profilesOf(ws, shieldsApp.id).length}
+          onForget={(forget) => edit((w) => setForgetOnClose(w, shieldsApp.id, forget))}
+          onClearData={(profile) => window.aio.clearData({ appId: shieldsApp.id, profile })}
           onClose={closeShields}
           onClosed={refocusTile}
         />

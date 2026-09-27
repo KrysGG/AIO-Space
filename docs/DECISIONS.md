@@ -256,3 +256,86 @@ over the window by another app could leave a smeared/stale frame on a view (a Wa
 compositor damage-tracking quirk external to our code, distinct from D-024's own hide/show cycle):
 `ViewManager` now invalidates every visible view when the window regains focus, forcing a clean
 repaint at the next natural opportunity to notice.
+
+**D-032: Premium look: neutral focus outline, liquid-glass surfaces, web views as inset rounded cards.**
+Owner feedback after D-031: the frosted glass looked cheap, the amber focus edge should be white/grey,
+and page corners poked out square. (1) `--focus` is now near-white and the focused tile gets a soft
+white outline, a faint halo and a drop shadow instead of the amber edge and 3px inset bar (the tray
+icon's focused tile follows). (2) Liquid-glass tokens in `styles.css` (`--glass-fill/-sheen/-edge/
+-blur`): popovers and panels use a translucent fill with `backdrop-filter: blur(28px) saturate(1.8)`,
+a top sheen and a bright top edge; tile snapshots use a heavier blur with boosted saturation, a
+diagonal sheen and inner highlights. (3) Native views sit `VIEW_INSET` (4px) inside the tile's sides
+and bottom with `setBorderRadius(VIEW_RADIUS)` (8px), concentric with the 12px tile radius; the
+`.tile-body` card has the same inset and radius so launcher, snapshots and panels line up with the
+view. The constants live in `shared/ipc.ts` and must match `--view-inset`/`--radius-view`.
+
+**D-033: Fingerprinting protection through a web app preload and `executeInMainWorld`.**
+ROADMAP 3.4. Web app views get `preload/webapp.ts`; it runs `contextBridge.executeInMainWorld`
+(Electron 44; `webFrame.executeJavaScript` would be async and could run after page scripts) with
+`preload/farble.ts`, a self-contained function whose state lives only in closures. Wrapped methods
+keep their native `name`, `length` and `toString()`. The seed is FNV-1a of a random per-partition,
+per-run key (made in main) and the page's registrable domain (tldts, bundled into the preload since
+sandboxed preloads can't load packages: `externalizeDeps.exclude`). Web views have no IPC, so settings
+travel as `--aio-webapp=level,gpc,key` in `additionalArguments` (`shared/webapp.ts`); a changed level
+or GPC setting replaces the app's views, reopening their pages. Noise: the low bit of one channel in
+~1/32 pixels (canvas reads, WebGL `readPixels`), audio samples scaled by 1 ± ~1e-7. Strict adds
+hardwareConcurrency 4/8, deviceMemory 8, screen size snapped to a common resolution, no getBattery.
+Preloads run in main frames only; subframes, workers and `about:blank` iframes are not covered yet
+(Backlog). Verified with a local test page: hashes stable across reloads, different after a restart,
+real with protection off; WebGL checked with SwiftShader.
+
+**D-034: Ad and tracker blocking: @ghostery/adblocker engines in our pipeline (uBO Lite doesn't run).**
+ROADMAP 3.5/3.6. Option A was tried first: uBlock Origin Lite (MV3, from its uBOL-home repo) loads
+through `session.extensions.loadExtension`, but its service worker crashes on a missing chrome API and
+Electron has no `declarativeNetRequest`, so nothing is blocked (a test request to doubleclick went
+out). Option B: `@ghostery/adblocker` (MPL-2.0, the engine behind Ghostery; new dependency, pure JS)
+compiles two engines, `ads` (EasyList, Peter Lowe, uBlock filters/2024/badware/quick-fixes/unbreak,
+Brave first-party/specific/unbreak) and `trackers` (EasyPrivacy, uBlock privacy, Brave
+first-party-cname/unbreak), so "Block ads" and "Block trackers" stay separate per app. Only the
+engine is used, from the `filter-lists` RequestFilter; never `enableBlockingInSession`. Page loads
+(mainFrame) are never blocked. Lists come only from `raw.githubusercontent.com` (Ghostery's mirror of
+EasyList/uBlock, Brave's repo), fetched in an in-memory `aio-filter-lists` session with no
+credentials, compiled (~175k rules in ~1.2 s), and cached as serialized engines in
+`userData/filters/{ads,trackers}.{bin,json}` (atomic writes, 0600); rebuilt when older than a day or
+when the library's `ENGINE_VERSION` changes; a failed update keeps the old engines. Cosmetic
+filtering from main: at `dom-ready` the site's rules and generic base rules, and at `dom-ready` and
+`did-finish-load` generic rules for the page's class names/ids, collected in isolated world 1001
+(invisible to the page), all via `insertCSS` (user origin). Not done: scriptlets (`+js()`), so video
+ads on YouTube are expected to remain; subframe cosmetics; redirect surrogates. New IPC:
+`filters:status`, `filters:update` (menu shows rule counts, last update, "Update now").
+Desktop tests now run one file at a time (`fileParallelism: false`): three files launch Electron.
+
+**D-035: UI served from `aio://app`; fuses flipped in an electron-builder `afterPack` hook.**
+ROADMAP 3.7. The packaged UI loads from a privileged custom scheme (`standard`, `secure`) handled only
+in the default (UI) session (`main/security/uiProtocol.ts`), confined to `out/renderer`, with a strict
+CSP header on HTML; dev still uses Vite's http URL. That allows the `GrantFileProtocolExtraPrivileges`
+fuse to be off. Fuses are flipped with `@electron/fuses` (new dev dependency, Electron's own package)
+in `scripts/afterPack.cjs`, rather than electron-builder's `electronFuses` option, so the list lives in
+one readable file next to its reasons. Packaged Linux executable is named `aio-space`.
+
+**D-036: Keyring check: backend and availability, one-time notice in the menu.**
+ROADMAP 3.8. `security/keyring.ts` reads `safeStorage.getSelectedStorageBackend()` and
+`isEncryptionAvailable()` after ready. Weak means `basic_text`/`unknown`, or a keyring that was picked
+but can't be used (tested: with `--password-store=gnome-libsecret` and no daemon the backend still
+reads `gnome_libsecret` while encryption is unavailable). New IPC `security:storage`. The menu's
+Settings show a warning with how to fix it, and the menu button a small dot, until "Got it"; the
+dismissal is stored in `workspace.dismissedNotices` (v10, a general list for later one-time notices).
+
+**D-037: Clearing app data: clear the session now, delete the partition folder at the next start.**
+ROADMAP 3.9. Chromium's databases keep deleted bytes until they compact, and a partition folder
+can't be deleted while its session is open. So "Clear data" (per app account, in the Shields panel)
+and "Clear data for all apps" (menu) call `clearStorageData`, `clearCache`, `clearAuthCache`,
+`clearCodeCaches` and `clearHostResolverCache` at once (the account is logged out; its open views
+restart at the app's home page) and add the partitions to `userData/wipe.json`. At the next start,
+before any app session exists, those folders are deleted (`store/siteData.ts`; the list only accepts
+`persist:app-*` names). "Forget when AIO Space closes" (`workspace.forgetOnClose`, v11, per app and
+all its accounts) clears on quit (at most 3 s) and always deletes the folders at start, which also
+covers a crash. Verified end to end: a token found in the partition's files before clearing is gone
+from every file after the restart. New IPC `data:clear` (`{appId, profile}` or `{all: true}`).
+
+**D-038: The rail collapses to a thin edge; tiles take the space.**
+Owner request (part of ROADMAP 4.7's compact mode). Native web views always draw above the UI page,
+so a hidden rail can't slide out over the tiles on hover; instead "Hide sidebar" (bottom of the rail,
+or Ctrl+Shift+B, not Ctrl+B, which editors like Discord use for bold) shrinks it to a 14px edge with a
+handle and the layout reflows. Clicking the edge brings it back. The edge shows a dot when something
+needs attention (unread, downloads, a notice). Saved in `workspace.ui.railCollapsed` (v12).

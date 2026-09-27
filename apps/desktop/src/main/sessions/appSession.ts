@@ -2,6 +2,7 @@ import { app, session, webContents, type Session, type WebContents } from 'elect
 import { partitionFor, type AppPermission, type PrivacySettings, type WebAppDef } from '@aio/core';
 import { noteUpgrade } from '../privacy/httpsFallback';
 import { installRequestPipeline } from '../privacy/requestPipeline';
+import type { FilterLists } from '../privacy/filterLists';
 import { buildShieldFilters } from '../privacy/shields';
 import { appSites } from '../privacy/sites';
 import { cleanUserAgent, googleSignInFilter } from './userAgent';
@@ -24,6 +25,7 @@ export function getAppSession(
   getPrivacy: () => PrivacySettings,
   onBlocked: (webContentsId: number) => void,
   httpAllowed: (host: string) => boolean,
+  filterLists?: FilterLists,
 ): Session {
   const partition = partitionFor(def.id, profile);
   const existing = configured.get(partition);
@@ -42,7 +44,8 @@ export function getAppSession(
 
   const https = { httpAllowed, onUpgrade: noteUpgrade };
   const cookies = { appSites: appSites(def), topUrl: (id: number) => webContents.fromId(id)?.getURL() };
-  installRequestPipeline(ses, [googleSignInFilter, ...buildShieldFilters(getPrivacy, https, cookies)], onBlocked);
+  const lists = { engine: (kind: 'ads' | 'trackers') => filterLists?.engine(kind) };
+  installRequestPipeline(ses, [googleSignInFilter, ...buildShieldFilters(getPrivacy, https, cookies, lists)], onBlocked);
 
   configured.set(partition, ses);
   return ses;

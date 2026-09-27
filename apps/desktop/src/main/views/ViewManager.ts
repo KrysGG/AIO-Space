@@ -15,21 +15,41 @@ import {
   isWebUrl,
   MAX_TILES,
   nextZoom,
+  partitionFor,
   SEARCH_ENGINES,
   sumUnread,
   unreadFromTitle,
   type Unread,
   type WebAppDef,
 } from '@aio/core';
-import { IPC, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
+import { randomBytes } from 'node:crypto';
+import { join } from 'node:path';
+import { IPC, VIEW_RADIUS, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
+import type { FilterLists } from '../privacy/filterLists';
+import { getDomain } from 'tldts';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
 import { getAppSession, hasUsedMedia } from '../sessions/appSession';
 import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
+import { webAppArgs, type WebAppArgs } from '../../shared/webapp';
 import type { WorkspaceStore } from '../store/workspaceStore';
+
+/** Isolated world (not the page's) where main reads class names and ids for cosmetic filtering. */
+const COSMETIC_WORLD = 1001;
+/** Collects the page's class names, ids and link targets (capped) for generic element-hiding rules. */
+const COLLECT_DOM = `(() => {
+  const classes = new Set(), ids = new Set(), hrefs = new Set();
+  for (const el of document.querySelectorAll('[class],[id],a[href]')) {
+    if (classes.size > 4000) break;
+    for (const c of el.classList) classes.add(c);
+    if (el.id) ids.add(el.id);
+    if (el.tagName === 'A' && hrefs.size < 1000) hrefs.add(el.href);
+  }
+  return { classes: [...classes], ids: [...ids], hrefs: [...hrefs] };
+})()`;
 
 /** How often hidden apps are checked for sleeping. */
 const SLEEP_CHECK_MS = 30_000;
@@ -51,6 +71,8 @@ interface Entry {
   blocked: number;
   /** Pending throttled state update for the blocked count. */
   blockedTimer?: NodeJS.Timeout;
+  /** What the web app preload was started with (ROADMAP 3.4); a change needs a new view. */
+  preloadArgs: WebAppArgs;
   /** The upgraded https:// load failed: view hidden, tile offers http (ROADMAP 3.2). */
   httpsFailed?: { host: string; url: string; error: string };
   appId: string;
@@ -79,6 +101,8 @@ export class ViewManager {
   private readonly sleeping = new Map<string, { url: string; appId: string }>();
   private pendingFocus: string | null = null;
   private lastUnread = '';
+  /** Fingerprint noise key per session partition, new every run (ROADMAP 3.4). */
+  private readonly farbleKeys = new Map<string, string>();
 
   /** Total unread across all views changed (from page titles like "(3) Discord"). */
   onUnreadChange: (unread: Unread) => void = () => {};
@@ -87,6 +111,7 @@ export class ViewManager {
     private readonly win: BrowserWindow,
     private readonly store: WorkspaceStore,
     private readonly downloads: DownloadManager,
+    private readonly filterLists?: FilterLists,
   ) {
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
     // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
@@ -301,9 +326,11 @@ export class ViewManager {
       (id) => this.countBlocked(id),
       // An allowed site covers its subdomains (http-only sites like neverssl.com hop between them).
       (host) => hostMatches(host, this.store.get().httpAllowedHosts) || isHttpAllowedThisRun(host),
+      this.filterLists,
     );
     this.downloads.attach(ses);
 
+    const preloadArgs = this.preloadArgsFor(appId, profile);
     const view = new WebContentsView({
       webPreferences: {
         session: ses,
@@ -312,9 +339,13 @@ export class ViewManager {
         nodeIntegration: false,
         webSecurity: true,
         spellcheck: true,
-        // No preload for web apps in Phase 1. Fingerprint shields add one in ROADMAP 3.4.
+        // Fingerprinting protection only (ROADMAP 3.4): no IPC, nothing exposed to the page.
+        preload: join(__dirname, '../preload/webapp.js'),
+        additionalArguments: webAppArgs(preloadArgs),
       },
     });
+    // Rounded like the tile body it sits in; native views are otherwise square and poke past it.
+    view.setBorderRadius(VIEW_RADIUS);
     const wc = view.webContents;
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
     followSignInUserAgent(wc);
@@ -322,7 +353,7 @@ export class ViewManager {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
-    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0 };
+    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
@@ -341,6 +372,8 @@ export class ViewManager {
       if (Math.abs(wc.getZoomFactor() - saved) > 0.001) wc.setZoomFactor(saved);
       entry.emit?.();
     });
+    wc.on('dom-ready', () => void this.hideAds(appId, wc, true));
+    wc.on('did-finish-load', () => void this.hideAds(appId, wc, false));
     if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(def, wc);
 
     this.win.contentView.addChildView(view);
@@ -354,6 +387,44 @@ export class ViewManager {
 
     this.views.set(instanceId, entry);
     return entry;
+  }
+
+  /**
+   * Cosmetic filtering (ROADMAP 3.6): the ad list's element-hiding rules as a user stylesheet, so
+   * emptied ad slots don't leave gaps. On DOM ready: the site's own rules and the generic base rules;
+   * then (and again when loading finishes) generic rules for the class names and ids on the page,
+   * read in an isolated world the page can't see. Main frame only; scriptlet rules (uBlock's `+js()`,
+   * which YouTube ad blocking relies on) are not run.
+   */
+  private async hideAds(appId: string, wc: WebContents, first: boolean): Promise<void> {
+    const engine = this.filterLists?.engine('ads');
+    if (!engine || wc.isDestroyed() || !this.store.privacyFor(appId).blockAds) return;
+    let url: URL;
+    try {
+      url = new URL(wc.getURL());
+    } catch {
+      return;
+    }
+    if (!isWebUrl(url.href)) return;
+    let dom: { classes: string[]; ids: string[]; hrefs: string[] } = { classes: [], ids: [], hrefs: [] };
+    try {
+      dom = await wc.executeJavaScriptInIsolatedWorld(COSMETIC_WORLD, [{ code: COLLECT_DOM }]);
+    } catch {
+      // The page is gone or refuses scripts: its own and the base rules still apply.
+    }
+    if (wc.isDestroyed() || wc.getURL() !== url.href) return;
+    const { styles } = engine.getCosmeticsFilters({
+      url: url.href,
+      hostname: url.hostname,
+      domain: getDomain(url.hostname) ?? url.hostname,
+      ...dom,
+      getBaseRules: first,
+      getRulesFromHostname: first,
+      getRulesFromDOM: true,
+      getInjectionRules: false,
+      getExtendedRules: false,
+    });
+    if (styles) await wc.insertCSS(styles, { cssOrigin: 'user' }).catch(() => {});
   }
 
   /** A custom app's icon: its own favicon, fetched once through its own session (ROADMAP 2.7/4.2). */
@@ -408,18 +479,56 @@ export class ViewManager {
     }
   }
 
+  private preloadArgsFor(appId: string, profile: string): WebAppArgs {
+    const privacy = this.store.privacyFor(appId);
+    const partition = `${appId}/${profile}`;
+    let key = this.farbleKeys.get(partition);
+    if (!key) {
+      key = randomBytes(16).toString('hex');
+      this.farbleKeys.set(partition, key);
+    }
+    return { fingerprinting: privacy.fingerprinting, gpc: privacy.globalPrivacyControl, key };
+  }
+
   /**
    * After settings are saved: an app whose WebRTC policy changed gets it, and its pages reload
-   * (the policy only fully applies to new connections). Other Shields settings apply per request.
+   * (the policy only fully applies to new connections). A changed fingerprinting or GPC setting is
+   * fixed into the view's preload, so that view is replaced, reopening the page it was on.
+   * Other Shields settings apply per request.
    */
   applyPrivacy(): void {
-    for (const entry of this.views.values()) {
+    let replaced = false;
+    for (const [instanceId, entry] of [...this.views]) {
       const wc = entry.view.webContents;
       if (wc.isDestroyed()) continue;
+      const want = this.preloadArgsFor(entry.appId, entry.profile);
+      if (want.fingerprinting !== entry.preloadArgs.fingerprinting || want.gpc !== entry.preloadArgs.gpc) {
+        const url = wc.getURL();
+        this.sleeping.set(instanceId, { url: isWebUrl(url) ? url : this.homeOf(entry.def), appId: entry.appId });
+        this.destroy(instanceId);
+        replaced = true;
+        continue;
+      }
       const policy = this.store.privacyFor(entry.appId).webrtcPolicy;
       if (wc.getWebRTCIPHandlingPolicy() === policy) continue;
       wc.setWebRTCIPHandlingPolicy(policy);
       wc.reload();
+    }
+    if (replaced) this.sync(this.lastPlacements, this.lastKeep);
+  }
+
+  /** After an app's data was cleared (ROADMAP 3.9): its open views start over at the app's home page. */
+  restartPartitions(partitions: Set<string>): void {
+    for (const entry of this.views.values()) {
+      const wc = entry.view.webContents;
+      if (wc.isDestroyed() || !partitions.has(partitionFor(entry.appId, entry.profile))) continue;
+      void wc.loadURL(this.homeOf(entry.def));
+    }
+    // Slept apps of these partitions wake at their home page, not the page they were on. (Sleeping
+    // entries don't record the account, so any account of a cleared app forgets its page.)
+    const appIds = new Set([...partitions].map((p) => p.replace(/^persist:app-/, '')));
+    for (const [instanceId, slept] of [...this.sleeping]) {
+      if ([...appIds].some((a) => a.startsWith(`${slept.appId}-`))) this.sleeping.delete(instanceId);
     }
   }
 
@@ -549,11 +658,14 @@ export class ViewManager {
     });
     const wcId = wc.id;
     wc.on('destroyed', () => forgetPage(wcId));
-    // A new page starts a new blocked count (same-document navigations keep it).
-    wc.on('did-navigate', () => {
+    // A new page starts a new blocked count (same-document navigations keep it). Reset when the
+    // navigation starts: 'did-navigate' can arrive after the new page's first requests were blocked.
+    wc.on('did-start-navigation', (d) => {
+      if (!d.isMainFrame || d.isSameDocument) return;
       entry.blocked = 0;
       emit();
     });
+    wc.on('did-navigate', () => emit());
     wc.on('did-navigate-in-page', () => emit());
     wc.on('page-title-updated', () => {
       emit();

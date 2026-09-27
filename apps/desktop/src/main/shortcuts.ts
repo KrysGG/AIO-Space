@@ -33,6 +33,7 @@ export function shortcutFor(input: KeyInput): ShortcutAction | null {
   if (shift) {
     if (key === 'd') return { kind: 'split', direction: 'row' };
     if (key === 'e') return { kind: 'split', direction: 'column' };
+    if (key === 'b') return { kind: 'toggle-rail' };
     return null;
   }
   if (key === 'w') return { kind: 'close' };

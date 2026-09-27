@@ -22,7 +22,40 @@ export const IPC = {
   appZoom: 'app:zoom',
   viewsSnapshots: 'views:snapshots',
   shortcut: 'shortcut',
+  filtersStatus: 'filters:status',
+  filtersUpdate: 'filters:update',
+  securityStorage: 'security:storage',
+  dataClear: 'data:clear',
 } as const;
+
+/** What to clear (ROADMAP 3.9): one account of an app, or every app. */
+export type ClearDataTarget = { appId: string; profile: string } | { all: true };
+
+/** How logins are encrypted on disk (ROADMAP 3.8). */
+export interface StorageStatus {
+  /** Linux: Chromium's backend ('kwallet6', 'gnome_libsecret', 'basic_text', ...); 'os' elsewhere. */
+  backend: string;
+  /** No system keyring in use: cookies are stored with a fixed key. */
+  weak: boolean;
+}
+
+/** Ad and tracker filter lists (ROADMAP 3.5/3.6). */
+export type FilterListKind = 'ads' | 'trackers';
+
+export interface FilterListStatus {
+  updating: boolean;
+  /** Why the last update failed; the previous lists stay in use. */
+  error: string | null;
+  lists: Array<{ kind: FilterListKind; rules: number; updatedAt: number | null }>;
+}
+
+/**
+ * Web views sit inside the tile body as a rounded card: inset from the tile's sides and bottom so
+ * the tile's own rounded corners and outline stay visible, with corners concentric to the tile's.
+ * Must match `--view-inset` / `--radius-view` in the renderer's styles.css.
+ */
+export const VIEW_INSET = 4;
+export const VIEW_RADIUS = 8;
 
 /** Where a native web view should sit, in window content coordinates (DIP). */
 export interface ViewPlacement {
@@ -92,7 +125,8 @@ export type ShortcutAction =
   | { kind: 'reload' }
   | { kind: 'focus-address' }
   | { kind: 'zoom'; change: ZoomChange }
-  | { kind: 'help' };
+  | { kind: 'help' }
+  | { kind: 'toggle-rail' };
 
 /** Exposed on window.aio by the preload script. */
 export interface AioApi {
@@ -131,4 +165,10 @@ export interface AioApi {
   onViewSnapshots(cb: (snapshots: Record<string, string>) => void): () => void;
   /** `clear` removes finished downloads from the list (the files stay); `id` is ignored for it. */
   downloadAction(id: string, action: DownloadAction): void;
+  getFilterListStatus(): Promise<FilterListStatus>;
+  /** Download the filter lists now; resolves with the new status when done. */
+  updateFilterLists(): Promise<FilterListStatus>;
+  getStorageStatus(): Promise<StorageStatus>;
+  /** Log out and delete cookies, storage and cache; the files are removed at the next start. */
+  clearData(target: ClearDataTarget): Promise<void>;
 }

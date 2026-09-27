@@ -31,6 +31,8 @@ describe('shortcutFor', () => {
     expect(press({ control: true, key: 'w', code: 'KeyW' })).toEqual({ kind: 'close' });
     expect(press({ control: true, key: 'r', code: 'KeyR' })).toEqual({ kind: 'reload' });
     expect(press({ control: true, key: '/', code: 'Slash' })).toEqual({ kind: 'help' });
+    expect(press({ control: true, shift: true, key: 'B', code: 'KeyB' })).toEqual({ kind: 'toggle-rail' });
+    expect(press({ control: true, key: 'b', code: 'KeyB' })).toBeNull(); // Ctrl+B stays bold in editors
   });
 
   it('maps Ctrl+1..9 by physical key, so AZERTY works', () => {

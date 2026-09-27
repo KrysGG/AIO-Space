@@ -1,12 +1,17 @@
-import { ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
-import { BUILTIN_APPS } from '@aio/core';
+import { app, ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { BUILTIN_APPS, partitionFor } from '@aio/core';
 import { IPC } from '../../shared/ipc';
 import { clearHttpAllowedThisRun } from '../privacy/httpsFallback';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { DownloadManager } from '../downloads/DownloadManager';
+import type { FilterLists } from '../privacy/filterLists';
+import { storageStatus } from '../security/keyring';
+import { allAppPartitions, clearPartitions } from '../store/siteData';
 import type { ViewManager } from '../views/ViewManager';
 import {
+  ClearDataSchema,
   DownloadActionSchema,
+  NoPayloadSchema,
   ViewsSyncSchema,
   ViewCommandSchema,
   ViewFocusSchema,
@@ -19,6 +24,7 @@ export function registerIpc(
   store: WorkspaceStore,
   views: ViewManager,
   downloads: DownloadManager,
+  filterLists: FilterLists,
 ): void {
   /** Only the UI window's top frame may talk to main. Web app views have no preload anyway. */
   const fromUi = (e: IpcMainEvent | IpcMainInvokeEvent): boolean =>
@@ -83,5 +89,33 @@ export function registerIpc(
     if (!fromUi(e)) return;
     const parsed = DownloadActionSchema.safeParse(raw);
     if (parsed.success) downloads.action(parsed.data.id, parsed.data.action);
+  });
+
+  ipcMain.handle(IPC.filtersStatus, (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    return filterLists.status();
+  });
+
+  ipcMain.handle(IPC.filtersUpdate, async (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    await filterLists.update();
+    return filterLists.status();
+  });
+
+  ipcMain.handle(IPC.dataClear, async (e, raw: unknown) => {
+    guard(e);
+    const target = ClearDataSchema.parse(raw);
+    const ws = store.get();
+    const partitions = 'all' in target ? allAppPartitions(ws) : [partitionFor(target.appId, target.profile)];
+    await clearPartitions(app.getPath('userData'), partitions);
+    views.restartPartitions(new Set(partitions));
+  });
+
+  ipcMain.handle(IPC.securityStorage, (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    return storageStatus();
   });
 }

@@ -7,7 +7,10 @@ files:
   - out/**
   - package.json
 asar: true
+# Electron fuses (ROADMAP 3.7, docs/SECURITY.md).
+afterPack: scripts/afterPack.cjs
 linux:
+  executableName: aio-space
   target:
     - AppImage
     - pacman
@@ -15,4 +18,4 @@ linux:
   maintainer: AIO Space
 win:
   target: nsis
-# Phase 5: add electron fuses (see docs/SECURITY.md) and publish/update config.
+# Phase 5: add publish/update config.

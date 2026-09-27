@@ -2,6 +2,13 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [4.7 partial] Hide the sidebar to a thin edge (button at the bottom of the rail or Ctrl+Shift+B); click the edge to bring it back; remembered (workspace v12, D-038).
+- [3.9] Clear data per app account (Shields panel) or for all apps (menu), and "forget when AIO Space closes" per app; data is cleared at once and the files deleted at the next start (workspace v11, D-037).
+- [3.8 built] Warning in the menu (and a dot on the menu button) when logins aren't protected by KWallet or GNOME Keyring, with how to fix it; dismissible, remembered in workspace v10 (D-036). Waiting for the owner to confirm no warning on their KDE setup.
+- [3.7] Security audit (electronegativity + Electron checklist, in SECURITY.md); UI served from `aio://app` with a strict CSP instead of `file://`; fuses flipped on packaged builds (verified: `ELECTRON_RUN_AS_NODE=1` starts the app, not Node); tile blocked counts no longer miss early requests.
+- [3.5/3.6 built] Ad and tracker blocking with EasyList, EasyPrivacy, uBlock Origin and Brave lists (@ghostery/adblocker engine in our pipeline), cosmetic hiding of ad slots, daily list updates cached on disk, "Block ads" switch and list status in the menu (D-034). Waiting for the owner to check popular sites and YouTube.
+- [3.4 built] Fingerprinting protection (standard/strict) for canvas, WebGL and audio, `navigator.globalPrivacyControl`, hidden `webdriver`; a choice in both Shields panels (D-033). Waiting for the owner to check YouTube, Discord and X.
+- [UI polish] White/grey focus outline instead of amber, liquid-glass panels and snapshots, web pages as inset rounded cards (no more square corners), menu icon centered in its button, subtle scrollbars (D-032).
 - [2.13 fix] Frosted-glass look for tile snapshots while resizing/dragging (hides upscale blur instead of looking pixelated); views force-repaint on window focus to clear smeared frames left by other apps dragged over ours.
 - [3.2] When the HTTPS upgrade fails, the tile offers "Continue with HTTP (not secure)" and remembers the site (removable in the menu); workspace v9.
 - [3.1] Shields panel per app (shield in the tile header with blocked count; master switch and per-feature switches) and Shields defaults in the menu; workspace v8.

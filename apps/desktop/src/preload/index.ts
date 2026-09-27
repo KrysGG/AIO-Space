@@ -1,5 +1,5 @@
 /**
- * Preload for the UI window ONLY. Web app views get no preload in Phase 1.
+ * Preload for the UI window ONLY. Web app views get `webapp.ts` instead (no IPC there).
  * Runs sandboxed: may only import 'electron' (everything else is bundled in).
  * Never expose ipcRenderer itself or any generic "send anything" function.
  */
@@ -23,6 +23,10 @@ const api: AioApi = {
   focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
   navigate: (leafId, url) => ipcRenderer.send(IPC.viewNavigate, { leafId, url }),
   downloadAction: (id, action) => ipcRenderer.send(IPC.downloadsAction, { id, action }),
+  getFilterListStatus: () => ipcRenderer.invoke(IPC.filtersStatus),
+  updateFilterLists: () => ipcRenderer.invoke(IPC.filtersUpdate),
+  getStorageStatus: () => ipcRenderer.invoke(IPC.securityStorage),
+  clearData: (target) => ipcRenderer.invoke(IPC.dataClear, target),
   onViewState: (cb) => {
     const listener = (_e: IpcRendererEvent, s: ViewState): void => cb(s);
     ipcRenderer.on(IPC.viewState, listener);

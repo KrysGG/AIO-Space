@@ -16,7 +16,9 @@ These are enforced by review, and several by ESLint. Do not break them.
 1. Every `BrowserWindow`/`WebContentsView`: `contextIsolation: true`, `sandbox: true`,
    `nodeIntegration: false`, `webSecurity: true`. `app.enableSandbox()` is called at startup.
 2. `<webview>` is disabled (`will-attach-webview` is prevented everywhere).
-3. Web app views have **no preload** until ROADMAP 3.4, and that preload may never expose IPC.
+3. Web app views get only `preload/webapp.ts` (ROADMAP 3.4): it never uses IPC and never exposes anything
+   to the page. It reads its settings from `additionalArguments` and installs fingerprinting protection
+   in the main world through a self-contained function (`preload/farble.ts`).
 4. The UI window never navigates away from our bundled page; it cannot open windows.
 5. IPC handlers accept messages only from the UI window's main frame (`fromUi()`), and parse every
    payload with zod. Invalid input is dropped.
@@ -33,10 +35,13 @@ These are enforced by review, and several by ESLint. Do not break them.
     (scripts, `.desktop`, installers, binaries) are never opened from the app, only shown in the folder.
 12. User-added apps are validated like IPC input: https start page, real hostnames (never `*`),
     permissions off unless granted, icons only as small raster data URLs.
+13. Filter lists are fetched only from `raw.githubusercontent.com`, in their own in-memory session with
+    no credentials; the lists only feed the blocking engine, never run as code.
 
-## Packaging hardening (ROADMAP 5.3)
+## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 
-Apply Electron fuses at build time:
+Electron fuses are flipped on the packaged binary by `apps/desktop/scripts/afterPack.cjs`
+(electron-builder `afterPack`, `@electron/fuses`):
 
 | Fuse | Value |
 | --- | --- |
@@ -46,8 +51,64 @@ Apply Electron fuses at build time:
 | EnableEmbeddedAsarIntegrityValidation | on |
 | OnlyLoadAppFromAsar | on |
 | EnableCookieEncryption | on |
+| GrantFileProtocolExtraPrivileges | off (the UI is served from `aio://app`, not `file://`) |
+
+`EnableEmbeddedAsarIntegrityValidation` is enforced by Electron on macOS and Windows only; on Linux it
+is set but has no effect yet.
+
+Verified on a packaged build (`electron-builder --linux dir`, 2026-09-26): `@electron/fuses read`
+shows the values above; with `ELECTRON_RUN_AS_NODE=1` the binary starts AIO Space instead of Node
+(stock Electron runs the script); `NODE_OPTIONS=--require ...` and `--inspect` are ignored.
 
 Also run `electronegativity` and go through Electron's security checklist before each release.
+
+## Audit (ROADMAP 3.7, 2026-09-26)
+
+**electronegativity 1.10.3** (`electronegativity -i apps/desktop/src -e 44.4.5`), 7 findings:
+
+| Finding | Where | Outcome |
+| --- | --- | --- |
+| CSP_GLOBAL_CHECK (low) | `renderer/index.html` | The meta CSP must allow Vite's inline styles in dev. Packaged builds now also get a strict CSP header from the `aio://` handler (no `'unsafe-inline'`, `form-action 'none'`); browsers enforce both. |
+| AUXCLICK_JS_CHECK | `main/window.ts` | Fixed: UI window sets `disableBlinkFeatures: 'Auxclick'`. Web views keep middle-click (Browser tile opens links in new tiles); their window-open handler decides. |
+| PRELOAD_JS_CHECK | `main/window.ts` | Accepted: our own preload, `contextBridge` only, named functions, no raw `ipcRenderer`. |
+| DANGEROUS_FUNCTIONS (insertCSS) | `main/views/ViewManager.ts` | Accepted: filter-list element-hiding CSS, injected as user CSS; CSS can't run script. |
+| OPEN_EXTERNAL ×3 | `ViewManager.ts`, `contextMenu.ts` | Accepted: every call is behind `isWebUrl` / `isWeb` (http(s) only), invariant 7. |
+
+**Electron security checklist** (electronjs.org/docs/latest/tutorial/security):
+
+| # | Recommendation | Status |
+| --- | --- | --- |
+| 1 | Only load secure content | HTTPS upgrade by default (3.2); http only after the user chooses it per site. |
+| 2 | No Node integration for remote content | `nodeIntegration: false` everywhere (lint-enforced). |
+| 3 | Context isolation | On everywhere (lint-enforced). |
+| 4 | Process sandboxing | `app.enableSandbox()`, `sandbox: true` (lint-enforced). |
+| 5 | Handle permission requests | Per-app allow list; UI session denies all. |
+| 6 | Don't disable webSecurity | Never (lint-enforced). |
+| 7 | Content Security Policy | UI: meta CSP + strict header in packaged builds. Remote sites keep their own. |
+| 8 | No `allowRunningInsecureContent` | Never set. |
+| 9 | No experimental features | Never set. |
+| 10 | No `enableBlinkFeatures` | Never set (only `disableBlinkFeatures: 'Auxclick'` on the UI). |
+| 11–12 | `<webview>` options | `<webview>` is disabled (`will-attach-webview` prevented). |
+| 13 | Limit navigation | UI can't navigate; apps limited to `allowedHosts`. |
+| 14 | Limit new windows | Denied by default; sign-in popups only for `popupHosts`, hardened. |
+| 15 | `shell.openExternal` with untrusted content | http(s) only. |
+| 16 | Current Electron | 44.4.5. |
+| 17 | Validate IPC senders | `fromUi()` on every handler, zod on every payload. |
+| 18 | Avoid `file://` | Fixed: UI served from `aio://app` (`main/security/uiProtocol.ts`), confined to the renderer folder (tested against path traversal). |
+| 19 | Check fuses | Flipped in `afterPack` (table above). |
+| 20 | Don't expose Electron APIs to web content | Web views get no IPC; their preload exposes nothing. |
+
+## Storage encryption (ROADMAP 3.8)
+
+Cookies and logins are encrypted with a key from the system keyring (KWallet or GNOME Keyring via
+libsecret on Linux). Without one, Chromium falls back to a fixed key; AIO Space detects this
+(`main/security/keyring.ts`) and warns once in the menu with how to fix it.
+
+## Clearing data (ROADMAP 3.9)
+
+Per app account (Shields panel) or for all apps (menu): the session is cleared at once and its
+partition folder is deleted at the next start, before any session opens. Apps set to "forget when AIO
+Space closes" are cleared on quit and deleted at every start (D-037).
 
 ## Privacy features ("Shields")
 
@@ -59,14 +120,14 @@ Settings live in `packages/core/src/privacy/settings.ts`; implementation in
 | Isolated session per app | Separate profiles | Done |
 | Clean user agent (no "Electron") | n/a | Done |
 | Strip tracking query params | Query filtering | Done (starter list) |
-| Global Privacy Control header | GPC | Done (header). JS `navigator.globalPrivacyControl` in 3.4 |
+| Global Privacy Control | GPC | Done (header and `navigator.globalPrivacyControl`) |
 | Cross-origin referrer trimming | Referrer policy | Done |
 | HTTPS upgrade | HTTPS by default | Done, fallback in 3.2 |
 | WebRTC local IP protection | WebRTC IP policy | Done (keeps Discord voice working) |
-| Tracker and telemetry blocking | Shields trackers | Starter list; filter lists in 3.5 |
-| Ad blocking | Shields ads | 3.6 |
+| Tracker and telemetry blocking | Shields trackers | Done (3.5): EasyPrivacy, uBlock privacy, Brave lists, updated daily; starter list as fallback |
+| Ad blocking | Shields ads | Done (3.6): EasyList, uBlock, Brave lists + cosmetic hiding; no scriptlets (YouTube video ads remain) |
 | Third-party cookie blocking | Cookie blocking | Done for HTTP cookies (3.3); script-set cookies in cross-site frames: Backlog |
-| Fingerprint randomization | Farbling | 3.4 |
+| Fingerprint randomization | Farbling | Done in main frames (3.4): canvas, WebGL, audio; strict buckets hardware and screen. Subframes/workers: Backlog |
 | Discord telemetry endpoints | n/a | Done (`/api/v*/science`, `/metrics`) |
 
 Blocking breaks sites sometimes, so every app has a Shields panel (shield in its tile header, ROADMAP 3.1):

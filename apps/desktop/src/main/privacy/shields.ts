@@ -1,4 +1,6 @@
 import { stripTrackingParams, type PrivacySettings } from '@aio/core';
+import type { FiltersEngine } from '@ghostery/adblocker';
+import { engineBlocks } from './filterLists';
 import type { RequestFilter } from './requestPipeline';
 import { siteOfUrl } from './sites';
 
@@ -51,6 +53,13 @@ export interface CookieOptions {
 
 const NO_COOKIE_OPTIONS: CookieOptions = { appSites: null, topUrl: () => undefined };
 
+export interface ListOptions {
+  /** The compiled filter lists (ROADMAP 3.5/3.6); undefined until the first load or download. */
+  engine(kind: 'ads' | 'trackers'): FiltersEngine | undefined;
+}
+
+const NO_LIST_OPTIONS: ListOptions = { engine: () => undefined };
+
 /**
  * Third-party (ROADMAP 3.3): the request's site is neither the top-level page's site nor one of the
  * app's own sites. Page loads themselves are first-party. Unknown top page: not treated as third
@@ -80,6 +89,7 @@ export function buildShieldFilters(
   getPrivacy: () => PrivacySettings,
   https: HttpsOptions = NO_HTTPS_OPTIONS,
   cookies: CookieOptions = NO_COOKIE_OPTIONS,
+  lists: ListOptions = NO_LIST_OPTIONS,
 ): RequestFilter[] {
   return [
     {
@@ -118,6 +128,23 @@ export function buildShieldFilters(
         if (matchesHost(host, TRACKER_HOSTS)) return { cancel: true };
         if (TELEMETRY_PATHS.some((t) => matchesHost(host, [t.host]) && t.path.test(u.pathname))) {
           return { cancel: true };
+        }
+        return undefined;
+      },
+    },
+    {
+      // Filter lists (ROADMAP 3.5 trackers, 3.6 ads). Page loads themselves are never blocked, so a
+      // wrong rule can't leave an app blank; the starter list above keeps working while lists load.
+      name: 'filter-lists',
+      onBeforeRequest(d) {
+        if (d.resourceType === 'mainFrame') return undefined;
+        const privacy = getPrivacy();
+        const kinds = [privacy.blockAds && 'ads', privacy.blockTrackers && 'trackers'].filter(Boolean) as Array<'ads' | 'trackers'>;
+        if (!kinds.length) return undefined;
+        const sourceUrl = (d.webContentsId !== undefined ? cookies.topUrl(d.webContentsId) : undefined) ?? d.referrer;
+        for (const kind of kinds) {
+          const engine = lists.engine(kind);
+          if (engine && engineBlocks(engine, { url: d.url, sourceUrl, resourceType: d.resourceType })) return { cancel: true };
         }
         return undefined;
       },

@@ -66,21 +66,28 @@ export function resolvePrivacy(
 
 /** Switches shown in the Shields panel: only protections that are implemented today. */
 export const SHIELD_SWITCHES: Array<{ key: ShieldSwitch; label: string; hint: string }> = [
-  { key: 'blockTrackers', label: 'Block trackers and telemetry', hint: 'Stops known tracking and analytics requests.' },
+  { key: 'blockAds', label: 'Block ads', hint: 'Blocks ads and hides the empty space they leave (EasyList, uBlock Origin, Brave).' },
+  { key: 'blockTrackers', label: 'Block trackers and telemetry', hint: 'Stops known tracking and analytics requests (EasyPrivacy, uBlock Origin, Brave).' },
   { key: 'httpsOnly', label: 'Upgrade connections to HTTPS', hint: 'Loads secure versions of sites when you follow http:// links.' },
   { key: 'stripTrackingParams', label: 'Remove tracking from links', hint: 'Drops utm_, fbclid and similar tags from addresses.' },
   { key: 'trimReferrers', label: 'Hide the page you came from', hint: 'Other sites only learn the site, not the exact page.' },
   { key: 'blockThirdPartyCookies', label: 'Block third-party cookies', hint: 'Other sites embedded in a page can’t set or read their cookies.' },
   { key: 'globalPrivacyControl', label: 'Ask sites not to sell or share your data', hint: 'Sends the Global Privacy Control signal.' },
-  // TODO(ROADMAP 3.4, 3.6): fingerprinting and ads join this list when built.
 ];
 export type ShieldSwitch =
+  | 'blockAds'
   | 'blockTrackers'
   | 'httpsOnly'
   | 'stripTrackingParams'
   | 'trimReferrers'
   | 'blockThirdPartyCookies'
   | 'globalPrivacyControl';
+
+export const FINGERPRINT_CHOICES: Array<{ value: PrivacySettings['fingerprinting']; label: string }> = [
+  { value: 'standard', label: 'Standard (recommended)' },
+  { value: 'strict', label: 'Strict (may break sites)' },
+  { value: 'off', label: 'Off' },
+];
 
 export const WEBRTC_CHOICES: Array<{ value: PrivacySettings['webrtcPolicy']; label: string }> = [
   { value: 'default_public_interface_only', label: 'Hide local address (recommended)' },

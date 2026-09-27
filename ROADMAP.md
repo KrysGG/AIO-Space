@@ -98,7 +98,7 @@ filling gaps, not writing it from scratch.
 - Close tile removes it; its neighbor fills the space; its view is destroyed (check memory in the
   task manager drops).
 - Closing the last tile leaves one empty tile.
-- Focused tile is marked with the amber edge; clicking a tile header or inside a web view focuses it.
+- Focused tile is marked with the focus outline (amber until D-032, now white/grey); clicking a tile header or inside a web view focuses it.
 
 ### - [x] 1.4 Resize by dragging dividers
 **Goal:** Smooth resizing of any split.
@@ -268,7 +268,7 @@ DECISIONS.md.
 **Done when:** Ads blocked on common test pages, YouTube works (ad blocking on YouTube is a moving
 target; document current state), per-app toggle respected.
 
-### - [ ] 3.7 Security audit and fuses
+### - [x] 3.7 Security audit and fuses
 Run `electronegativity`, walk Electron's security checklist, confirm every invariant in
 `docs/SECURITY.md`. Apply fuses (table in SECURITY.md) with `@electron/fuses` in an
 electron-builder `afterPack` hook.
@@ -280,7 +280,7 @@ basic fallback is available (`safeStorage.getSelectedStorageBackend()`) and warn
 settings with how to fix it.
 **Done when:** Warning appears on a system without a keyring and not on a normal KDE/GNOME setup.
 
-### - [ ] 3.9 Clear data and forget mode
+### - [x] 3.9 Clear data and forget mode
 Per app: clear cookies/cache/storage. Optional "forget on close" (clear on quit). Global "clear all".
 **Done when:** Clearing an app logs it out and removes its data from disk.
 
@@ -323,7 +323,7 @@ Save a space as a template; import/export the workspace (without cookies) as a f
 **Done when:** Exported workspace loads on another machine with the same layout.
 
 ### - [ ] 4.7 Rail customization
-Reorder, hide and pin apps in the rail; compact mode.
+Reorder, hide and pin apps in the rail; compact mode. (Hiding the whole rail to a thin edge is done, D-038.)
 **Done when:** Rail order persists.
 
 ---
@@ -418,9 +418,6 @@ Add items found while working on other steps here, with the step where they were
 - (0.1) `pnpm install` warns that `esbuild` and `electron-winstaller` build scripts were ignored:
   pnpm 10.0 reads `onlyBuiltDependencies` from `package.json` only, so the list in
   `pnpm-workspace.yaml` has no effect. Pick one place. Electron 44 no longer needs to be listed.
-- (0.4) Views are square and cover the tile's rounded bottom corners and its 3px inset focus bar
-  beside the body. Use `WebContentsView.setBorderRadius()` and/or inset the view bounds to match
-  the tile style. Cosmetic.
 - (2.4, for Phase 3) Web views have spellcheck on, and Electron downloads the Hunspell dictionary
   (`userData/Dictionaries/en-US-*.bdic`) from Google's CDN by default. No user data is sent, but it is
   an outside connection the user didn't ask for. Bundle the dictionaries or set
@@ -429,7 +426,7 @@ Add items found while working on other steps here, with the step where they were
   ticked: confirm with a real Discord message in a background tile (notification + rail/tile badge +
   tray dot). Also check the notification's app name; in dev it is likely "@aio/desktop" (see the 0.2
   userData/app-name item).
-- (2.12) Rename and remove accounts (and clear an account's data) belong with 3.9. The owner can
+- (2.12) Rename and remove accounts are still missing (clearing an account's data came with 3.9). The owner can
   confirm two real Discord logins side by side when convenient (mechanism verified with Browser).
 - (2.12) The smoke test loads real sites (example.com, DuckDuckGo, Brave Search) and failed once in
   CI without a reproducible cause (d7a6221; the rerun passed). Serve test pages from a local server
@@ -447,6 +444,28 @@ Add items found while working on other steps here, with the step where they were
   entirely, even unrelated scripts). Needs the owner to reproduce with DevTools open (or describe
   exactly what's shown: a plain email/password form, a "Continue as ..." button, or a Cloudflare
   challenge) before guessing further at a real session.
+  Update (D-032 round): the owner now sees a "prove you're not a bot" captcha on re-login, so Discord
+  most likely ends the session server-side. Ruled out local storage loss: localStorage written in a
+  tile survives Ctrl+C/SIGINT, SIGTERM and a hard kill 8 s after the write (only a hard kill within
+  ~3 s loses it). Candidates still open: the blocked `/api/v*/science` telemetry (test with only
+  "Block trackers" off for Discord for a few days), Electron's `Sec-CH-UA` brands (Chromium, no
+  "Google Chrome"), and frequent new-device logins feeding Discord's risk score.
+- (3.4) Built and tested on a local fingerprint page (stable within a run, different across runs), but
+  not ticked: this environment can't reach YouTube, Discord or X, so the owner should check they still
+  work with fingerprinting on Standard.
+- (3.4) Farbling covers main frames only. Cross-origin iframes (preload with
+  `nodeIntegrationInSubFrames`, which with sandbox gives no Node), same-origin `about:blank` iframes
+  (their fresh prototypes are unpatched), workers and `OffscreenCanvas` are not covered yet.
+- (3.5/3.6) Built and tested offline (blocking, counting, cosmetic hiding, per-app switches) and with
+  the real lists on a local page, but not ticked: this environment can't reach YouTube or popular
+  sites. Owner: check the blocked count on a few news sites, that no built-in app breaks, and YouTube.
+  Expected on YouTube: banner/sidebar ads blocked, video ads still shown (they need uBlock scriptlets,
+  not run yet). The list download itself runs through Chromium (`session.fetch`), which this
+  environment's TLS proxy blocks; the same code was verified with a Node fetcher.
+- (3.6) Not done yet: scriptlet injection (`+js()`, needed for YouTube video ads), cosmetic filtering in
+  subframes, redirect surrogates (uBlock resources) instead of plain blocking.
+- (3.8) Built; the warning is verified on a system without a keyring (this environment: `basic_text`).
+  Not ticked until the owner confirms it does not appear on their normal KDE setup.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

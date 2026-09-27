@@ -12,7 +12,7 @@ import {
   type SplitDirection,
   type WebAppDef,
 } from '@aio/core';
-import type { ViewPlacement, ViewState } from '../../../shared/ipc';
+import { VIEW_INSET, type ViewPlacement, type ViewState } from '../../../shared/ipc';
 import { AddressBar } from './AddressBar';
 import { AppIcon } from './AppIcon';
 import { UnreadBadge } from './UnreadBadge';
@@ -110,10 +110,10 @@ export function TileLayout(props: Props) {
         appId: t.appId,
         profile: t.profile,
         bounds: {
-          x: Math.round(origin.left + t.rect.x),
+          x: Math.round(origin.left + t.rect.x + VIEW_INSET),
           y: Math.round(origin.top + t.rect.y + HEADER),
-          width: Math.max(0, t.rect.width),
-          height: Math.max(0, t.rect.height - HEADER),
+          width: Math.max(0, t.rect.width - 2 * VIEW_INSET),
+          height: Math.max(0, t.rect.height - HEADER - VIEW_INSET),
         },
       }));
     window.aio.syncViews(placements, keepKey ? keepKey.split('|') : []);
