@@ -16,6 +16,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/preload/index.ts'),
           webapp: resolve(__dirname, 'src/preload/webapp.ts'),
+          extensionShim: resolve(__dirname, 'src/preload/extensionShim.ts'),
         },
       },
     },

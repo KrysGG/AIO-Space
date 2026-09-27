@@ -61,6 +61,10 @@ interface Props {
   /** Whether Shields are up for an app (ROADMAP 3.1). */
   shieldsUp(appId: string): boolean;
   onShields(leafId: string): void;
+  /** Chrome extensions (ROADMAP 4.5): the puzzle button shows once any are installed; count = on for this app. */
+  extensionsInstalled: boolean;
+  extensionsOn(appId: string): number;
+  onExtensions(leafId: string): void;
   /** "Add app" in an empty tile's launcher: the new app opens in that tile. */
   onAddApp(leafId: string): void;
   onRemoveApp(appId: string): void;
@@ -326,6 +330,19 @@ export function TileLayout(props: Props) {
                       {!props.shieldsUp(t.appId) && <path d="m4 4 12 12" />}
                     </svg>
                     {props.shieldsUp(t.appId) && (state?.blocked ?? 0) > 0 && <span>{state!.blocked > 99 ? '99+' : state!.blocked}</span>}
+                  </button>
+                )}
+                {t.appId && props.extensionsInstalled && (
+                  <button
+                    className="shield-btn extensions-btn"
+                    title={`Extensions for this app (${props.extensionsOn(t.appId)} on)`}
+                    aria-label={`Extensions, ${props.extensionsOn(t.appId)} on`}
+                    onClick={() => props.onExtensions(t.leafId)}
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden>
+                      <path d="M8 3.5a1.5 1.5 0 0 1 3 0V5h3.5v3.5H16a1.5 1.5 0 0 1 0 3h-1.5V16H11v-1.5a1.5 1.5 0 0 0-3 0V16H4.5v-4.5H6a1.5 1.5 0 0 0 0-3H4.5V5H8z" />
+                    </svg>
+                    {props.extensionsOn(t.appId) > 0 && <span>{props.extensionsOn(t.appId)}</span>}
                   </button>
                 )}
                 {t.appId && state && Math.abs(state.zoom - 1) > 0.001 && (

@@ -27,6 +27,16 @@ const api: AioApi = {
   updateFilterLists: () => ipcRenderer.invoke(IPC.filtersUpdate),
   getStorageStatus: () => ipcRenderer.invoke(IPC.securityStorage),
   clearData: (target) => ipcRenderer.invoke(IPC.dataClear, target),
+  exportWorkspace: () => ipcRenderer.invoke(IPC.workspaceExport),
+  importWorkspace: () => ipcRenderer.invoke(IPC.workspaceImport),
+  listExtensions: () => ipcRenderer.invoke(IPC.extensionsList),
+  installExtensionFromStore: (linkOrId) => ipcRenderer.invoke(IPC.extensionsInstallStore, linkOrId),
+  installExtensionFromFolder: () => ipcRenderer.invoke(IPC.extensionsInstallFolder),
+  removeExtension: (id) => ipcRenderer.invoke(IPC.extensionsRemove, id),
+  openExtensionPage: (leafId, extensionId, page) => ipcRenderer.send(IPC.extensionsOpen, { leafId, extensionId, page }),
+  listPlugins: () => ipcRenderer.invoke(IPC.pluginsList),
+  installPlugin: () => ipcRenderer.invoke(IPC.pluginsInstall),
+  removePlugin: (id) => ipcRenderer.invoke(IPC.pluginsRemove, id),
   onViewState: (cb) => {
     const listener = (_e: IpcRendererEvent, s: ViewState): void => cb(s);
     ipcRenderer.on(IPC.viewState, listener);

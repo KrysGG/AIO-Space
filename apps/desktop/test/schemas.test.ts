@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addTab, createLeaf, defaultWorkspace, makeCustomApp, MAX_TABS, splitLeaf, type LayoutNode, type WebAppDef } from '@aio/core';
+import { addTab, createLeaf, defaultWorkspace, makeCustomApp, MAX_TABS, parseThemeFile, splitLeaf, type LayoutNode, type WebAppDef } from '@aio/core';
 import {
   CustomAppSchema,
   DownloadActionSchema,
@@ -14,6 +14,11 @@ import {
   WorkspaceSchema,
   NoPayloadSchema,
   ClearDataSchema,
+  PluginId,
+  PluginManifestSchema,
+  ExtensionId,
+  ExtensionOpenSchema,
+  ExtensionStoreInputSchema,
 } from '../src/main/ipc/schemas';
 
 /** A layout with `n` leaves, built by repeatedly splitting the newest leaf. */
@@ -337,5 +342,90 @@ describe('Browser tabs (D-049)', () => {
     expect(PlacementsSchema.safeParse([{ ...p, url: 'file:///etc/passwd' }]).success).toBe(false);
     const keep = Array.from({ length: MAX_TILES * 2 }, (_, i) => `app_${i + 10}`);
     expect(ViewsSyncSchema.safeParse({ placements: [p], keep }).success).toBe(true);
+  });
+});
+
+describe('themes (ROADMAP 4.1)', () => {
+  const imported = parseThemeFile('{"name":"Mine","colors":{"ink":"#000"}}', []);
+  const theme = imported.ok ? imported.theme : null;
+
+  it('stores imported themes and the chosen theme id', () => {
+    expect(theme).not.toBeNull();
+    const ws = { ...defaultWorkspace(), themes: [theme], ui: { ...defaultWorkspace().ui, theme: theme!.id } };
+    expect(WorkspaceSchema.safeParse(ws).success).toBe(true);
+  });
+
+  it('rejects non-colour values, missing or extra keys, built-in ids and duplicates', () => {
+    const bad = [
+      { ...theme!, colors: { ...theme!.colors, ink: 'url(https://x.test/)' } },
+      { ...theme!, colors: { ...theme!.colors, extra: '#000' } },
+      { ...theme!, colors: { ink: '#000' } },
+      { ...theme!, id: 'dark' },
+    ];
+    for (const t of bad) expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), themes: [t] }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), themes: [theme, theme] }).success).toBe(false);
+  });
+});
+
+describe('custom CSS (ROADMAP 4.3)', () => {
+  it('stores CSS per app id within the size limit', () => {
+    const ok = { ...defaultWorkspace(), appCss: { reddit: { css: 'aside{display:none}', enabled: true } } };
+    expect(WorkspaceSchema.safeParse(ok).success).toBe(true);
+    for (const appCss of [{ 'bad id!': { css: '', enabled: true } }, { reddit: { css: 'x'.repeat(50_001), enabled: true } }, { reddit: { css: '', enabled: 'yes' } }]) {
+      expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), appCss }).success).toBe(false);
+    }
+  });
+});
+
+describe('plugins (ROADMAP 4.4)', () => {
+  it('plugins:remove takes a plugin id only', () => {
+    for (const ok of ['youtube-hide-shorts', 'a', 'x1']) expect(PluginId.safeParse(ok).success, ok).toBe(true);
+    for (const bad of ['', '../x', 'A', '-x', 'a/b', 'a'.repeat(41), 1, null]) expect(PluginId.safeParse(bad).success, String(bad)).toBe(false);
+  });
+
+  it('the workspace lists enabled plugin ids, once each', () => {
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), enabledPlugins: ['youtube-hide-shorts'] }).success).toBe(true);
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), enabledPlugins: ['a', 'a'] }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), enabledPlugins: ['../a'] }).success).toBe(false);
+  });
+
+  it('manifests list plain file names of the right type, and no permissions yet', () => {
+    const base = { id: 'p', name: 'P', version: '1.2.3', apps: ['youtube'], scripts: ['a.js'] };
+    expect(PluginManifestSchema.safeParse(base).success).toBe(true);
+    for (const patch of [{ scripts: ['a.css'] }, { styles: ['a.js'] }, { scripts: ['.hidden.js'] }, { scripts: ['dir/a.js'] }, { version: 'v1' }, { permissions: ['net'] }, { apps: ['a', 'a'] }]) {
+      expect(PluginManifestSchema.safeParse({ ...base, ...patch }).success, JSON.stringify(patch)).toBe(false);
+    }
+  });
+});
+
+describe('space templates (ROADMAP 4.6)', () => {
+  it('stores saved layouts under the same tile limits as spaces', () => {
+    const ws = defaultWorkspace();
+    const tpl = { id: 'tpl_1', name: 'Gaming', layout: layoutWithTiles(3) };
+    expect(WorkspaceSchema.safeParse({ ...ws, templates: [tpl] }).success).toBe(true);
+    for (const bad of [{ ...tpl, layout: layoutWithTiles(MAX_TILES + 1) }, { ...tpl, name: '' }, { ...tpl, extra: 1 }]) {
+      expect(WorkspaceSchema.safeParse({ ...ws, templates: [bad] }).success).toBe(false);
+    }
+    expect(WorkspaceSchema.safeParse({ ...ws, templates: [tpl, tpl] }).success).toBe(false);
+  });
+});
+
+describe('Chrome extensions (ROADMAP 4.5)', () => {
+  it('extensions:remove and the workspace take store ids or local-<name> only', () => {
+    for (const ok of ['eimadpbcbfnmbkopoojfekhnkhdbieeh', 'local-my-tool']) expect(ExtensionId.safeParse(ok).success, ok).toBe(true);
+    for (const bad of ['', 'eimadpbcbfnmbkopoojfekhnkhdbiee', 'EIMADPBCBFNMBKOPOOJFEKHNKHDBIEEH', 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz', 'local-', 'local-../x', 1]) {
+      expect(ExtensionId.safeParse(bad).success, String(bad)).toBe(false);
+    }
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), extensions: { youtube: ['local-my-tool'] } }).success).toBe(true);
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), extensions: { youtube: ['local-a', 'local-a'] } }).success).toBe(false);
+  });
+
+  it('extensions:install-store takes a link-sized string; extensions:open a tile, id and page kind', () => {
+    expect(ExtensionStoreInputSchema.safeParse('https://chromewebstore.google.com/detail/x/eimadpbcbfnmbkopoojfekhnkhdbieeh').success).toBe(true);
+    for (const bad of ['short', 'x'.repeat(3000), 42]) expect(ExtensionStoreInputSchema.safeParse(bad).success).toBe(false);
+    expect(ExtensionOpenSchema.safeParse({ leafId: 'leaf_1', extensionId: 'local-a', page: 'popup' }).success).toBe(true);
+    for (const bad of [{ leafId: 'leaf_1', extensionId: 'local-a', page: 'background' }, { leafId: 'leaf_1', extensionId: 'x', page: 'popup' }, { leafId: 'leaf_1', extensionId: 'local-a', page: 'popup', url: 'x' }]) {
+      expect(ExtensionOpenSchema.safeParse(bad).success).toBe(false);
+    }
   });
 });

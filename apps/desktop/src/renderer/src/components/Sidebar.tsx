@@ -1,11 +1,20 @@
+import { useState } from 'react';
 import type { SplitDirection, Unread, WebAppDef } from '@aio/core';
 import { AppIcon } from './AppIcon';
 import { UnreadBadge } from './UnreadBadge';
 import { MediaDot, mergeMedia } from './MediaIndicators';
 import type { MediaInUse } from '../../../shared/webapp';
 
+/** Drag data type for sidebar apps (ROADMAP 4.7). */
+const DRAG_TYPE = 'application/x-aio-rail-app';
+
 interface Props {
+  /** The sidebar's apps in display order (pinned first). */
   catalog: WebAppDef[];
+  /** Pinned app ids: shown in their own group at the top, which doesn't scroll. */
+  pinned: string[];
+  /** Drag and drop: put `appId` before or after `targetId` (joining its group). */
+  onReorder(appId: string, targetId: string, after: boolean): void;
   /** Unread per app id, summed over its tiles. */
   unread: Record<string, Unread>;
   /** Microphone/camera/screen in use per app id. */
@@ -36,7 +45,48 @@ interface Props {
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, media, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed, onAddApp, onAppMenu }: Props) {
+export function Sidebar({ catalog, pinned, onReorder, unread, media, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed, onAddApp, onAppMenu }: Props) {
+  /** Where a dragged app would land: before or after which app. */
+  const [drop, setDrop] = useState<{ id: string; after: boolean } | null>(null);
+  const appButton = (app: WebAppDef) => (
+    <button
+      key={app.id}
+      className={`rail-btn app-glyph${drop?.id === app.id ? (drop.after ? ' is-drop-after' : ' is-drop-before') : ''}`}
+      title={`Open ${app.name} in the focused tile (drag to reorder)`}
+      aria-label={`Open ${app.name}`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DRAG_TYPE, app.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        const after = e.clientY > r.top + r.height / 2;
+        if (drop?.id !== app.id || drop.after !== after) setDrop({ id: app.id, after });
+      }}
+      onDragLeave={() => setDrop((d) => (d?.id === app.id ? null : d))}
+      onDrop={(e) => {
+        e.preventDefault();
+        const dragged = e.dataTransfer.getData(DRAG_TYPE);
+        if (dragged && drop) onReorder(dragged, app.id, drop.after);
+        setDrop(null);
+      }}
+      onDragEnd={() => setDrop(null)}
+      onClick={() => onOpen(app.id)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onAppMenu(app.id, { x: e.clientX, y: e.clientY });
+      }}
+    >
+      <AppIcon app={app} size={20} />
+      <UnreadBadge unread={unread[app.id] ?? null} className="rail-badge" />
+      <MediaDot media={media[app.id]} className="rail-media" />
+    </button>
+  );
+  const pinnedApps = catalog.filter((a) => pinned.includes(a.id));
+  const otherApps = catalog.filter((a) => !pinned.includes(a.id));
   const attention = menuNotice || Object.values(unread).some(Boolean) || activeDownloads > 0;
   // One structure for both states, so the width can animate while the buttons fade out and the edge
   // fades in. `inert` keeps the hidden half out of the tab order and away from the pointer.
@@ -60,24 +110,13 @@ export function Sidebar({ catalog, unread, media, onOpen, onSplit, canSplit, onM
           </button>
         )}
 
+        {pinnedApps.length > 0 && (
+          <div className="rail-pinned" role="group" aria-label="Pinned apps">
+            {pinnedApps.map(appButton)}
+          </div>
+        )}
         <div className="rail-apps">
-          {catalog.map((app) => (
-            <button
-              key={app.id}
-              className="rail-btn app-glyph"
-              title={`Open ${app.name} in the focused tile`}
-              aria-label={`Open ${app.name}`}
-              onClick={() => onOpen(app.id)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onAppMenu(app.id, { x: e.clientX, y: e.clientY });
-              }}
-            >
-              <AppIcon app={app} size={20} />
-              <UnreadBadge unread={unread[app.id] ?? null} className="rail-badge" />
-              <MediaDot media={media[app.id]} className="rail-media" />
-            </button>
-          ))}
+          {otherApps.map(appButton)}
           <button className="rail-btn rail-add" onClick={onAddApp} title="Add an app (app store)" aria-label="Add an app">
             <svg viewBox="0 0 20 20" aria-hidden><path d="M10 4.5v11M4.5 10h11" /></svg>
           </button>

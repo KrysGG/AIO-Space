@@ -1,0 +1,14 @@
+/* Shorts shelves on Home, Subscriptions and search results */
+ytd-reel-shelf-renderer,
+ytd-rich-shelf-renderer[is-shorts],
+ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
+grid-shelf-view-model:has(ytm-shorts-lockup-view-model),
+ytd-rich-item-renderer:has(a[href^="/shorts/"]),
+ytd-video-renderer:has(a[href^="/shorts/"]),
+/* "Shorts" in the side menus, the channel tab and the search filter chip */
+ytd-guide-entry-renderer:has(a[title="Shorts"]),
+ytd-mini-guide-entry-renderer[aria-label="Shorts"],
+yt-tab-shape[tab-title="Shorts"],
+yt-chip-cloud-chip-renderer:has(a[href*="shorts"]) {
+  display: none !important;
+}

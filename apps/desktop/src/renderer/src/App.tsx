@@ -4,6 +4,9 @@ import {
   addProfile,
   allowHttpHost,
   addSpace,
+  addSpaceFromTemplate,
+  removeTemplate,
+  saveTemplate,
   addressToUrl,
   addTab,
   assignApp,
@@ -23,8 +26,14 @@ import {
   moveInRail,
   railApps,
   setHiddenInRail,
+  setPinnedInRail,
+  placeInRail,
   appFromStore,
   setForgetOnClose,
+  setAppCss,
+  setPluginEnabled,
+  setExtensionEnabled,
+  forgetExtension,
   ensureFocus,
   findLeaf,
   listLeaves,
@@ -34,6 +43,7 @@ import {
   removeLeaf,
   removeSpace,
   resolvePrivacy,
+  resolveTheme,
   renameSpace,
   setPrivacyOverride,
   setProfile,
@@ -54,9 +64,11 @@ import {
   type WebAppDef,
   type Workspace,
 } from '@aio/core';
-import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
+import type { DownloadInfo, ExtensionInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
 import { AddAppDialog } from './components/AddAppDialog';
 import { AppStore } from './components/AppStore';
+import { CssEditor } from './components/CssEditor';
+import { ExtensionsPanel } from './components/ExtensionsPanel';
 import { RailMenu } from './components/RailMenu';
 import { TabMenu } from './components/TabMenu';
 import { tabLabel } from './components/TabStrip';
@@ -68,6 +80,7 @@ import { ShieldsPanel } from './components/ShieldsPanel';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
 import { TileLayout } from './components/TileLayout';
+import { applyTheme, useSystemDark } from './theme';
 
 const SAVE_DELAY_MS = 300;
 /** Any area works for finding neighbours: only the relative position of tiles matters. */
@@ -189,6 +202,14 @@ export function App() {
   const [railMenu, setRailMenu] = useState<{ appId: string; at: { x: number; y: number } } | null>(null);
   /** Right-click menu of a Browser tab. */
   const [tabMenu, setTabMenu] = useState<{ leafId: string; instanceId: string; at: { x: number; y: number } } | null>(null);
+  /** Installed Chrome extensions (ROADMAP 4.5), and the tile whose extensions panel is open. */
+  const [extensions, setExtensions] = useState<ExtensionInfo[]>([]);
+  const refreshExtensions = useCallback(() => void window.aio.listExtensions().then(setExtensions), []);
+  useEffect(refreshExtensions, [refreshExtensions]);
+  const [extensionsLeaf, setExtensionsLeaf] = useState<string | null>(null);
+  const closeExtensions = useCallback(() => setExtensionsLeaf(null), []);
+  /** App whose custom CSS editor is docked beside the tiles (ROADMAP 4.3). */
+  const [cssFor, setCssFor] = useState<string | null>(null);
   // Tile whose Shields panel is open (ROADMAP 3.1).
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
   /** The rail is animating (D-038): views are hidden and sharp snapshots stand in for them. */
@@ -198,6 +219,12 @@ export function App() {
   useLayoutEffect(() => {
     document.documentElement.classList.toggle('instant', reduceMotion);
   }, [reduceMotion]);
+  // Theme (ROADMAP 4.1): the chosen one, or light/dark following the desktop.
+  const systemDark = useSystemDark();
+  const theme = ws ? resolveTheme(ws.ui.theme, ws.themes, systemDark) : null;
+  useLayoutEffect(() => {
+    if (theme) applyTheme(theme);
+  }, [theme]);
   const snapshotWaiter = useRef<(() => void) | null>(null);
   /** Logins stored without a system keyring (ROADMAP 3.8); shown in the menu until dismissed. */
   const [weakKeyring, setWeakKeyring] = useState(false);
@@ -299,7 +326,7 @@ export function App() {
       if (!ws || railMoving) return;
       const flip = (): void => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const hasViews = activeSpaceHasApps(ws);
-      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null || store !== null || railMenu !== null || tabMenu !== null;
+      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || extensionsLeaf !== null || adding !== null || store !== null || railMenu !== null || tabMenu !== null;
       const reduceMotion = ws.ui.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // Views already hidden (a popover is open), none to hide, or no animation wanted: just switch.
       if (!hasViews || popoverOpen || reduceMotion) return flip();
@@ -565,6 +592,8 @@ export function App() {
     <div className={`shell${railMoving ? ' is-rail-moving' : ''}`}>
       <Sidebar
         catalog={sidebarApps}
+        pinned={ws.rail.pinned}
+        onReorder={(appId, targetId, after) => edit((w) => placeInRail(w, catalog, appId, targetId, after))}
         unread={unreadByApp}
         media={mediaByApp}
         onOpen={(id) => openApp(id)}
@@ -606,6 +635,9 @@ export function App() {
         onAccount={setAccount}
         shieldsUp={(appId) => resolvePrivacy(ws.privacy, ws.privacyOverrides[appId]).shields}
         onShields={setShieldsLeaf}
+        extensionsInstalled={extensions.length > 0}
+        extensionsOn={(appId) => (ws.extensions[appId] ?? []).filter((id) => extensions.some((x) => x.id === id)).length}
+        onExtensions={setExtensionsLeaf}
         onAllowHttp={(host) => edit((w) => allowHttpHost(w, host))}
         onAddApp={(leafId) => setStore({ leafId })}
         onRemoveApp={removeApp}
@@ -616,6 +648,20 @@ export function App() {
         onTabMenu={(leafId, instanceId, at) => setTabMenu({ leafId, instanceId, at })}
         canAddTile={canAddTile}
       />
+      {cssFor && (() => {
+        const cssApp = catalog.find((a) => a.id === cssFor);
+        return cssApp ? (
+          <CssEditor
+            app={cssApp}
+            value={ws.appCss[cssApp.id]}
+            onChange={(value) => edit((w) => setAppCss(w, cssApp.id, value))}
+            onClose={() => {
+              setCssFor(null);
+              refocusTile();
+            }}
+          />
+        ) : null;
+      })()}
       {helpOpen && <ShortcutsHelp onClose={closeHelp} onClosed={refocusTile} />}
       {menuOpen && (
         <MenuPanel
@@ -631,8 +677,32 @@ export function App() {
           onDismissKeyring={() => edit((w) => dismissNotice(w, 'weak-keyring'))}
           onClearAll={() => window.aio.clearData({ all: true })}
           onReduceMotion={(on) => edit((w) => ({ ...w, ui: { ...w.ui, reduceMotion: on } }))}
+          onTheme={(theme) => edit((w) => ({ ...w, ui: { ...w.ui, theme } }))}
+          onImportTheme={(t) => edit((w) => ({ ...w, themes: [...w.themes, t], ui: { ...w.ui, theme: t.id } }))}
+          onRemoveTheme={(id) =>
+            edit((w) => ({ ...w, themes: w.themes.filter((t) => t.id !== id), ui: { ...w.ui, theme: w.ui.theme === id ? 'system' : w.ui.theme } }))
+          }
           onTwitchScript={(adScript) => edit((w) => ({ ...w, twitch: { adScript } }))}
           onShareGoogle={(shareGoogle) => edit((w) => ({ ...w, identity: { shareGoogle } }))}
+          apps={catalog}
+          onSaveTemplate={(id) => edit((w) => saveTemplate(w, id))}
+          onAddFromTemplate={(id) => {
+            edit((w) => addSpaceFromTemplate(w, id));
+            setMenuOpen(false);
+          }}
+          onRemoveTemplate={(id) => edit((w) => removeTemplate(w, id))}
+          onImported={(imported) => {
+            setWs(imported);
+            setMenuOpen(false);
+          }}
+          onPluginEnabled={(id, on) => edit((w) => setPluginEnabled(w, id, on))}
+          extensions={extensions}
+          onExtensionsChanged={refreshExtensions}
+          onExtensionRemoved={(id) => edit((w) => forgetExtension(w, id))}
+          onCustomCss={(appId) => {
+            setMenuOpen(false);
+            setCssFor(appId);
+          }}
           hiddenApps={catalog.filter((a) => ws.rail.hidden.includes(a.id))}
           onShowApp={(appId) => edit((w) => setHiddenInRail(w, appId, false))}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
@@ -656,21 +726,42 @@ export function App() {
           onClosed={refocusTile}
         />
       )}
+      {extensionsLeaf && (() => {
+        const leaf = findLeaf(space.layout, extensionsLeaf);
+        const extApp = leaf?.appId ? catalog.find((a) => a.id === leaf.appId) : undefined;
+        return leaf && extApp ? (
+          <ExtensionsPanel
+            app={extApp}
+            leafId={leaf.id}
+            installed={extensions}
+            enabled={ws.extensions[extApp.id] ?? []}
+            onToggle={(id, on) => edit((w) => setExtensionEnabled(w, extApp.id, id, on))}
+            onClose={closeExtensions}
+            onClosed={refocusTile}
+          />
+        ) : null;
+      })()}
       {railMenu && (() => {
         const menuApp = catalog.find((a) => a.id === railMenu.appId);
         if (!menuApp) return null;
         const index = sidebarApps.findIndex((a) => a.id === menuApp.id);
+        const pinned = ws.rail.pinned.includes(menuApp.id);
+        // Up and down stay within the pinned group or the rest.
+        const inGroup = (i: number): boolean => i >= 0 && i < sidebarApps.length && ws.rail.pinned.includes(sidebarApps[i]!.id) === pinned;
         return (
           <RailMenu
             app={menuApp}
             at={railMenu.at}
-            canMoveUp={index > 0}
-            canMoveDown={index >= 0 && index < sidebarApps.length - 1}
+            canMoveUp={index >= 0 && inGroup(index - 1)}
+            canMoveDown={index >= 0 && inGroup(index + 1)}
+            pinned={pinned}
+            togglePin={() => edit((w) => setPinnedInRail(w, catalog, menuApp.id, !pinned))}
             open={() => openApp(menuApp.id)}
             openInNewTile={() => openInNewTile(menuApp.id)}
             moveUp={() => edit((w) => moveInRail(w, catalog, menuApp.id, -1))}
             moveDown={() => edit((w) => moveInRail(w, catalog, menuApp.id, 1))}
             hide={() => edit((w) => setHiddenInRail(w, menuApp.id, true))}
+            customCss={() => setCssFor(menuApp.id)}
             {...(menuApp.id.startsWith('custom-') ? { remove: () => removeApp(menuApp.id) } : {})}
             onClose={closeRailMenu}
             onClosed={refocusTile}

@@ -2,6 +2,12 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [4.5] Chrome extensions: install from a Chrome Web Store link (or an unpacked folder) in the menu, turn them on per app with the new puzzle button in the tile, open their popup and options pages; stand-ins for missing Chrome APIs let more of them start; 12 popular extensions tested (docs/EXTENSIONS.md; workspace v17, D-055).
+- [4.7] Drag sidebar apps to reorder them; pin apps to a group at the top that doesn't scroll (right-click > Pin to top); order and pins persist (workspace v17, D-054).
+- [4.6] Space templates (save a space's layout, start new spaces from it) and workspace export/import from the menu ("Move to another computer"; logins and cookies are never in the file); verified by exporting from one profile and importing into a fresh one (workspace v17, D-053).
+- [4.4] Plugins: install a plugin folder (manifest.json, scripts, styles) from Menu > Plugins; off until turned on after a warning (Discord plugins also warn about Discord's terms); scripts run in an isolated world per plugin, only in their target apps; sample "YouTube: hide Shorts" in `examples/plugins` (workspace v17, D-052).
+- [4.3] Custom CSS per app: right-click an app in the sidebar > Custom CSS… (or Menu > Appearance); the editor docks beside the tiles so changes show live; applies on every page load and can be switched off (D-051).
+- [4.1] Themes: Dark, Light and High contrast, following the system's light/dark by default; import your own theme as JSON (Menu > Appearance). Every UI colour is now a theme variable (workspace v17, D-050).
 - [3.8] Confirmed: no false "logins aren't protected" warning on a normal KDE setup (kwallet6 backend detected correctly).
 - [3.5/3.6] Confirmed live on YouTube (real network access): Shields panel shows requests blocked on the page, satisfying the blocked-count check.
 - [3.4] Confirmed live: YouTube works normally with fingerprinting on Standard (no breakage, Shields panel functions normally).

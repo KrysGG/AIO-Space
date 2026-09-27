@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import {
+  isThemeColor,
   isValidHostname,
+  MAX_APP_CSS,
+  MAX_THEME_NAME,
+  MAX_TEMPLATES,
+  MAX_USER_THEMES,
+  THEME_KEYS,
   isWebUrl,
   listLeaves,
   MAX_CUSTOM_APPS,
@@ -17,6 +23,8 @@ import {
   type AppPermission,
   type LayoutNode,
   type SearchEngineId,
+  type Theme,
+  type ThemeKey,
   type WebAppDef,
   type Workspace,
 } from '@aio/core';
@@ -28,6 +36,10 @@ const unique = (xs: string[]): boolean => new Set(xs).size === xs.length;
 export const SearchEngineSchema = z.enum(Object.keys(SEARCH_ENGINES) as [SearchEngineId, ...SearchEngineId[]]);
 
 const Id = z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/);
+/** Installed extension ids (ROADMAP 4.5): a Chrome Web Store id, or local-<name> for a folder install. */
+export const ExtensionId = z.string().regex(/^([a-p]{32}|local-[a-z0-9-]{1,30})$/);
+/** Plugin ids (ROADMAP 4.4): also their folder name under userData/plugins. */
+export const PluginId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/);
 export { MAX_TILES };
 
 /** Account ids: the first is 'default', then p2, p3... (ROADMAP 2.12). */
@@ -91,6 +103,17 @@ export const CustomAppSchema: z.ZodType<WebAppDef> = z.object({
   color: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
 });
 
+/** Imported themes (ROADMAP 4.1): colours only, every key present (they're completed on import). */
+const ThemeColor = z.string().refine(isThemeColor, 'not a colour');
+export const ThemeSchema: z.ZodType<Theme> = z
+  .object({
+    id: z.string().regex(/^user-[a-z0-9-]{1,40}$/),
+    name: z.string().trim().min(1).max(MAX_THEME_NAME),
+    scheme: z.enum(['dark', 'light']),
+    colors: z.object(Object.fromEntries(THEME_KEYS.map((k) => [k, ThemeColor])) as Record<ThemeKey, typeof ThemeColor>).strict(),
+  })
+  .strict();
+
 export const PrivacySchema = z.object({
   shields: z.boolean(),
   blockAds: z.boolean(),
@@ -104,6 +127,12 @@ export const PrivacySchema = z.object({
   webrtcPolicy: z.enum(['default', 'default_public_interface_only', 'disable_non_proxied_udp']),
 });
 
+/** A space's layout: at most MAX_TILES tiles, unique tiles and running instances. */
+const SpaceLayout = LayoutSchema.refine((l) => listLeaves(l).length <= MAX_TILES, 'too many tiles').refine((l) => {
+  const leaves = listLeaves(l);
+  return unique(leaves.map((x) => x.id)) && unique(instancesOf(l)) && leaves.every((x) => tabsOf(x).length <= MAX_TABS);
+}, 'duplicate tile or instance');
+
 export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   version: z.number().int(),
   spaces: z
@@ -111,10 +140,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
       z.object({
         id: Id,
         name: z.string().min(1).max(40),
-        layout: LayoutSchema.refine((l) => listLeaves(l).length <= MAX_TILES, 'too many tiles').refine((l) => {
-          const leaves = listLeaves(l);
-          return unique(leaves.map((x) => x.id)) && unique(instancesOf(l)) && leaves.every((x) => tabsOf(x).length <= MAX_TABS);
-        }, 'duplicate tile or instance'),
+        layout: SpaceLayout,
         focusedLeafId: Id.nullable(),
       }),
     )
@@ -139,13 +165,29 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
     )
     .refine((p) => Object.keys(p).length <= 100, 'too many apps with accounts'),
   httpAllowedHosts: z.array(Host).max(200).refine(unique, 'duplicate host'),
-  ui: z.object({ railCollapsed: z.boolean(), reduceMotion: z.boolean() }),
+  ui: z.object({ railCollapsed: z.boolean(), reduceMotion: z.boolean(), theme: Id }),
+  themes: z
+    .array(ThemeSchema)
+    .max(MAX_USER_THEMES)
+    .refine((ts) => unique(ts.map((t) => t.id)), 'duplicate theme id'),
   twitch: z.object({ adScript: z.enum(['vaft', 'video-swap-new', 'off']) }),
   identity: z.object({ shareGoogle: z.boolean() }),
   rail: z.object({
     order: z.array(Id).max(300).refine(unique, 'duplicate app id'),
     hidden: z.array(Id).max(300).refine(unique, 'duplicate app id'),
+    pinned: z.array(Id).max(300).refine(unique, 'duplicate app id'),
   }),
+  appCss: z
+    .record(Id, z.object({ css: z.string().max(MAX_APP_CSS), enabled: z.boolean() }).strict())
+    .refine((c) => Object.keys(c).length <= 200, 'too many apps with CSS'),
+  templates: z
+    .array(z.object({ id: Id, name: z.string().trim().min(1).max(40), layout: SpaceLayout }).strict())
+    .max(MAX_TEMPLATES)
+    .refine((ts) => unique(ts.map((t) => t.id)), 'duplicate template id'),
+  extensions: z
+    .record(Id, z.array(ExtensionId).max(50).refine(unique, 'duplicate extension id'))
+    .refine((e) => Object.keys(e).length <= 200, 'too many apps with extensions'),
+  enabledPlugins: z.array(PluginId).max(100).refine(unique, 'duplicate plugin id'),
   forgetOnClose: z.array(Id).max(200).refine(unique, 'duplicate app id'),
   dismissedNotices: z.array(z.enum(NOTICE_IDS)).max(NOTICE_IDS.length).refine(unique, 'duplicate notice'),
   customApps: z
@@ -213,3 +255,37 @@ export const ClearDataSchema = z.union([
   z.object({ appId: Id, profile: ProfileId }).strict(),
   z.object({ all: z.literal(true) }).strict(),
 ]);
+
+/* ---- Plugins (ROADMAP 4.4) ------------------------------------------------------------------ */
+
+
+/** A file a plugin lists: a plain name in the plugin folder (no paths, so nothing outside it). */
+const PluginFile = (ext: 'js' | 'css') => z.string().regex(new RegExp(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\\.${ext}$`));
+
+/**
+ * manifest.json. Plugins get no permissions yet: a plugin asking for any is refused rather than run
+ * without what it expects. TODO(ROADMAP 4.4): the permissioned message channel to main (D-052).
+ */
+export const PluginManifestSchema = z
+  .object({
+    id: PluginId,
+    name: z.string().trim().min(1).max(60),
+    version: z.string().regex(/^[0-9]{1,5}(\.[0-9]{1,5}){0,3}$/),
+    description: z.string().trim().max(300).default(''),
+    apps: z.array(Id).min(1).max(20).refine(unique, 'duplicate app id'),
+    permissions: z.array(z.string()).max(0, 'AIO Space doesn’t offer plugin permissions yet').default([]),
+    scripts: z.array(PluginFile('js')).max(10).refine(unique, 'duplicate file').default([]),
+    styles: z.array(PluginFile('css')).max(10).refine(unique, 'duplicate file').default([]),
+  })
+  .strict()
+  .refine((m) => m.scripts.length + m.styles.length > 0, 'a plugin needs at least one script or style');
+export type PluginManifest = z.infer<typeof PluginManifestSchema>;
+
+/* ---- Chrome extensions (ROADMAP 4.5) -------------------------------------------------------- */
+
+/** extensions:install-store: a store link or id (main extracts and checks the id). */
+export const ExtensionStoreInputSchema = z.string().trim().min(32).max(2048);
+
+/** extensions:open: which page of which extension, for the app in which tile. */
+export const ExtensionOpenSchema = z.object({ leafId: Id, extensionId: ExtensionId, page: z.enum(['popup', 'options']) }).strict();
+

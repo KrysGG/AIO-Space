@@ -27,7 +27,48 @@ export const IPC = {
   filtersUpdate: 'filters:update',
   securityStorage: 'security:storage',
   dataClear: 'data:clear',
+  workspaceExport: 'workspace:export',
+  workspaceImport: 'workspace:import',
+  extensionsList: 'extensions:list',
+  extensionsInstallStore: 'extensions:install-store',
+  extensionsInstallFolder: 'extensions:install-folder',
+  extensionsRemove: 'extensions:remove',
+  extensionsOpen: 'extensions:open',
+  pluginsList: 'plugins:list',
+  pluginsInstall: 'plugins:install',
+  pluginsRemove: 'plugins:remove',
 } as const;
+
+/** Result of saving or opening a workspace file (ROADMAP 4.6); main shows the file dialogs itself. */
+export type WorkspaceFileResult<T = undefined> = ({ ok: true } & (T extends undefined ? unknown : { workspace: T })) | { ok: false; error: string } | { ok: false; cancelled: true };
+
+/** An installed Chrome extension as the UI shows it (ROADMAP 4.5). Its files stay in main. */
+export interface ExtensionInfo {
+  /** Chrome Web Store id, or `local-<name>` for an unpacked folder. */
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  source: 'store' | 'folder';
+  /** Its toolbar popup and options pages (paths inside the extension), if it has them. */
+  popup?: string;
+  options?: string;
+}
+
+export type ExtensionInstallResult = { ok: true; extension: ExtensionInfo } | { ok: false; error: string } | { ok: false; cancelled: true };
+
+/** An installed plugin as the UI shows it (ROADMAP 4.4). Its code stays in main. */
+export interface PluginInfo {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  /** App ids it runs in. */
+  apps: string[];
+}
+
+/** `plugins:install`: main asks for a folder itself; the UI never passes a path. */
+export type PluginInstallResult = { ok: true; plugin: PluginInfo } | { ok: false; error: string } | { ok: false; cancelled: true };
 
 /** What to clear (ROADMAP 3.9): one account of an app, or every app. */
 export type ClearDataTarget = { appId: string; profile: string } | { all: true };
@@ -204,4 +245,23 @@ export interface AioApi {
   getStorageStatus(): Promise<StorageStatus>;
   /** Log out and delete cookies, storage and cache; the files are removed at the next start. */
   clearData(target: ClearDataTarget): Promise<void>;
+  /** Save the current workspace (layouts, apps, settings; never logins or cookies) to a file the user picks (ROADMAP 4.6). */
+  exportWorkspace(): Promise<WorkspaceFileResult>;
+  /** Read and validate a workspace file the user picks. Nothing changes until the UI adopts (and saves) it. */
+  importWorkspace(): Promise<WorkspaceFileResult<Workspace>>;
+  /** Installed Chrome extensions (ROADMAP 4.5). Which apps run them is `workspace.extensions`. */
+  listExtensions(): Promise<ExtensionInfo[]>;
+  /** Download and install (or update) from a Chrome Web Store link or extension id. */
+  installExtensionFromStore(linkOrId: string): Promise<ExtensionInstallResult>;
+  /** Pick an unpacked extension folder and install (or update) it. */
+  installExtensionFromFolder(): Promise<ExtensionInstallResult>;
+  removeExtension(id: string): Promise<void>;
+  /** Open an extension's popup or options page, in the session of the app in `leafId`. */
+  openExtensionPage(leafId: string, extensionId: string, page: 'popup' | 'options'): void;
+  /** Installed plugins (ROADMAP 4.4). */
+  listPlugins(): Promise<PluginInfo[]>;
+  /** Pick a plugin folder and install (or update) it. Installed plugins stay off until enabled in the workspace. */
+  installPlugin(): Promise<PluginInstallResult>;
+  /** Delete an installed plugin. */
+  removePlugin(id: string): Promise<void>;
 }

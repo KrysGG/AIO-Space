@@ -52,6 +52,8 @@ Native views cover anything the UI draws in their area. Rules:
 | Data | Where | Format |
 | --- | --- | --- |
 | Workspace (spaces, layouts, privacy settings) | `~/.config/AIO Space/workspace.json` (Linux) | JSON, `WORKSPACE_VERSION`, validated by zod |
+| Installed Chrome extensions | `~/.config/AIO Space/extensions/<id>/` | unpacked extension |
+| Installed plugins | `~/.config/AIO Space/plugins/<id>/` | manifest.json + listed scripts/styles |
 | Logins, cookies, cache per app | `~/.config/AIO Space/Partitions/app-<id>-<profile>` | Chromium profile data |
 
 Changing the workspace shape requires bumping `WORKSPACE_VERSION` and adding a migration in
@@ -66,7 +68,8 @@ packages/core/src/
   catalog/apps.ts          built-in apps, permissions, host allowlists, partition names
   privacy/settings.ts      Shields settings + defaults (Brave-like)
   privacy/trackingParams.ts  URL cleaning
-  workspace/workspace.ts   Workspace/Space model, defaults, migrations
+  workspace/workspace.ts   Workspace/Space model, defaults, migrations, templates, rail order
+  ui/themes.ts             built-in themes, theme file parsing (ROADMAP 4.1)
   util/id.ts               ids
 packages/core/test/        vitest unit tests
 
@@ -84,6 +87,10 @@ apps/desktop/src/
   main/ipc/schemas.ts      zod schemas for everything from the renderer or disk
   main/ipc/handlers.ts     IPC handlers with sender checks
   main/store/workspaceStore.ts  atomic JSON persistence
+  main/store/workspaceFile.ts   workspace export/import files (ROADMAP 4.6)
+  main/plugins/pluginStore.ts   installed plugins in userData/plugins (ROADMAP 4.4)
+  main/extensions/          Chrome extensions: store/CRX unpacking, per-app loading (ROADMAP 4.5)
+  preload/extensionShim.ts  stand-ins for Chrome APIs Electron lacks (extension contexts only)
   renderer/index.html      CSP
   renderer/src/App.tsx     workspace state + actions
   renderer/src/components/ Sidebar, TileLayout, Launcher

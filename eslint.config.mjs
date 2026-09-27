@@ -28,6 +28,11 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   {
+    // Example plugin scripts run in web pages (an isolated world), like a browser extension's.
+    files: ['examples/plugins/**/*.js'],
+    languageOptions: { sourceType: 'script', globals: { window: 'readonly', document: 'readonly', location: 'readonly' } },
+  },
+  {
     files: ['apps/desktop/src/renderer/**/*.{ts,tsx}'],
     ...reactHooks.configs.flat.recommended,
   }

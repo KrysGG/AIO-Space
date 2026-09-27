@@ -288,7 +288,7 @@ Per app: clear cookies/cache/storage. Optional "forget on close" (clear on quit)
 
 ## Phase 4: Make it your space
 
-### - [ ] 4.1 Themes
+### - [x] 4.1 Themes
 All colors in `styles.css` are CSS variables. Theme = JSON of variable values; built-in dark,
 light, high contrast; user themes importable. Respect system light/dark by default.
 **Done when:** Switching theme restyles the whole UI instantly and persists.
@@ -298,12 +298,12 @@ Bundled SVG icons for built-ins; favicon fetched once and cached for custom apps
 the app's own session). Replace text glyphs.
 **Done when:** Rail and launcher show proper icons.
 
-### - [ ] 4.3 Per-app custom CSS
+### - [x] 4.3 Per-app custom CSS
 User CSS per app injected with `webContents.insertCSS` on each load (e.g. hide Reddit's sidebar).
 Editor in settings with live preview.
 **Done when:** Custom CSS applies on every navigation and can be toggled off.
 
-### - [ ] 4.4 Plugin system
+### - [x] 4.4 Plugin system
 Plugin = folder with `manifest.json` (id, name, version, target app ids, permissions), content
 script(s) and CSS. Scripts run in an **isolated world** in the target app's view, never with Node
 or IPC. Installed only from local folders, disabled by default, with a clear warning. Plugins that
@@ -313,18 +313,19 @@ Discord-targeting plugins.
 **Done when:** A sample plugin (e.g. "YouTube: hide Shorts") installs, runs only on YouTube, and
 can be disabled.
 
-### - [ ] 4.5 Wider Chrome extension support
+### - [x] 4.5 Wider Chrome extension support
 Evaluate `electron-chrome-extensions` for toolbar actions and popups. Add an extensions manager
-per app session.
+per app session. (Built on Electron's own extension support instead: the library is GPL-3.0 or paid,
+and the license is undecided, D-055. Tested list: docs/EXTENSIONS.md.)
 **Done when:** A documented list of tested extensions and whether they work.
 
-### - [ ] 4.6 Layout presets, import and export
+### - [x] 4.6 Layout presets, import and export
 Save a space as a template; import/export the workspace (without cookies) as a file.
 **Done when:** Exported workspace loads on another machine with the same layout.
 
-### - [ ] 4.7 Rail customization
+### - [x] 4.7 Rail customization
 Reorder, hide and pin apps in the rail; compact mode. (Done: hiding the whole rail, D-038; reorder and hide
-from the right-click menu, D-047. Left: drag to reorder, pinning.)
+from the right-click menu, D-047; drag to reorder and pinning, D-054.)
 **Done when:** Rail order persists.
 
 ---
@@ -473,6 +474,13 @@ Add items found while working on other steps here, with the step where they were
   csp_report), as uBlock does. Suspect our script-level fingerprinting (X's login bot checks can see
   wrapped functions). Owner: set Block fingerprinting to Off in X's Shields panel and try again; if
   that fixes it, make X's default an exception (or make farbling harder to detect).
+- (4.5) Extensions: no Chrome tab model, so "which tab am I on" gets nothing (per-site popup switches,
+  toolbar-triggered autofill); `storage.sync` is missing in content scripts; no `declarativeNetRequest`.
+  A small `chrome.tabs` answering for the view the popup was opened from would fix several popups
+  (Dark Reader, SponsorBlock's per-video part). If the project goes GPL, `electron-chrome-extensions`
+  covers all of this. Google Translate hung with the API stand-ins; check why.
+- (4.4) Plugins have no permissions and no message channel to main yet: a manifest asking for any is refused.
+  Build the channel from the design in D-052 when a real plugin needs data from main.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

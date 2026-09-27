@@ -489,3 +489,88 @@ views receive that page through `ViewPlacement.url` (zod-checked http(s)), Brows
 forward buttons, which had just changed. Header and view bounds were correct; only the redrawn parts
 came back. Main now invalidates the UI page 250 ms after any view state change (debounced), which
 redraws the whole window without re-rendering React.
+
+**D-050: Themes are colour variables; imported themes are JSON with colours only.**
+ROADMAP 4.1. A theme (`packages/core/src/ui/themes.ts`) sets the UI's colour variables (`THEME_KEYS`,
+each `--<key>` in styles.css) plus `scheme` (dark/light, for native controls). Every colour in
+styles.css now comes from these (translucent tints via `color-mix()` over `--hl`, `--warn`, `--danger`);
+the glass highlights stay white on purpose, and brand-coloured store tiles keep white marks. Built-ins:
+Dark (the old look), Light, High contrast. `workspace.ui.theme` (v17) is a theme id or `system`
+(default: Light or Dark from `prefers-color-scheme`, live). Users import a `.json` file (`{ name, scheme,
+colors }`) from Menu > Appearance; it's read in the UI (a file input: no IPC) and missing colours come
+from the built-in theme of the same scheme. Values must be hex, rgb() or hsl() with plain numbers
+(`isThemeColor`, again in the workspace schema), so a theme can't smuggle `url()` or extra declarations
+into the page. Applied with `style.setProperty` on `<html>` (CSSOM, allowed by the strict CSP).
+Not themed: the window's startup background (`window.ts`), which shows for a moment before the UI loads.
+
+**D-051: Custom CSS per app: an injected author stylesheet, edited in a panel docked beside the tiles.**
+ROADMAP 4.3. `workspace.appCss[appId] = { css, enabled }` (v17, 50 000 characters at most). Main
+inserts it with `insertCSS` at every `dom-ready` (each new document) and, after each workspace save,
+replaces or removes it in every open view of the app, so edits show live and "off" takes effect at once.
+Author origin: injected sheets rank before the page's own, so plain rules lose to the site's and
+`!important` ones win (the editor says so). Not user origin: in Electron 44 `removeInsertedCSS` is a
+silent no-op for user-origin sheets (checked), so they could never be switched off or replaced. The
+editor is a panel docked to the right of the tiles, not a popover: native views cover popovers, and
+the tiles simply shrink so the page stays visible while typing. Opened from the sidebar's right-click
+menu or Menu > Appearance.
+
+**D-052: Plugins: local folders copied into userData, run as isolated-world content scripts.**
+ROADMAP 4.4. Format in `examples/plugins/README.md` (sample: `youtube-hide-shorts`). Install: main
+shows the folder picker (`plugins:install`; the UI never passes a path), validates `manifest.json`
+(`PluginManifestSchema`: id, name, version, description, `apps`, `permissions`, `scripts`, `styles`,
+strict), reads only the plain file names it lists (no subfolders, no symlinks, 1 MB together) and
+writes them to `userData/plugins/<id>/` (atomic rename; reinstalling updates). At startup
+`PluginStore` loads that folder, skipping anything invalid or whose folder name isn't its id.
+`workspace.enabledPlugins` (v17) lists the ones turned on; a new plugin is off, and turning it on asks
+first (and warns that modifying Discord breaks its terms). Running: at each `dom-ready` of a target
+app's view, on the app's own hosts (`allowedHosts`) and never on `SIGN_IN_HOSTS`, styles are inserted
+(author origin, like D-051) and scripts run with `executeJavaScriptInIsolatedWorld` in a world of their
+own (1100 + the plugin's index), so neither the page nor other plugins see their variables; they have
+no Node and no IPC. A script can't be unloaded, so turning a plugin on or off, updating or removing it
+reloads the views of the apps whose plugin set changed. New IPC: `plugins:list`, `plugins:install`,
+`plugins:remove`.
+Not built yet (Backlog): permissions and the channel to main. Design when needed: a manifest
+permission per capability (e.g. `"notify"`); main exposes, to that plugin's world only, one function
+through a preload-free route (a keyed `console` report like D-042, or a dedicated isolated-world
+bridge), with a zod schema per message, rate-limited, and shown to the user when turning the plugin on.
+
+**D-053: Templates in the workspace; export/import of workspace.json through main's file dialogs.**
+ROADMAP 4.6. A template (`workspace.templates`, v17, 20 at most) is a space's layout copied with
+`freshLayout`: new ids for every tile, split and running instance (instance ids must be unique across
+spaces), Browser tabs dropped, apps, accounts and ratios kept. Starting a space from one copies it again.
+Export writes the saved workspace (`store.get()`, which already strips Browser pages for "forget when
+closed") to a file picked in main's save dialog (0600). Import reads a file picked in main's open dialog
+(5 MB at most), refuses versions it can't read instead of falling back to defaults, then migrates and
+validates it with `WorkspaceSchema` exactly like `workspace.json`; the UI asks before replacing
+everything and adopts it through the normal save. Logins, cookies and site data are session
+partitions, never in the file. New IPC: `workspace:export`, `workspace:import` (no payload; the UI
+never passes paths).
+
+**D-054: Sidebar pinning is a fixed group at the top; drag and drop joins the target's group.**
+ROADMAP 4.7 (finishes it with D-038 and D-047). `workspace.rail.pinned` (v17): pinned apps show first,
+in their own group above a divider that never scrolls (the rest scroll when there are many apps).
+`railApps` returns display order (pinned, then the rest, each in the user's order). Move up/down stays
+within a group. Dragging an app (HTML5 drag and drop, safe in the rail since native views never cover
+it) drops it before or after the app under the pointer (top or bottom half) and into that app's group,
+so dragging is also a way to pin or unpin (`placeInRail`). Pin/Unpin is also in the right-click menu.
+
+**D-055: Chrome extensions on Electron's own support, with API stand-ins; not electron-chrome-extensions.**
+ROADMAP 4.5. `electron-chrome-extensions` (toolbar actions, popups, a `chrome.tabs` model) is GPL-3.0
+or a paid "patron" license held only while sponsoring; AIO Space's license is undecided (free app,
+light monetization), so the owner chose no GPL or paid dependency. Instead: `session.extensions` in
+each app session, plus `preload/extensionShim.ts`, a session preload (service workers and frames) that,
+in `chrome-extension:` contexts only, adds events that never fire and empty getters for APIs Electron
+lacks (tabs/windows events, webNavigation, contextMenus, action, alarms, commands...) and maps
+`storage.sync` to `storage.local`. Tested on 12 popular extensions (docs/EXTENSIONS.md): the stand-ins
+turned several from crashing at startup to working. Installed packages live in
+`userData/extensions/<store id | local-name>` (`ExtensionStore`); Web Store installs download the CRX
+from `clients2.google.com` in a cookie-less session (`net.request`, redirects followed by hand, Google
+hosts only; Electron's `fetch` gives no final URL and can't do manual redirects), unpacked by `crx.ts`
+(CRX2/3 and zip; stored/deflate; paths confined, links refused; `_metadata/` dropped since Chromium
+refuses it unpacked). Signatures aren't verified (https from Google, or the user's own file).
+`workspace.extensions[appId]` (v17) lists what each app runs; `ExtensionHost` loads/unloads them in
+every session of that app (never the UI's) and the app's pages reload. Popups and options pages open in
+a small sandboxed window in the app's session, restricted to that extension's pages (popups close on
+blur, like Chrome's). New IPC: `extensions:list`, `extensions:install-store`,
+`extensions:install-folder`, `extensions:remove`, `extensions:open`.
+

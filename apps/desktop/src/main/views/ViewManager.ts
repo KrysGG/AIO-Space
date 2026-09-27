@@ -32,6 +32,8 @@ import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
 import type { ScriptletFiles } from '../privacy/scriptlets';
 import type { SharedSignIn } from '../sessions/sharedSignIn';
+import type { PluginStore } from '../plugins/pluginStore';
+import type { ExtensionHost } from '../extensions/extensionHost';
 import { getDomain } from 'tldts';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
 import { getAppSession, hasUsedMedia } from '../sessions/appSession';
@@ -40,7 +42,7 @@ import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
 import { navigationDecision, popupNavigationDecision, windowDecision } from './navigationPolicy';
-import { NO_MEDIA, parseMediaReport, webAppArgs, type MediaInUse, type WebAppArgs } from '../../shared/webapp';
+import { isSignInHost, NO_MEDIA, parseMediaReport, webAppArgs, type MediaInUse, type WebAppArgs } from '../../shared/webapp';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
 /** Isolated world (not the page's) where main reads class names and ids for cosmetic filtering. */
@@ -84,6 +86,10 @@ interface Entry {
   preloadArgs: WebAppArgs;
   /** The upgraded https:// load failed: view hidden, tile offers http (ROADMAP 3.2). */
   httpsFailed?: { host: string; url: string; error: string };
+  /** The user's CSS on the current page (ROADMAP 4.3) and the key to remove it; reset on each new page. */
+  userCss?: { css: string; key: Promise<string | undefined> };
+  /** Which plugins (id@version) this view's pages run (ROADMAP 4.4); a change reloads the view. */
+  plugins: string;
   appId: string;
   def: WebAppDef;
   view: WebContentsView;
@@ -125,6 +131,8 @@ export class ViewManager {
     private readonly filterLists?: FilterLists,
     private readonly scriptlets?: ScriptletFiles,
     private readonly signIn?: SharedSignIn,
+    private readonly plugins?: PluginStore,
+    private readonly extensions?: ExtensionHost,
   ) {
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
     // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
@@ -428,13 +436,18 @@ export class ViewManager {
     // Rounded like the tile body it sits in; native views are otherwise square and poke past it.
     view.setBorderRadius(VIEW_RADIUS);
     const wc = view.webContents;
+    // Chrome extensions this app has on (ROADMAP 4.5): loaded into its session the first time; a page
+    // that started loading before they were ready loads again with them.
+    void this.extensions?.attach(appId, partitionFor(appId, profile), ses).then((loaded) => {
+      if (loaded && !wc.isDestroyed()) wc.reload();
+    });
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
     followSignInUserAgent(wc);
     forwardShortcuts(wc, (action) => {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
-    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs, media: NO_MEDIA, audible: false };
+    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs, media: NO_MEDIA, audible: false, plugins: this.pluginsKey(appId) };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
@@ -453,7 +466,12 @@ export class ViewManager {
       if (Math.abs(wc.getZoomFactor() - saved) > 0.001) wc.setZoomFactor(saved);
       entry.emit?.();
     });
-    wc.on('dom-ready', () => void this.hideAds(appId, wc, true));
+    wc.on('dom-ready', () => {
+      entry.userCss = undefined; // a new document: the last page's stylesheet went with it
+      this.applyUserCss(entry);
+      void this.runPlugins(entry);
+      void this.hideAds(appId, wc, true);
+    });
     wc.on('did-finish-load', () => void this.hideAds(appId, wc, false));
     if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(def, wc);
 
@@ -507,6 +525,91 @@ export class ViewManager {
       getExtendedRules: false,
     });
     if (styles) await wc.insertCSS(styles, { cssOrigin: 'user' }).catch(() => {});
+  }
+
+  /** Re-apply every view's custom CSS after a settings change (live preview while editing, on/off). */
+  applyAppCss(): void {
+    for (const entry of this.views.values()) this.applyUserCss(entry);
+  }
+
+  /**
+   * The user's CSS for this app (ROADMAP 4.3). Injected sheets come before the page's own, so plain
+   * rules lose to the site's and `!important` ones win. Author origin on purpose: Electron can't
+   * remove a user-origin sheet (removeInsertedCSS is a silent no-op for it), and this one is replaced
+   * on every edit and removed when turned off.
+   */
+  private applyUserCss(entry: Entry): void {
+    const wc = entry.view.webContents;
+    const setting = this.store.get().appCss[entry.appId];
+    const want = setting?.enabled ? setting.css.trim() : '';
+    if (wc.isDestroyed() || want === (entry.userCss?.css ?? '')) return;
+    const old = entry.userCss;
+    entry.userCss = want ? { css: want, key: wc.insertCSS(want).catch(() => undefined) } : undefined;
+    void old?.key.then((key) => {
+      if (key && !wc.isDestroyed()) void wc.removeInsertedCSS(key).catch(() => {});
+    });
+  }
+
+  private pluginsKey(appId: string): string {
+    return (this.plugins?.forApp(appId, this.store.get().enabledPlugins) ?? []).map((p) => `${p.manifest.id}@${p.manifest.version}`).join(',');
+  }
+
+  /**
+   * Plugins turned on or off, installed, updated or removed: reload the views of apps whose set of
+   * plugins changed (a script that already ran can't be taken back out of a page).
+   */
+  applyPlugins(): void {
+    for (const entry of this.views.values()) {
+      const want = this.pluginsKey(entry.appId);
+      if (want === entry.plugins) continue;
+      entry.plugins = want;
+      if (!entry.view.webContents.isDestroyed()) entry.view.webContents.reload();
+    }
+  }
+
+  /**
+   * Enabled plugins for this app (ROADMAP 4.4), on each new page: styles as injected stylesheets,
+   * scripts in the plugin's own isolated world (the page can't see it, other plugins can't either;
+   * no Node, no IPC). Only on the app's own sites, never on sign-in providers' pages (D-046).
+   */
+  private async runPlugins(entry: Entry): Promise<void> {
+    const wc = entry.view.webContents;
+    const plugins = this.plugins?.forApp(entry.appId, this.store.get().enabledPlugins) ?? [];
+    if (plugins.length === 0 || wc.isDestroyed()) return;
+    let host: string;
+    try {
+      host = new URL(wc.getURL()).hostname;
+    } catch {
+      return;
+    }
+    if (!isWebUrl(wc.getURL()) || isSignInHost(host) || !hostMatches(host, entry.def.allowedHosts)) return;
+    for (const p of plugins) {
+      for (const css of p.styles) void wc.insertCSS(css).catch(() => {});
+      if (p.scripts.length === 0) continue;
+      await wc
+        .executeJavaScriptInIsolatedWorld(p.world, p.scripts.map((code) => ({ code })))
+        .catch((err: unknown) => console.warn(`[plugins] ${p.manifest.id} failed on ${host}:`, err instanceof Error ? err.message : err));
+    }
+  }
+
+  /** Extensions turned on or off for an app (ROADMAP 4.5): load or unload them, and reload that app's pages. */
+  applyExtensions(): void {
+    void this.extensions?.sync().then((apps) => this.reloadApps(apps));
+  }
+
+  /** An extension was reinstalled: reload it and the pages of apps that run it. */
+  reloadExtension(id: string): void {
+    void this.extensions?.reloadExtension(id).then((apps) => this.reloadApps(apps));
+  }
+
+  private reloadApps(apps: Set<string>): void {
+    for (const entry of this.views.values()) if (apps.has(entry.appId) && !entry.view.webContents.isDestroyed()) entry.view.webContents.reload();
+  }
+
+  /** An extension's popup or options page, for the app in a tile. */
+  openExtensionPage(leafId: string, extensionId: string, kind: 'popup' | 'options'): void {
+    const entry = this.byLeaf(leafId);
+    if (entry) this.extensions?.openPage(partitionFor(entry.appId, entry.profile), extensionId, kind);
   }
 
   /** A custom app's icon: its own favicon, fetched once through its own session (ROADMAP 2.7/4.2). */

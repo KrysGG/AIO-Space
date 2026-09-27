@@ -11,3 +11,4 @@ export * from './privacy/trackingParams';
 export * from './workspace/workspace';
 export * from './util/id';
 export * from './catalog/store';
+export * from './ui/themes';

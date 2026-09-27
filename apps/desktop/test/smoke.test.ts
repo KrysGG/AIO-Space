@@ -227,4 +227,34 @@ describe('desktop smoke test', () => {
     await tiles().last().getByRole('button', { name: 'Close tile' }).click();
     await expect.poll(() => tiles().count()).toBe(count);
   });
+
+  it('drags sidebar apps to reorder them and pins apps to the top; the order survives a restart (ROADMAP 4.7)', async () => {
+    const group = (sel: string) => ui.locator(`${sel} .app-glyph`).evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')!.replace('Open ', '')));
+    const rest = () => group('.rail-apps');
+    const pinned = () => group('.rail-pinned');
+    const before = await rest();
+    const [a, b, c] = before as [string, string, string];
+
+    // Drag the third app onto the top half of the first: it lands before it.
+    const first = ui.getByRole('button', { name: `Open ${a}` });
+    const box = (await first.boundingBox())!;
+    await ui.getByRole('button', { name: `Open ${c}` }).dragTo(first, { targetPosition: { x: box.width / 2, y: 4 } });
+    await expect.poll(async () => (await rest()).slice(0, 3)).toEqual([c, a, b]);
+
+    await ui.getByRole('button', { name: `Open ${b}` }).click({ button: 'right' });
+    await ui.getByRole('menuitem', { name: 'Pin to top' }).click();
+    await expect.poll(pinned).toEqual([b]);
+    expect((await rest()).slice(0, 2)).toEqual([c, a]);
+
+    await new Promise((r) => setTimeout(r, 600)); // the UI saves the workspace after 300 ms
+    await ui.reload();
+    await ui.locator('.tile').first().waitFor();
+    await expect.poll(pinned).toEqual([b]);
+    expect((await rest()).slice(0, 2)).toEqual([c, a]);
+
+    await ui.getByRole('button', { name: `Open ${b}` }).click({ button: 'right' });
+    await ui.getByRole('menuitem', { name: 'Unpin' }).click();
+    await expect.poll(pinned).toEqual([]);
+    expect((await rest()).slice(0, 3)).toEqual([b, c, a]);
+  });
 });

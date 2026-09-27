@@ -1,7 +1,10 @@
-import { app, session } from 'electron';
+import { app, net, session } from 'electron';
 import { join } from 'node:path';
 import { DownloadManager } from './downloads/DownloadManager';
 import { registerIpc } from './ipc/handlers';
+import { PluginStore } from './plugins/pluginStore';
+import { ExtensionHost } from './extensions/extensionHost';
+import { ExtensionStore } from './extensions/extensionStore';
 import { FilterLists } from './privacy/filterLists';
 import { ScriptletFiles } from './privacy/scriptlets';
 import { TwitchScripts } from './privacy/twitchScripts';
@@ -50,6 +53,11 @@ app.whenReady().then(async () => {
   // Before any app session exists: delete cleared accounts and "forget on close" apps (ROADMAP 3.9).
   await wipeAtStartup(app.getPath('userData'), store.get());
 
+  const plugins = new PluginStore(join(app.getPath('userData'), 'plugins'));
+  await plugins.load();
+  const extensionStore = new ExtensionStore(join(app.getPath('userData'), 'extensions'), fetchExtension);
+  await extensionStore.load();
+
   const win = createMainWindow();
   const downloads = new DownloadManager(win);
   const filterLists = new FilterLists(join(app.getPath('userData'), 'filters'), fetchFilterList);
@@ -63,9 +71,15 @@ app.whenReady().then(async () => {
   // Cached lists are loaded first; the scriptlet files then get their code (sessions may exist already).
   void filterLists.start().then(() => scriptlets.refresh());
   const signIn = new SharedSignIn(() => store.get().identity.shareGoogle);
-  const views = new ViewManager(win, store, downloads, filterLists, scriptlets, signIn);
+  const extensionHost = new ExtensionHost(
+    extensionStore,
+    (appId) => store.get().extensions[appId] ?? [],
+    join(__dirname, '../preload/extensionShim.js'),
+    win,
+  );
+  const views = new ViewManager(win, store, downloads, filterLists, scriptlets, signIn, plugins, extensionHost);
   views.applyPrivacy(); // records the current settings, so later changes are detected
-  registerIpc(win, store, views, downloads, filterLists);
+  registerIpc(win, store, views, downloads, filterLists, plugins, extensionStore);
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);
 
@@ -99,4 +113,43 @@ async function fetchFilterList(url: string): Promise<string> {
   const res = await session.fromPartition('aio-filter-lists').fetch(url, { credentials: 'omit', cache: 'no-store' });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   return res.text();
+}
+
+/**
+ * Chrome Web Store packages (ROADMAP 4.5), fetched in their own in-memory session with no cookies,
+ * from Google's update server only (it redirects to a Google download host).
+ */
+function fetchExtension(storeId: string): Promise<Buffer> {
+  const chrome = process.versions.chrome.split('.')[0];
+  const url = `https://clients2.google.com/service/update2/crx?response=redirect&prodversion=${chrome}&acceptformat=crx2,crx3&x=id%3D${storeId}%26uc`;
+  // Google's hosts only, https only, checked at every redirect before it's followed.
+  const trusted = (u: string): boolean => {
+    const { protocol, hostname } = new URL(u);
+    return protocol === 'https:' && (hostname === 'clients2.google.com' || hostname.endsWith('.googleusercontent.com') || hostname.endsWith('.gvt1.com'));
+  };
+  return new Promise((resolve, reject) => {
+    const req = net.request({ url, session: session.fromPartition('aio-extension-store'), redirect: 'manual', useSessionCookies: false, cache: 'no-store' });
+    let hops = 0;
+    req.on('redirect', (_status, _method, next) => {
+      if (++hops > 5 || !trusted(next)) {
+        req.abort();
+        reject(new Error('The Chrome Web Store sent the download somewhere unexpected, so it was stopped.'));
+      } else req.followRedirect();
+    });
+    req.on('response', (res) => {
+      if (res.statusCode === 204 || res.statusCode === 404) return reject(new Error('The Chrome Web Store has no extension with that id (or it isn’t available for this browser).'));
+      if (res.statusCode !== 200) return reject(new Error(`The Chrome Web Store didn’t answer (HTTP ${res.statusCode}). Try again later.`));
+      const chunks: Buffer[] = [];
+      let size = 0;
+      res.on('data', (c) => {
+        size += c.length;
+        if (size > 200_000_000) req.abort();
+        else chunks.push(c);
+      });
+      res.on('end', () => (size ? resolve(Buffer.concat(chunks)) : reject(new Error('The Chrome Web Store sent an empty download. Check the link and try again.'))));
+      res.on('error', () => reject(new Error('The download from the Chrome Web Store broke off. Try again.')));
+    });
+    req.on('error', (err) => reject(new Error(`Couldn’t reach the Chrome Web Store (${err.message}).`)));
+    req.end();
+  });
 }

@@ -1,6 +1,9 @@
-import { app, ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { app, dialog, ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { BUILTIN_APPS, partitionFor } from '@aio/core';
-import { IPC } from '../../shared/ipc';
+import { IPC, type ExtensionInstallResult, type PluginInstallResult, type WorkspaceFileResult } from '../../shared/ipc';
+import { exportWorkspace, importWorkspace } from '../store/workspaceFile';
+import type { PluginStore } from '../plugins/pluginStore';
+import type { ExtensionStore } from '../extensions/extensionStore';
 import { clearHttpAllowedThisRun } from '../privacy/httpsFallback';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { DownloadManager } from '../downloads/DownloadManager';
@@ -12,6 +15,10 @@ import {
   ClearDataSchema,
   DownloadActionSchema,
   NoPayloadSchema,
+  ExtensionId,
+  ExtensionOpenSchema,
+  ExtensionStoreInputSchema,
+  PluginId,
   ViewsSyncSchema,
   ViewCommandSchema,
   ViewFocusSchema,
@@ -25,6 +32,8 @@ export function registerIpc(
   views: ViewManager,
   downloads: DownloadManager,
   filterLists: FilterLists,
+  plugins: PluginStore,
+  extensions: ExtensionStore,
 ): void {
   /** Only the UI window's top frame may talk to main. Web app views have no preload anyway. */
   const fromUi = (e: IpcMainEvent | IpcMainInvokeEvent): boolean =>
@@ -49,6 +58,9 @@ export function registerIpc(
     clearHttpAllowedThisRun(); // the saved list is authoritative again (removals take effect)
     views.refresh(); // a custom app added just now can get its view
     views.applyPrivacy(); // WebRTC policy changes need a reload
+    views.applyAppCss(); // custom CSS edits show at once
+    views.applyPlugins(); // plugins turned on or off: their apps reload
+    views.applyExtensions(); // extensions turned on or off for an app: loaded or unloaded, the app reloads
   });
 
   ipcMain.handle(IPC.catalogGet, (e) => {
@@ -117,5 +129,104 @@ export function registerIpc(
     guard(e);
     NoPayloadSchema.parse(raw);
     return storageStatus();
+  });
+
+  // Workspace files (ROADMAP 4.6): both dialogs are shown here; the UI never passes a path.
+  ipcMain.handle(IPC.workspaceExport, async (e, raw: unknown): Promise<WorkspaceFileResult> => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    const pick = await dialog.showSaveDialog(win, {
+      title: 'Export workspace',
+      defaultPath: `aio-space-workspace-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'AIO Space workspace', extensions: ['json'] }],
+    });
+    if (pick.canceled || !pick.filePath) return { ok: false, cancelled: true };
+    return exportWorkspace(store.get(), pick.filePath);
+  });
+
+  ipcMain.handle(IPC.workspaceImport, async (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    const pick = await dialog.showOpenDialog(win, {
+      title: 'Import workspace',
+      properties: ['openFile'],
+      filters: [{ name: 'AIO Space workspace', extensions: ['json'] }],
+    });
+    const file = pick.filePaths[0];
+    if (pick.canceled || !file) return { ok: false, cancelled: true };
+    return importWorkspace(file);
+  });
+
+  ipcMain.handle(IPC.pluginsList, (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    return plugins.list();
+  });
+
+  // The folder is picked here, in main: the UI never hands us a path.
+  ipcMain.handle(IPC.pluginsInstall, async (e, raw: unknown): Promise<PluginInstallResult> => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    const pick = await dialog.showOpenDialog(win, { title: 'Install a plugin: pick its folder', properties: ['openDirectory'] });
+    const folder = pick.filePaths[0];
+    if (pick.canceled || !folder) return { ok: false, cancelled: true };
+    try {
+      const plugin = await plugins.install(folder);
+      views.applyPlugins(); // an update to an enabled plugin reloads its apps
+      return { ok: true, plugin };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle(IPC.pluginsRemove, async (e, raw: unknown) => {
+    guard(e);
+    await plugins.remove(PluginId.parse(raw));
+    views.applyPlugins();
+  });
+
+  ipcMain.handle(IPC.extensionsList, (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    return extensions.list();
+  });
+
+  const installed = async (install: () => Promise<{ id: string }>): Promise<ExtensionInstallResult> => {
+    try {
+      const extension = await install();
+      views.reloadExtension(extension.id); // an update replaces the running copy
+      return { ok: true, extension: extensions.list().find((x) => x.id === extension.id)! };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  };
+
+  ipcMain.handle(IPC.extensionsInstallStore, (e, raw: unknown) => {
+    guard(e);
+    const input = ExtensionStoreInputSchema.parse(raw);
+    return installed(() => extensions.installFromStore(input));
+  });
+
+  // The folder is picked here, in main: the UI never hands us a path.
+  ipcMain.handle(IPC.extensionsInstallFolder, async (e, raw: unknown): Promise<ExtensionInstallResult> => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    const pick = await dialog.showOpenDialog(win, { title: 'Install an unpacked extension: pick its folder', properties: ['openDirectory'] });
+    const folder = pick.filePaths[0];
+    if (pick.canceled || !folder) return { ok: false, cancelled: true };
+    return installed(() => extensions.installFromFolder(folder));
+  });
+
+  ipcMain.handle(IPC.extensionsRemove, async (e, raw: unknown) => {
+    guard(e);
+    const id = ExtensionId.parse(raw);
+    await extensions.remove(id);
+    views.applyExtensions();
+  });
+
+  ipcMain.on(IPC.extensionsOpen, (e, raw: unknown) => {
+    if (!fromUi(e)) return;
+    const parsed = ExtensionOpenSchema.safeParse(raw);
+    if (parsed.success) views.openExtensionPage(parsed.data.leafId, parsed.data.extensionId, parsed.data.page);
   });
 }

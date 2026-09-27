@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  BUILTIN_THEMES,
   listLeaves,
+  parseThemeFile,
+  SYSTEM_THEME,
+  MAX_USER_THEMES,
+  type Theme,
   MAX_SPACE_NAME,
   MAX_SPACES,
+  MAX_TEMPLATES,
   SEARCH_ENGINES,
   FINGERPRINT_CHOICES,
   TWITCH_AD_SCRIPTS,
@@ -17,6 +23,9 @@ import {
   type Workspace,
 } from '@aio/core';
 import { FilterListStatus } from './FilterListStatus';
+import { PluginsSection } from './PluginsSection';
+import { ExtensionsSection } from './ExtensionsSection';
+import type { ExtensionInfo } from '../../../shared/ipc';
 
 interface Props {
   ws: Workspace;
@@ -35,8 +44,26 @@ interface Props {
   onDismissKeyring(): void;
   onClearAll(): Promise<void>;
   onReduceMotion(on: boolean): void;
+  /** Theme id or 'system' (ROADMAP 4.1). */
+  onTheme(theme: string): void;
+  onImportTheme(theme: Theme): void;
+  onRemoveTheme(themeId: string): void;
   onTwitchScript(script: TwitchAdScript): void;
   onShareGoogle(on: boolean): void;
+  /** Every app, for picking one to give custom CSS (ROADMAP 4.3). */
+  apps: WebAppDef[];
+  onCustomCss(appId: string): void;
+  /** Templates (ROADMAP 4.6). */
+  onSaveTemplate(spaceId: string): void;
+  onAddFromTemplate(templateId: string): void;
+  onRemoveTemplate(templateId: string): void;
+  /** A validated workspace file the user chose to load in place of everything (ROADMAP 4.6). */
+  onImported(ws: Workspace): void;
+  onPluginEnabled(pluginId: string, on: boolean): void;
+  /** Chrome extensions (ROADMAP 4.5). */
+  extensions: ExtensionInfo[];
+  onExtensionsChanged(): void;
+  onExtensionRemoved(extensionId: string): void;
   /** Apps hidden from the sidebar, to show again. */
   hiddenApps: WebAppDef[];
   onShowApp(appId: string): void;
@@ -48,10 +75,40 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTwitchScript, onShareGoogle, hiddenApps, onShowApp, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTheme, onImportTheme, onRemoveTheme, onTwitchScript, onShareGoogle, apps, onCustomCss, onSaveTemplate, onAddFromTemplate, onRemoveTemplate, onImported, onPluginEnabled, extensions, onExtensionsChanged, onExtensionRemoved, hiddenApps, onShowApp, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [themeError, setThemeError] = useState<string | null>(null);
+  const themeFile = useRef<HTMLInputElement>(null);
+  const importTheme = async (file: File | undefined): Promise<void> => {
+    if (!file) return;
+    if (file.size > 20_000) return setThemeError('That file is too big for a theme (20 KB at most).');
+    const taken = [...BUILTIN_THEMES, ...ws.themes].map((t) => t.id);
+    const res = parseThemeFile(await file.text(), taken);
+    if (!res.ok) return setThemeError(res.error);
+    setThemeError(null);
+    onImportTheme(res.theme);
+  };
+  const [fileMessage, setFileMessage] = useState<{ error: boolean; text: string } | null>(null);
+  const exportFile = async (): Promise<void> => {
+    const res = await window.aio.exportWorkspace();
+    if (res.ok) setFileMessage({ error: false, text: 'Workspace exported.' });
+    else if ('error' in res) setFileMessage({ error: true, text: res.error });
+  };
+  const importFile = async (): Promise<void> => {
+    const res = await window.aio.importWorkspace();
+    if (!res.ok) {
+      if ('error' in res) setFileMessage({ error: true, text: res.error });
+      return;
+    }
+    const n = res.workspace.spaces.length;
+    const ok = window.confirm(
+      `Replace your spaces, apps and settings with this file’s (${n} space${n === 1 ? '' : 's'})? Logins on this computer stay; apps you haven’t signed in to here will ask you to sign in.`,
+    );
+    if (ok) onImported(res.workspace);
+  };
+  const userTheme = ws.themes.find((t) => t.id === ws.ui.theme);
   const clearAll = (): void => {
     if (!window.confirm('Clear data for every app? You’ll be logged out everywhere, and all cookies, site storage and caches are deleted. Your tiles and settings stay.')) return;
     setClearedAll('busy');
@@ -132,6 +189,17 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
                       <span className="space-count">{count === 0 ? 'Empty' : `${count} app${count === 1 ? '' : 's'}`}</span>
                     </button>
                   )}
+                  <button
+                    className="icon-btn"
+                    title={ws.templates.length < MAX_TEMPLATES ? 'Save as template' : `You can keep ${MAX_TEMPLATES} templates`}
+                    aria-label={`Save ${s.name} as a template`}
+                    disabled={ws.templates.length >= MAX_TEMPLATES}
+                    onClick={() => onSaveTemplate(s.id)}
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden>
+                      <path d="M5 3h8l3 3v11H5zM8 3v4h5M8 17v-5h5v5" />
+                    </svg>
+                  </button>
                   <button className="icon-btn" title="Rename" aria-label={`Rename ${s.name}`} onClick={() => startRename(s.id, s.name)}>
                     <svg viewBox="0 0 20 20" aria-hidden>
                       <path d="M4 16h3l8.5-8.5-3-3L4 13z" />
@@ -155,7 +223,116 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
           <button className="text-btn" disabled={ws.spaces.length >= MAX_SPACES} onClick={onAdd}>
             + New space
           </button>
+          {ws.templates.length > 0 && (
+            <div className="template-list">
+              <span>New space from a template</span>
+              <ul>
+                {ws.templates.map((t) => {
+                  const apps = listLeaves(t.layout).filter((l) => l.appId).length;
+                  return (
+                    <li key={t.id}>
+                      <button className="text-btn" disabled={ws.spaces.length >= MAX_SPACES} onClick={() => onAddFromTemplate(t.id)}>
+                        + {t.name}
+                      </button>
+                      <small>{apps === 0 ? 'Empty' : `${apps} app${apps === 1 ? '' : 's'}`}</small>
+                      <button className="icon-btn" title="Delete template" aria-label={`Delete template ${t.name}`} onClick={() => onRemoveTemplate(t.id)}>
+                        <svg viewBox="0 0 20 20" aria-hidden>
+                          <path d="m5 5 10 10M15 5 5 15" />
+                        </svg>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </section>
+
+        <section>
+          <h2 className="popover-title">Move to another computer</h2>
+          <p className="popover-hint">
+            A file with your spaces, apps and settings. Logins, cookies and site data aren’t in it, so you sign in again there.
+          </p>
+          <div className="site-data-row">
+            <button className="text-btn" onClick={() => void exportFile()}>
+              Export workspace…
+            </button>
+            <button className="text-btn" onClick={() => void importFile()}>
+              Import workspace…
+            </button>
+          </div>
+          {fileMessage && (
+            <p className={fileMessage.error ? 'form-error' : 'popover-hint'} role={fileMessage.error ? 'alert' : 'status'}>
+              {fileMessage.text}
+            </p>
+          )}
+        </section>
+
+        <section>
+          <h2 className="popover-title">Appearance</h2>
+          <label className="setting">
+            <span>Theme</span>
+            <select value={ws.ui.theme} onChange={(e) => onTheme(e.target.value)}>
+              <option value={SYSTEM_THEME}>Match system (light or dark)</option>
+              {[...BUILTIN_THEMES, ...ws.themes].map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="site-data-row">
+            <button className="text-btn" disabled={ws.themes.length >= MAX_USER_THEMES} onClick={() => themeFile.current?.click()}>
+              Import theme…
+            </button>
+            {userTheme && (
+              <button className="text-btn" onClick={() => onRemoveTheme(userTheme.id)}>
+                Remove “{userTheme.name}”
+              </button>
+            )}
+            <input
+              ref={themeFile}
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={(e) => {
+                void importTheme(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          {themeError && (
+            <p className="form-error" role="alert">
+              {themeError}
+            </p>
+          )}
+          <p className="popover-hint">
+            A theme file is JSON with a name and colours, e.g. <code>{'{ "name": "Mine", "scheme": "dark", "colors": { "ink": "#101418" } }'}</code>.
+            Colours you leave out come from Dark or Light.
+          </p>
+          <label className="setting">
+            <span>Custom CSS for an app</span>
+            <select value="" onChange={(e) => e.target.value && onCustomCss(e.target.value)} aria-label="Edit custom CSS for an app">
+              <option value="">Pick an app…</option>
+              {apps.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {ws.appCss[a.id] ? (ws.appCss[a.id]!.enabled ? ' (on)' : ' (off)') : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        <ExtensionsSection
+          installed={extensions}
+          usedBy={Object.fromEntries(extensions.map((x) => [x.id, Object.keys(ws.extensions).filter((appId) => ws.extensions[appId]!.includes(x.id))]))}
+          apps={apps}
+          onChanged={onExtensionsChanged}
+          onRemoved={onExtensionRemoved}
+        />
+
+        <PluginsSection enabled={ws.enabledPlugins} apps={apps} onEnabled={onPluginEnabled} />
 
         <section>
           <h2 className="popover-title">Settings</h2>

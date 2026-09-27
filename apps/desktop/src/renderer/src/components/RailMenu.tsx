@@ -7,6 +7,10 @@ export interface RailMenuActions {
   moveUp(): void;
   moveDown(): void;
   hide(): void;
+  /** Pin to the top of the sidebar, or unpin (ROADMAP 4.7). */
+  togglePin(): void;
+  /** Open the app's custom CSS editor (ROADMAP 4.3). */
+  customCss(): void;
   /** Custom apps only. */
   remove?(): void;
 }
@@ -17,6 +21,7 @@ interface Props extends RailMenuActions {
   at: { x: number; y: number };
   canMoveUp: boolean;
   canMoveDown: boolean;
+  pinned: boolean;
   onClose(): void;
   onClosed(): void;
 }
@@ -25,7 +30,7 @@ interface Props extends RailMenuActions {
  * Right-click menu for an app in the sidebar: open, reorder, hide, remove. It overlaps the tiles, so
  * native views are hidden while it's open (like the other popovers). `onClose`/`onClosed` must be stable.
  */
-export function RailMenu({ app, at, canMoveUp, canMoveDown, onClose, onClosed, ...actions }: Props) {
+export function RailMenu({ app, at, canMoveUp, canMoveDown, pinned, onClose, onClosed, ...actions }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
 
@@ -78,9 +83,11 @@ export function RailMenu({ app, at, canMoveUp, canMoveDown, onClose, onClosed, .
         {item('Open here', actions.open)}
         {item('Open in a new tile', actions.openInNewTile)}
         <hr />
+        {item(pinned ? 'Unpin' : 'Pin to top', actions.togglePin)}
         {item('Move up', actions.moveUp, !canMoveUp)}
         {item('Move down', actions.moveDown, !canMoveDown)}
         <hr />
+        {item('Custom CSS…', actions.customCss)}
         {item('Hide from sidebar', actions.hide)}
         {actions.remove && item('Remove app…', actions.remove, false, true)}
       </div>

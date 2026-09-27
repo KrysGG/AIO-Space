@@ -1,0 +1,10 @@
+{
+  "id": "youtube-hide-shorts",
+  "name": "YouTube: hide Shorts",
+  "version": "1.0.0",
+  "description": "Hides Shorts shelves, tabs and links, and opens Shorts as normal videos.",
+  "apps": ["youtube"],
+  "permissions": [],
+  "scripts": ["hide-shorts.js"],
+  "styles": ["hide-shorts.css"]
+}

@@ -1,15 +1,16 @@
 import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
 import type { WebAppDef } from '../catalog/apps';
-import { createLeaf, DEFAULT_PROFILE, listLeaves, newInstanceId } from '../layout/tree';
+import { createLeaf, DEFAULT_PROFILE, listLeaves, mapTree, newInstanceId } from '../layout/tree';
 import { newId } from '../util/id';
 import type { LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
+import { SYSTEM_THEME, type Theme } from '../ui/themes';
 
 /**
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 16;
+export const WORKSPACE_VERSION = 17;
 
 export interface Space {
   id: string;
@@ -65,6 +66,39 @@ export interface Workspace {
   identity: IdentitySettings;
   /** The sidebar's app order and hidden apps (ROADMAP 4.7). Added in version 16. */
   rail: RailSettings;
+  /** Themes the user imported (ROADMAP 4.1). Added in version 17. */
+  themes: Theme[];
+  /** The user's own CSS per app id, added to every page the app loads (ROADMAP 4.3). Added in version 17. */
+  appCss: Record<string, AppCss>;
+  /** Installed plugins the user turned on (ROADMAP 4.4); plugins are off until listed here. Added in version 17. */
+  enabledPlugins: string[];
+  /** Installed Chrome extensions turned on per app id (ROADMAP 4.5); off until listed here. Added in version 17. */
+  extensions: Record<string, string[]>;
+  /** Saved space layouts to start new spaces from (ROADMAP 4.6). Added in version 17. */
+  templates: SpaceTemplate[];
+}
+
+/** A space's arrangement (apps, accounts, split ratios) without its pages or running instances. */
+export interface SpaceTemplate {
+  id: string;
+  name: string;
+  layout: LayoutNode;
+}
+
+export interface AppCss {
+  css: string;
+  /** Off keeps the CSS but stops applying it. */
+  enabled: boolean;
+}
+
+export const MAX_APP_CSS = 50_000;
+
+/** Set an app's CSS; empty CSS removes the entry. */
+export function setAppCss(ws: Workspace, appId: string, value: AppCss): Workspace {
+  const appCss = { ...ws.appCss };
+  if (value.css.trim()) appCss[appId] = { css: value.css.slice(0, MAX_APP_CSS), enabled: value.enabled };
+  else delete appCss[appId];
+  return { ...ws, appCss };
 }
 
 export interface RailSettings {
@@ -72,33 +106,71 @@ export interface RailSettings {
   order: string[];
   /** App ids hidden from the sidebar (still in the launcher, and restorable in Settings). */
   hidden: string[];
+  /** App ids pinned to the top of the sidebar, above the ones that scroll (ROADMAP 4.7). Added in version 17. */
+  pinned: string[];
 }
 
-/** The sidebar's apps: the user's order first, then the rest in catalog order; hidden ones left out. */
+/**
+ * The sidebar's apps in display order: pinned first, then the rest; each group in the user's order
+ * (apps not in it follow in catalog order). Hidden ones are left out.
+ */
 export function railApps<T extends { id: string }>(catalog: T[], rail: RailSettings): T[] {
   const rank = new Map(rail.order.map((id, i) => [id, i]));
   const hidden = new Set(rail.hidden);
+  const pinned = new Set(rail.pinned);
   return catalog
     .map((app, i) => ({ app, i }))
     .filter(({ app }) => !hidden.has(app.id))
-    .sort((a, b) => (rank.get(a.app.id) ?? rail.order.length + a.i) - (rank.get(b.app.id) ?? rail.order.length + b.i))
+    .sort(
+      (a, b) =>
+        Number(pinned.has(b.app.id)) - Number(pinned.has(a.app.id)) ||
+        (rank.get(a.app.id) ?? rail.order.length + a.i) - (rank.get(b.app.id) ?? rail.order.length + b.i),
+    )
     .map(({ app }) => app);
 }
 
-/** Move an app up (-1) or down (+1) among the visible sidebar apps; the new order is saved in full. */
+/** Move an app up (-1) or down (+1) within its group (pinned or not); the new order is saved in full. */
 export function moveInRail(ws: Workspace, catalog: Array<{ id: string }>, appId: string, delta: -1 | 1): Workspace {
   const ids = railApps(catalog, ws.rail).map((a) => a.id);
   const from = ids.indexOf(appId);
   const to = from + delta;
-  if (from < 0 || to < 0 || to >= ids.length) return ws;
+  if (from < 0 || to < 0 || to >= ids.length || ws.rail.pinned.includes(ids[to]!) !== ws.rail.pinned.includes(appId)) return ws;
   [ids[from], ids[to]] = [ids[to]!, ids[from]!];
   return { ...ws, rail: { ...ws.rail, order: ids } };
+}
+
+/**
+ * Drag and drop in the sidebar: put `appId` just before or after `targetId`, joining the target's
+ * group (dropping on a pinned app pins it, on an unpinned one unpins it).
+ */
+export function placeInRail(ws: Workspace, catalog: Array<{ id: string }>, appId: string, targetId: string, after: boolean): Workspace {
+  if (appId === targetId) return ws;
+  const ids = railApps(catalog, ws.rail).map((a) => a.id);
+  if (!ids.includes(appId) || !ids.includes(targetId)) return ws;
+  const rest = ids.filter((id) => id !== appId);
+  rest.splice(rest.indexOf(targetId) + (after ? 1 : 0), 0, appId);
+  const pin = ws.rail.pinned.includes(targetId);
+  const pinned = ws.rail.pinned.filter((id) => id !== appId).concat(pin ? [appId] : []);
+  return { ...ws, rail: { ...ws.rail, order: rest, pinned } };
 }
 
 export function setHiddenInRail(ws: Workspace, appId: string, hidden: boolean): Workspace {
   const has = ws.rail.hidden.includes(appId);
   if (hidden === has) return ws;
   return { ...ws, rail: { ...ws.rail, hidden: hidden ? [...ws.rail.hidden, appId] : ws.rail.hidden.filter((id) => id !== appId) } };
+}
+
+/** Pin an app to the top of the sidebar (at the end of the pinned group), or unpin it. */
+export function setPinnedInRail(ws: Workspace, catalog: Array<{ id: string }>, appId: string, pinned: boolean): Workspace {
+  const has = ws.rail.pinned.includes(appId);
+  if (pinned === has) return ws;
+  const ids = railApps(catalog, ws.rail).map((a) => a.id).filter((id) => id !== appId);
+  const lastPinned = ids.reduce((last, id, i) => (ws.rail.pinned.includes(id) ? i : last), -1);
+  ids.splice(lastPinned + 1, 0, appId); // pinned: last of the pinned group; unpinned: first of the rest
+  return {
+    ...ws,
+    rail: { ...ws.rail, order: ids, pinned: pinned ? [...ws.rail.pinned, appId] : ws.rail.pinned.filter((id) => id !== appId) },
+  };
 }
 
 export interface IdentitySettings {
@@ -134,6 +206,8 @@ export interface UiSettings {
    * Added in version 13.
    */
   reduceMotion: boolean;
+  /** Theme id, or 'system' to follow the desktop's light/dark setting (ROADMAP 4.1). Added in version 17. */
+  theme: string;
 }
 
 /** Notices shown until dismissed, e.g. 'weak-keyring': logins stored without the system keyring. */
@@ -172,10 +246,15 @@ export function defaultWorkspace(): Workspace {
     httpAllowedHosts: [],
     dismissedNotices: [],
     forgetOnClose: [],
-    ui: { railCollapsed: false, reduceMotion: false },
+    ui: { railCollapsed: false, reduceMotion: false, theme: SYSTEM_THEME },
     twitch: { adScript: 'vaft' },
     identity: { shareGoogle: false },
-    rail: { order: [], hidden: [] },
+    rail: { order: [], hidden: [], pinned: [] },
+    themes: [],
+    appCss: {},
+    enabledPlugins: [],
+    templates: [],
+    extensions: {},
   };
 }
 
@@ -234,6 +313,11 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (w['version'] === 13) w = { ...w, version: 14, twitch: { adScript: 'vaft' } };
   if (w['version'] === 14) w = { ...w, version: 15, identity: { shareGoogle: false } };
   if (w['version'] === 15) w = { ...w, version: 16, rail: { order: [], hidden: [] } };
+  if (w['version'] === 16) {
+    const ui = (w['ui'] && typeof w['ui'] === 'object' ? w['ui'] : {}) as Record<string, unknown>;
+    const rail = (w['rail'] && typeof w['rail'] === 'object' ? w['rail'] : {}) as Record<string, unknown>;
+    w = { ...w, version: 17, ui: { ...ui, theme: SYSTEM_THEME }, rail: { ...rail, pinned: [] }, themes: [], appCss: {}, enabledPlugins: [], templates: [], extensions: {} };
+  }
   return w as unknown as Workspace;
 }
 
@@ -292,6 +376,69 @@ export function removeSpace(ws: Workspace, spaceId: string): Workspace {
   const spaces = ws.spaces.filter((s) => s.id !== spaceId);
   const activeSpaceId = ws.activeSpaceId === spaceId ? spaces[Math.min(i, spaces.length - 1)]!.id : ws.activeSpaceId;
   return { ...ws, spaces, activeSpaceId };
+}
+
+/** Turn an installed plugin on or off (ROADMAP 4.4). */
+export function setPluginEnabled(ws: Workspace, pluginId: string, on: boolean): Workspace {
+  const has = ws.enabledPlugins.includes(pluginId);
+  if (on === has) return ws;
+  return { ...ws, enabledPlugins: on ? [...ws.enabledPlugins, pluginId] : ws.enabledPlugins.filter((id) => id !== pluginId) };
+}
+
+/** Turn an installed extension on or off for one app (ROADMAP 4.5). */
+export function setExtensionEnabled(ws: Workspace, appId: string, extensionId: string, on: boolean): Workspace {
+  const now = ws.extensions[appId] ?? [];
+  if (on === now.includes(extensionId)) return ws;
+  const next = on ? [...now, extensionId] : now.filter((id) => id !== extensionId);
+  const extensions = { ...ws.extensions, [appId]: next };
+  if (next.length === 0) delete extensions[appId];
+  return { ...ws, extensions };
+}
+
+/** An uninstalled extension is turned off everywhere. */
+export function forgetExtension(ws: Workspace, extensionId: string): Workspace {
+  return Object.keys(ws.extensions).reduce((w, appId) => setExtensionEnabled(w, appId, extensionId, false), ws);
+}
+
+/* ---- Templates (ROADMAP 4.6) --------------------------------------------------------------- */
+
+export const MAX_TEMPLATES = 20;
+
+/**
+ * The same arrangement with new ids for every tile, split and running app, so it can sit next to
+ * the original (instance ids must be unique across spaces). Browser tabs are dropped: a Browser tile
+ * starts on its home page.
+ */
+export function freshLayout(layout: LayoutNode): LayoutNode {
+  return mapTree(layout, (n) => {
+    if (n.type === 'split') return { ...n, id: newId('split') };
+    const leaf = { ...n, id: newId('leaf'), instanceId: n.appId ? newInstanceId() : null };
+    delete leaf.tabs;
+    return leaf;
+  });
+}
+
+/** Save a space's arrangement as a template (named like the space). No-op at MAX_TEMPLATES. */
+export function saveTemplate(ws: Workspace, spaceId: string): Workspace {
+  const space = ws.spaces.find((s) => s.id === spaceId);
+  if (!space || ws.templates.length >= MAX_TEMPLATES) return ws;
+  return { ...ws, templates: [...ws.templates, { id: newId('tpl'), name: space.name, layout: freshLayout(space.layout) }] };
+}
+
+export function removeTemplate(ws: Workspace, templateId: string): Workspace {
+  return { ...ws, templates: ws.templates.filter((t) => t.id !== templateId) };
+}
+
+/** Add a space laid out like a template, and switch to it. */
+export function addSpaceFromTemplate(ws: Workspace, templateId: string): Workspace {
+  const template = ws.templates.find((t) => t.id === templateId);
+  if (!template || ws.spaces.length >= MAX_SPACES) return ws;
+  const layout = freshLayout(template.layout);
+  const taken = new Set(ws.spaces.map((s) => s.name));
+  let name = template.name;
+  for (let n = 2; taken.has(name); n++) name = `${template.name.slice(0, MAX_SPACE_NAME - 4)} ${n}`;
+  const space: Space = { id: newId('space'), name, layout, focusedLeafId: listLeaves(layout)[0]?.id ?? null };
+  return { ...ws, spaces: [...ws.spaces, space], activeSpaceId: space.id };
 }
 
 /* ---- Accounts per app (ROADMAP 2.12) ------------------------------------------------------- */

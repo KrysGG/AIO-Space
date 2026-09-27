@@ -45,6 +45,20 @@ These are enforced by review, and several by ESLint. Do not break them.
     only inside web pages' own world, with the page's own privileges, never in the UI or main.
 14. Twitch ad blocking runs TwitchAdSolutions (MIT, vendored, D-043) in twitch.tv pages' own world only.
     Daily updates come from the same host and are used only if they pass `isTwitchUserscript`.
+15. User content (ROADMAP 4.3/4.4). Custom CSS is inserted as a stylesheet only. Plugins are installed only
+    from a local folder the user picks in a main-process dialog (the UI never passes a path); only the
+    manifest and the plain files it lists are copied (no paths, no links, 1 MB). They are off until the
+    user turns them on after a warning. Their scripts run in a separate isolated world per plugin in the
+    target apps' views only, on those apps' own hosts, never on sign-in providers' pages: no Node, no IPC,
+    no `window.aio`, and the page can't see them. Plugins get no permissions and no channel to main yet.
+16. Chrome extensions (ROADMAP 4.5, D-055) load only into the sessions of apps the user turned them on for
+    (after a warning), never into the UI's session. Store packages are downloaded in their own
+    cookie-less session from Google's update hosts only (https, every redirect checked), unpacked with
+    paths confined to the extension's folder (no `..`, no links, size-capped). The API stand-in preload
+    acts only in `chrome-extension:` contexts and talks to nothing. Extension pages open in their own
+    sandboxed window that can show only that extension's pages; web links go to the system browser.
+    Extensions keep their own powers inside that app (reading its pages, their own network requests):
+    that is what the user opts into.
 
 ## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 
