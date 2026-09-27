@@ -82,6 +82,14 @@ Verified on a packaged build (`electron-builder --linux dir`, 2026-09-26): `@ele
 shows the values above; with `ELECTRON_RUN_AS_NODE=1` the binary starts SpaceAIO instead of Node
 (stock Electron runs the script); `NODE_OPTIONS=--require ...` and `--inspect` are ignored.
 
+Release builds (ROADMAP 5.3, 2026-09-27): `pnpm verify:release` unpacks every Linux release file
+(AppImage, pacman, tar.gz), reads the fuses of its `spaceaio` binary against `scripts/fuses.cjs` (the
+same table `afterPack` applies) and checks the app ships only as `resources/app.asar`; it fails on any
+difference (checked with a copy whose RunAsNode fuse was flipped). The release pipeline runs it before
+publishing. On the packaged binary, `ELECTRON_RUN_AS_NODE=1 spaceaio evil.js`, `NODE_OPTIONS=--require
+evil.js` and `--inspect=9339 --inspect-brk` all start SpaceAIO normally: the script never runs and no
+debugger listens (stock Electron does run it).
+
 Also run `electronegativity` and go through Electron's security checklist before each release.
 
 ## Audit (ROADMAP 3.7, 2026-09-26)

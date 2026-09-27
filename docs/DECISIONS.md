@@ -619,3 +619,11 @@ new ones too, across restarts. The UA cleanup strips both names. New installs ar
 The GitHub repo is still `KrysGG/AIO-Space` (URLs in package.json and the PKGBUILD) until the owner
 renames it; GitHub redirects the old URL.
 
+**D-059: Release files are checked, not trusted: `verify:release` reads their fuses.**
+ROADMAP 5.3. The fuse table lives in `apps/desktop/scripts/fuses.cjs`, used by `afterPack.cjs` to set it
+and by `verify-release.cjs` to check it, so the two can't drift. The check unpacks each release file
+the way users get it (AppImage via `--appimage-extract`, which needs no FUSE; pacman with `tar -xJ`;
+tar.gz) instead of trusting `linux-unpacked`, since each target repackages the app. ASAR integrity
+validation is set but Electron enforces it only on macOS/Windows; on Linux the check makes sure there's
+no loose `resources/app` folder next to `app.asar`.
+

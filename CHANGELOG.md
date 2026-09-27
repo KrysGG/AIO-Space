@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [5.3] `pnpm verify:release` checks every Linux release file's fuses and app.asar before publishing; verified on the AppImage, pacman and tar.gz builds, and on the packaged binary (no Node mode, no NODE_OPTIONS, no debugger) (D-059).
 - [5.2] Confirmed: `makepkg -si` installs spaceaio-bin over the old package and SpaceAIO runs, with the owner's apps and logins moved over (Twitch asked to sign in again).
 - [Rename] AIO Space is now SpaceAIO (`spaceaio` command and packages, `~/.config/SpaceAIO`); existing data and logins move over automatically on first start (D-058).
 - [5.2] AUR package `aio-space-bin` in `packaging/aur` (PKGBUILD, .desktop, .SRCINFO): repackages the release's new `tar.gz` build into /opt/aio-space; builds with makepkg (D-057).

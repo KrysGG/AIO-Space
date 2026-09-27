@@ -342,7 +342,7 @@ working menu entry.
 `PKGBUILD` for `spaceaio-bin` in `packaging/aur/`.
 **Done when:** `makepkg -si` installs and runs.
 
-### - [ ] 5.3 Hardening at build time
+### - [x] 5.3 Hardening at build time
 Fuses and ASAR integrity from 3.7 applied in the release build; verify on the packaged app.
 
 ### - [ ] 5.4 Updates
