@@ -51,6 +51,14 @@ const SAVE_DELAY_MS = 300;
 /** Any area works for finding neighbours: only the relative position of tiles matters. */
 const UNIT_AREA = { x: 0, y: 0, width: 1000, height: 1000 };
 
+/** Matches --rail-ms in styles.css. */
+const RAIL_ANIMATION_MS = 220;
+/** Longest wait for page snapshots before the rail moves anyway (main gives up on a page at 150 ms). */
+const SNAPSHOT_WAIT_MS = 250;
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+const activeSpaceHasApps = (ws: Workspace): boolean => listLeaves(activeSpace(ws).layout).some((l) => l.appId !== null);
+
 export function App() {
   const [ws, setWs] = useState<Workspace | null>(null);
   // Built-in apps from main; the full catalog adds the user's own (workspace.customApps).
@@ -68,6 +76,9 @@ export function App() {
   const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
   // Tile whose Shields panel is open (ROADMAP 3.1).
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
+  /** The rail is animating (D-038): views are hidden and sharp snapshots stand in for them. */
+  const [railMoving, setRailMoving] = useState(false);
+  const snapshotWaiter = useRef<(() => void) | null>(null);
   /** Logins stored without a system keyring (ROADMAP 3.8); shown in the menu until dismissed. */
   const [weakKeyring, setWeakKeyring] = useState(false);
   useEffect(() => {
@@ -93,7 +104,10 @@ export function App() {
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
     const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
     const offDownloads = window.aio.onDownloads(setDownloads);
-    const offSnapshots = window.aio.onViewSnapshots(setSnapshots);
+    const offSnapshots = window.aio.onViewSnapshots((shots) => {
+      setSnapshots(shots);
+      snapshotWaiter.current?.();
+    });
     // Save user zoom per app; 100% is the default, so it's removed instead of stored.
     const offZoom = window.aio.onAppZoom((appId, factor) =>
       setWs((prev) => {
@@ -142,12 +156,42 @@ export function App() {
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
   const refocusTile = useCallback(() => window.aio.focusView(focusedRef.current), []);
 
+  /**
+   * Hide or show the rail (D-038). Native views can't follow a CSS transition frame by frame (each
+   * move is an IPC round trip), so they're swapped for snapshots first, the tiles animate with the
+   * rail in plain CSS, and the live views come back at their final size.
+   */
+  const toggleRailRef = useRef<() => void>(() => {});
+  useLayoutEffect(() => {
+    toggleRailRef.current = () => {
+      if (!ws || railMoving) return;
+      const flip = (): void => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
+      const hasViews = activeSpaceHasApps(ws);
+      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Views already hidden (a popover is open), none to hide, or no animation wanted: just switch.
+      if (!hasViews || popoverOpen || reduceMotion) return flip();
+      setRailMoving(true);
+      void (async () => {
+        const snapshotsIn = new Promise<void>((resolve) => (snapshotWaiter.current = resolve));
+        window.aio.setViewsHidden(true);
+        await Promise.race([snapshotsIn, sleep(SNAPSHOT_WAIT_MS)]);
+        snapshotWaiter.current = null;
+        await nextFrame(); // snapshots painted before the rail starts moving
+        flip();
+        await sleep(RAIL_ANIMATION_MS + 40);
+        window.aio.setViewsHidden(false);
+        setRailMoving(false);
+      })();
+    };
+  });
+
   useLayoutEffect(() => {
     focusedRef.current = ws ? activeSpace(ws).focusedLeafId : null;
     shortcutRef.current = (action) => {
       if (!ws) return;
       if (action.kind === 'help') return setHelpOpen((open) => !open);
-      if (action.kind === 'toggle-rail') return edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
+      if (action.kind === 'toggle-rail') return toggleRailRef.current();
       const space = activeSpace(ws);
       const focused = space.focusedLeafId;
       if (!focused) return;
@@ -341,7 +385,7 @@ export function App() {
   };
 
   return (
-    <div className="shell">
+    <div className={`shell${railMoving ? ' is-rail-moving' : ''}`}>
       <Sidebar
         catalog={catalog}
         unread={unreadByApp}
@@ -359,7 +403,7 @@ export function App() {
         activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
         menuNotice={keyringNotice}
         collapsed={ws.ui.railCollapsed}
-        onToggleCollapsed={() => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }))}
+        onToggleCollapsed={() => toggleRailRef.current()}
       />
       <TileLayout
         layout={space.layout}

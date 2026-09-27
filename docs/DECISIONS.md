@@ -339,3 +339,8 @@ so a hidden rail can't slide out over the tiles on hover; instead "Hide sidebar"
 or Ctrl+Shift+B, not Ctrl+B, which editors like Discord use for bold) shrinks it to a 14px edge with a
 handle and the layout reflows. Clicking the edge brings it back. The edge shows a dot when something
 needs attention (unread, downloads, a notice). Saved in `workspace.ui.railCollapsed` (v12).
+Animation: native views can't follow a CSS transition (each move is an IPC round trip, so pages lag
+their tiles), so toggling first hides the views behind snapshots (as for drags, D-027, but shown
+sharp and 1:1), animates the rail width (220 ms) with the buttons fading out and the edge fading in,
+then shows the views at their final size. With a popover open, no apps, or reduced motion it just
+switches.

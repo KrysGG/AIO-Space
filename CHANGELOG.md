@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [4.7 fix] Smooth sidebar hide/show: pages move with their tiles (snapshots while animating), buttons fade, and the collapsed edge's handle is visible again.
 - [4.7 partial] Hide the sidebar to a thin edge (button at the bottom of the rail or Ctrl+Shift+B); click the edge to bring it back; remembered (workspace v12, D-038).
 - [3.9] Clear data per app account (Shields panel) or for all apps (menu), and "forget when AIO Space closes" per app; data is cleared at once and the files deleted at the next start (workspace v11, D-037).
 - [3.8 built] Warning in the menu (and a dot on the menu button) when logins aren't protected by KWallet or GNOME Keyring, with how to fix it; dismissible, remembered in workspace v10 (D-036). Waiting for the owner to confirm no warning on their KDE setup.
