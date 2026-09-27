@@ -6,6 +6,9 @@ import {
   MAX_CUSTOM_APPS,
   MAX_PROFILES_PER_APP,
   MAX_SPACES,
+  MAX_TABS,
+  instancesOf,
+  tabsOf,
   MAX_TILES,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -30,9 +33,22 @@ export { MAX_TILES };
 /** Account ids: the first is 'default', then p2, p3... (ROADMAP 2.12). */
 const ProfileId = z.string().regex(/^(default|p[0-9]{1,2})$/);
 
+/** A page address kept for a Browser tab (D-049). */
+const TabUrl = z.string().max(2048).refine(isWebUrl, 'only http(s) URLs');
+
+const TabSchema = z.object({ instanceId: Id, url: TabUrl.optional(), title: z.string().max(300).optional() }).strict();
+
 const LeafSchema = z
-  .object({ type: z.literal('leaf'), id: Id, appId: Id.nullable(), instanceId: Id.nullable(), profile: ProfileId.optional() })
-  .refine((l) => (l.appId === null) === (l.instanceId === null), 'a tile has an instance exactly when it has an app');
+  .object({
+    type: z.literal('leaf'),
+    id: Id,
+    appId: Id.nullable(),
+    instanceId: Id.nullable(),
+    profile: ProfileId.optional(),
+    tabs: z.array(TabSchema).min(1).max(MAX_TABS).optional(),
+  })
+  .refine((l) => (l.appId === null) === (l.instanceId === null), 'a tile has an instance exactly when it has an app')
+  .refine((l) => !l.tabs || (l.appId === 'browser' && l.tabs.some((t) => t.instanceId === l.instanceId)), 'tabs belong to a Browser tile and include the one shown');
 
 export const LayoutSchema: z.ZodType<LayoutNode> = z.lazy(() =>
   z.union([
@@ -97,7 +113,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
         name: z.string().min(1).max(40),
         layout: LayoutSchema.refine((l) => listLeaves(l).length <= MAX_TILES, 'too many tiles').refine((l) => {
           const leaves = listLeaves(l);
-          return unique(leaves.map((x) => x.id)) && unique(leaves.flatMap((x) => (x.instanceId ? [x.instanceId] : [])));
+          return unique(leaves.map((x) => x.id)) && unique(instancesOf(l)) && leaves.every((x) => tabsOf(x).length <= MAX_TABS);
         }, 'duplicate tile or instance'),
         focusedLeafId: Id.nullable(),
       }),
@@ -148,6 +164,7 @@ export const PlacementsSchema = z
       appId: Id,
       profile: ProfileId,
       bounds: z.object({ x: Bound, y: Bound, width: Bound, height: Bound }),
+      url: TabUrl.optional(),
     }),
   )
   .max(MAX_TILES)
@@ -165,7 +182,7 @@ export const ViewsSyncSchema = z.object({
   frame: ViewFrameSchema.optional(),
   keep: z
     .array(Id)
-    .max(MAX_TILES * MAX_SPACES)
+    .max(MAX_TILES * MAX_SPACES * MAX_TABS)
     .refine(unique, 'duplicate instance'),
 });
 

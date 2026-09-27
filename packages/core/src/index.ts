@@ -1,5 +1,6 @@
 export * from './layout/types';
 export * from './layout/tree';
+export * from './layout/tabs';
 export * from './apps/unread';
 export * from './apps/zoom';
 export * from './browser/address';

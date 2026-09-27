@@ -11,6 +11,8 @@ export interface ContextMenuActions {
   copyText(text: string): void;
   /** Only ever called with http(s) URLs. */
   openInNewTile(url: string): void;
+  /** Browser pages only (D-049): open in a new tab of the same tile. Only ever called with http(s) URLs. */
+  openInNewTab?: (url: string) => void;
   /** Only ever called with http(s) URLs. */
   openExternal(url: string): void;
   copyImageAt(x: number, y: number): void;
@@ -61,8 +63,10 @@ export function contextMenuTemplate(p: Params, a: ContextMenuActions): MenuItemC
     ]);
   }
 
+  const openInNewTab = a.openInNewTab;
   if (link) {
     sections.push([
+      ...(openInNewTab ? [{ label: 'Open link in new tab', click: () => openInNewTab(link) }] : []),
       { label: 'Open link in new Browser tile', click: () => a.openInNewTile(link) },
       { label: 'Open link in system browser', click: () => a.openExternal(link) },
       { label: 'Copy link address', click: () => a.copyText(link) },
@@ -96,7 +100,7 @@ export function contextMenuTemplate(p: Params, a: ContextMenuActions): MenuItemC
     const quote = selection.length > MAX_QUOTE ? `${selection.slice(0, MAX_QUOTE).trimEnd()}…` : selection;
     sections.push([
       { label: 'Copy', role: 'copy' },
-      { label: `Search ${a.search.name} for “${quote}”`, click: () => a.openInNewTile(a.search.url(selection)) },
+      { label: `Search ${a.search.name} for “${quote}”`, click: () => (openInNewTab ?? a.openInNewTile)(a.search.url(selection)) },
     ]);
   }
 

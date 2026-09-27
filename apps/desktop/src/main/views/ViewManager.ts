@@ -27,7 +27,7 @@ import {
 } from '@aio/core';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
-import { IPC, TILE_GUTTER, TILE_HEADER, VIEW_INSET, VIEW_RADIUS, type ViewFrame, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
+import { IPC, TILE_GUTTER, tileHeaderHeight, VIEW_INSET, VIEW_RADIUS, type ViewFrame, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
 import type { ScriptletFiles } from '../privacy/scriptlets';
@@ -165,10 +165,25 @@ export class ViewManager {
     const area = { x: 0, y: 0, width: Math.max(0, width - left - right), height: Math.max(0, height - top - bottom) };
     const out = new Map<string, Rect>();
     for (const t of computeLayout(frame.layout, area, TILE_GUTTER).tiles) {
-      const body = tileBodyRect(t.rect, TILE_HEADER, VIEW_INSET);
+      const body = tileBodyRect(t.rect, tileHeaderHeight(t.tabs), VIEW_INSET);
       out.set(t.leafId, { x: Math.round(body.x + left), y: Math.round(body.y + top), width: body.width, height: body.height });
     }
     return out;
+  }
+
+  private uiRepaintTimer: NodeJS.Timeout | undefined;
+
+  /**
+   * Repaint the whole UI page shortly after a page's state changed (D-049). On Wayland, parts of the
+   * UI next to a view (a tile's header and address bar) were sometimes left blank until something
+   * inside them changed: only the redrawn bits came back (seen on a 5120x1440 screen). A full
+   * repaint once things go quiet brings the rest back; it redraws, it doesn't re-render React.
+   */
+  private repaintUiSoon(): void {
+    clearTimeout(this.uiRepaintTimer);
+    this.uiRepaintTimer = setTimeout(() => {
+      if (!this.win.isDestroyed()) this.win.webContents.invalidate();
+    }, 250);
   }
 
   /** Force every currently-visible view to repaint (see the focus handler above). */
@@ -211,7 +226,7 @@ export class ViewManager {
         this.destroy(p.instanceId);
         entry = undefined;
       }
-      entry ??= this.create(p.leafId, p.instanceId, p.appId, p.profile, this.wake(p.instanceId, p.appId));
+      entry ??= this.create(p.leafId, p.instanceId, p.appId, p.profile, this.wake(p.instanceId, p.appId), p.url);
       if (!entry) continue;
       entry.leafId = p.leafId;
       entry.view.setBounds(current?.get(p.leafId) ?? p.bounds);
@@ -227,8 +242,11 @@ export class ViewManager {
     this.sync(this.lastPlacements);
   }
 
+  /** The view on screen in a tile (a Browser tile's other tabs share its leaf id but stay hidden). */
   private byLeaf(leafId: string): Entry | undefined {
-    for (const entry of this.views.values()) if (entry.leafId === leafId) return entry;
+    const placed = this.lastPlacements.find((p) => p.leafId === leafId);
+    if (placed) return this.views.get(placed.instanceId);
+    for (const entry of this.views.values()) if (entry.leafId === leafId && entry.hiddenSince === undefined) return entry;
     return undefined;
   }
 
@@ -377,7 +395,7 @@ export class ViewManager {
     }
   }
 
-  private create(leafId: string, instanceId: string, appId: string, profile: string, wakeUrl?: string): Entry | undefined {
+  private create(leafId: string, instanceId: string, appId: string, profile: string, wakeUrl?: string, tabUrl?: string): Entry | undefined {
     const def = getApp(appId, this.store.catalog());
     if (!def) return undefined;
     const ses = getAppSession(
@@ -440,7 +458,8 @@ export class ViewManager {
     if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(def, wc);
 
     this.win.contentView.addChildView(view);
-    const startUrl = def.kind === 'browser' ? this.pendingUrl.get(leafId) : undefined;
+    // Browser tiles: a link's address sent before the view existed, else the tab's saved page (D-049).
+    const startUrl = def.kind === 'browser' ? (this.pendingUrl.get(leafId) ?? tabUrl) : undefined;
     this.pendingUrl.delete(leafId);
     void wc.loadURL(wakeUrl ?? startUrl ?? this.homeOf(def));
     if (this.pendingFocus === leafId) {
@@ -517,6 +536,16 @@ export class ViewManager {
         const request: OpenInNewTile = { fromLeafId: entry.leafId, url, background: false };
         this.win.webContents.send(IPC.openInNewTile, request);
       },
+      // Browser pages only (D-049): a new tab in the same tile, opened behind the current one.
+      ...(entry.def.kind === 'browser'
+        ? {
+            openInNewTab: (url: string) => {
+              if (!isWebUrl(url) || this.win.isDestroyed()) return;
+              const request: OpenInNewTile = { fromLeafId: entry.leafId, url, background: true, tab: true };
+              this.win.webContents.send(IPC.openInNewTile, request);
+            },
+          }
+        : {}),
       openExternal: (url) => {
         if (isWebUrl(url)) void shell.openExternal(url);
       },
@@ -692,7 +721,8 @@ export class ViewManager {
         case 'new-tile': {
           const leafId = this.leafOf(wc);
           if (leafId && !this.win.isDestroyed()) {
-            const request: OpenInNewTile = { fromLeafId: leafId, url, background: disposition === 'background-tab' };
+            // Browser links asking for a new tab become tabs of the same tile (D-049).
+            const request: OpenInNewTile = { fromLeafId: leafId, url, background: disposition === 'background-tab', tab: def.kind === 'browser' };
             this.win.webContents.send(IPC.openInNewTile, request);
           } else void wc.loadURL(url);
           return { action: 'deny' };
@@ -738,6 +768,7 @@ export class ViewManager {
         ...(entry.httpsFailed ? { httpsFailed: entry.httpsFailed } : {}),
       };
       this.win.webContents.send(IPC.viewState, state);
+      this.repaintUiSoon();
     };
     entry.emit = () => emit();
     wc.on('did-start-loading', () => emit());

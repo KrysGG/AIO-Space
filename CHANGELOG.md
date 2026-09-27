@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Browser] Tabs in the Browser tile (new tab button, Ctrl+T, Ctrl+Tab, middle-click to close); new-tab links open as tabs; "Open in new tile" moves a tab into its own tile; tabs reopen after a restart. Fix: tile header/address bar left blank on Wayland (D-049).
 - [Fix] Stale/torn frames after maximizing or fullscreen (views and UI repaint once the window settles); lighter page stills while resizing, no blur layer (D-048).
 - [Sidebar] Right-click an app in the sidebar: open here or in a new tile, move up/down, hide (restore in Settings), remove added apps (workspace v16, D-047).
 - [Fix] Google sign-in ("Couldn't sign you in") works again: no page scripts run on sign-in providers' pages (D-046).

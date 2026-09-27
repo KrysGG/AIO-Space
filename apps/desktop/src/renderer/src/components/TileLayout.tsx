@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   computeLayout,
+  findLeaf,
   ratioFromPointer,
+  tabsOf,
   tileBodyRect,
   titleWithoutUnread,
   zoomLabel,
@@ -14,12 +16,13 @@ import {
   type SplitDirection,
   type WebAppDef,
 } from '@aio/core';
-import { TILE_GUTTER, TILE_HEADER, VIEW_INSET, type ViewFrame, type ViewPlacement, type ViewState } from '../../../shared/ipc';
+import { TILE_GUTTER, TILE_HEADER, tileHeaderHeight, VIEW_INSET, type ViewFrame, type ViewPlacement, type ViewState } from '../../../shared/ipc';
 import { AddressBar } from './AddressBar';
 import { AppIcon } from './AppIcon';
 import { UnreadBadge } from './UnreadBadge';
 import { Launcher } from './Launcher';
 import { TileMedia } from './MediaIndicators';
+import { TabStrip } from './TabStrip';
 
 const GUTTER = TILE_GUTTER;
 const HEADER = TILE_HEADER;
@@ -61,6 +64,14 @@ interface Props {
   /** "Add app" in an empty tile's launcher: the new app opens in that tile. */
   onAddApp(leafId: string): void;
   onRemoveApp(appId: string): void;
+  /** Browser tabs (D-049). */
+  onNewTab(leafId: string): void;
+  onSelectTab(leafId: string, instanceId: string): void;
+  onCloseTab(leafId: string, instanceId: string): void;
+  onMoveTab(leafId: string, instanceId: string): void;
+  onTabMenu(leafId: string, instanceId: string, at: { x: number; y: number }): void;
+  /** Room for another tile (MAX_TILES). */
+  canAddTile: boolean;
 }
 
 /** Pointer travel before a header press becomes a tile drag (so clicks still work). */
@@ -109,13 +120,19 @@ export function TileLayout(props: Props) {
     const origin = el.getBoundingClientRect();
     const placements: ViewPlacement[] = computed.tiles
       .filter((t): t is typeof t & { appId: string; instanceId: string } => t.appId !== null && t.instanceId !== null)
-      .map((t) => ({
-        leafId: t.leafId,
-        instanceId: t.instanceId,
-        appId: t.appId,
-        profile: t.profile,
-        bounds: offset(tileBodyRect(t.rect, HEADER, VIEW_INSET), origin.left, origin.top),
-      }));
+      .map((t) => {
+        // A Browser tab's saved page, for main to open when it creates the tab's view (D-049).
+        const leaf = findLeaf(layout, t.leafId);
+        const url = leaf ? tabsOf(leaf).find((tab) => tab.instanceId === t.instanceId)?.url : undefined;
+        return {
+          leafId: t.leafId,
+          instanceId: t.instanceId,
+          appId: t.appId,
+          profile: t.profile,
+          bounds: offset(tileBodyRect(t.rect, tileHeaderHeight(t.tabs), VIEW_INSET), origin.left, origin.top),
+          ...(url ? { url } : {}),
+        };
+      });
     const frame: ViewFrame = {
       layout,
       insets: {
@@ -222,6 +239,7 @@ export function TileLayout(props: Props) {
         // States are keyed by running instance, so they follow an app when tiles are swapped.
         const state = t.instanceId ? viewStates[t.instanceId] : undefined;
         const isFocused = t.leafId === focusedLeafId;
+        const leaf = t.tabs > 1 ? findLeaf(layout, t.leafId) : null;
         return (
           <section
             key={t.leafId}
@@ -315,6 +333,7 @@ export function TileLayout(props: Props) {
                     {zoomLabel(state.zoom)}
                   </button>
                 )}
+                {isBrowser(t.appId) && <IconBtn label="New tab (Ctrl+T)" onClick={() => props.onNewTab(t.leafId)} d="M10 5v10M5 10h10" />}
                 {t.appId && (
                   <>
                     <IconBtn label="Back" disabled={!state?.canGoBack} onClick={() => window.aio.viewCommand(t.leafId, 'back')} d="M12 5 7 10l5 5" />
@@ -328,6 +347,19 @@ export function TileLayout(props: Props) {
                 <IconBtn label="Close tile" onClick={() => props.onClose(t.leafId)} d="m5 5 10 10M15 5 5 15" />
               </div>
             </header>
+            {leaf && (
+              <TabStrip
+                tabs={tabsOf(leaf)}
+                active={t.instanceId}
+                viewStates={viewStates}
+                canMoveToTile={props.canAddTile}
+                onSelect={(id) => props.onSelectTab(t.leafId, id)}
+                onClose={(id) => props.onCloseTab(t.leafId, id)}
+                onNew={() => props.onNewTab(t.leafId)}
+                onMoveToTile={(id) => props.onMoveTab(t.leafId, id)}
+                onMenu={(id, at) => props.onTabMenu(t.leafId, id, at)}
+              />
+            )}
             <div className="tile-body">
               {t.appId === null ? (
                 <Launcher

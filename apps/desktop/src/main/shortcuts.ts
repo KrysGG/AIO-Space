@@ -26,6 +26,10 @@ export function shortcutFor(input: KeyInput): ShortcutAction | null {
     return direction ? { kind: 'focus-direction', direction } : null;
   }
   if (alt) return null;
+  // Browser tabs (D-049): Ctrl+Tab / Ctrl+Shift+Tab and Ctrl+PageDown / Ctrl+PageUp switch tabs.
+  if (input.code === 'Tab') return { kind: 'switch-tab', delta: shift ? -1 : 1 };
+  if (!shift && input.code === 'PageDown') return { kind: 'switch-tab', delta: 1 };
+  if (!shift && input.code === 'PageUp') return { kind: 'switch-tab', delta: -1 };
   // Zoom: Ctrl +/= (Shift allowed, "+" needs it on US layouts), Ctrl -, Ctrl 0, and the numpad keys.
   if (input.code === 'Equal' || input.code === 'NumpadAdd') return { kind: 'zoom', change: 'in' };
   if (input.code === 'Minus' || input.code === 'NumpadSubtract') return { kind: 'zoom', change: 'out' };
@@ -36,6 +40,7 @@ export function shortcutFor(input: KeyInput): ShortcutAction | null {
     if (key === 'b') return { kind: 'toggle-rail' };
     return null;
   }
+  if (key === 't') return { kind: 'new-tab' };
   if (key === 'w') return { kind: 'close' };
   if (key === 'r') return { kind: 'reload' };
   if (key === 'l') return { kind: 'focus-address' };

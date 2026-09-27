@@ -41,7 +41,7 @@ export function findLeaf(node: LayoutNode, leafId: string): LeafNode | null {
  * Bottom-up map: children are transformed first, then `fn` runs on the rebuilt node.
  * Nodes that `fn` creates are never re-visited (top-down would loop forever in splitLeaf).
  */
-function mapTree(node: LayoutNode, fn: (n: LayoutNode) => LayoutNode): LayoutNode {
+export function mapTree(node: LayoutNode, fn: (n: LayoutNode) => LayoutNode): LayoutNode {
   if (node.type === 'leaf') return fn(node);
   return fn({ ...node, first: mapTree(node.first, fn), second: mapTree(node.second, fn) });
 }
@@ -99,8 +99,9 @@ export function setRatio(root: LayoutNode, splitId: string, ratio: number): Layo
 export function assignApp(root: LayoutNode, leafId: string, appId: string | null): LayoutNode {
   return mapTree(root, (n) => {
     if (n.type !== 'leaf' || n.id !== leafId || n.appId === appId) return n;
-    const { profile: _dropped, ...rest } = n;
+    const { profile: _dropped, tabs: _tabs, ...rest } = n;
     void _dropped;
+    void _tabs;
     return { ...rest, appId, instanceId: appId ? newInstanceId() : null };
   });
 }
@@ -109,18 +110,20 @@ export function assignApp(root: LayoutNode, leafId: string, appId: string | null
 export function setProfile(root: LayoutNode, leafId: string, profile: string): LayoutNode {
   return mapTree(root, (n) => {
     if (n.type !== 'leaf' || n.id !== leafId || !n.appId || (n.profile ?? DEFAULT_PROFILE) === profile) return n;
-    const { profile: _old, ...rest } = n;
+    const { profile: _old, tabs: _tabs, ...rest } = n;
     void _old;
+    void _tabs;
     return profile === DEFAULT_PROFILE ? { ...rest, instanceId: newInstanceId() } : { ...rest, instanceId: newInstanceId(), profile };
   });
 }
 
-/** `leaf` showing `from`'s app, instance and account. */
+/** `leaf` showing `from`'s app, instance, account and tabs. */
 function withApp(leaf: LeafNode, from: LeafNode): LeafNode {
-  const { profile: _p, ...rest } = leaf;
+  const { profile: _p, tabs: _t, ...rest } = leaf;
   void _p;
+  void _t;
   const next: LeafNode = { ...rest, appId: from.appId, instanceId: from.instanceId };
-  return from.profile ? { ...next, profile: from.profile } : next;
+  return { ...next, ...(from.profile ? { profile: from.profile } : {}), ...(from.tabs ? { tabs: from.tabs } : {}) };
 }
 
 /**
@@ -161,7 +164,14 @@ export function computeLayout(root: LayoutNode, area: Rect, gutter = 6): Compute
   const out: ComputedLayout = { tiles: [], dividers: [] };
   const walk = (n: LayoutNode, r: Rect): void => {
     if (n.type === 'leaf') {
-      out.tiles.push({ leafId: n.id, appId: n.appId, instanceId: n.instanceId, profile: n.profile ?? DEFAULT_PROFILE, rect: roundRect(r) });
+      out.tiles.push({
+        leafId: n.id,
+        appId: n.appId,
+        instanceId: n.instanceId,
+        profile: n.profile ?? DEFAULT_PROFILE,
+        tabs: n.tabs?.length ?? (n.instanceId ? 1 : 0),
+        rect: roundRect(r),
+      });
       return;
     }
     const horizontal = n.direction === 'row';

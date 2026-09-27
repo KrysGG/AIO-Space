@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createLeaf, defaultWorkspace, makeCustomApp, splitLeaf, type LayoutNode, type WebAppDef } from '@aio/core';
+import { addTab, createLeaf, defaultWorkspace, makeCustomApp, MAX_TABS, splitLeaf, type LayoutNode, type WebAppDef } from '@aio/core';
 import {
   CustomAppSchema,
   DownloadActionSchema,
@@ -293,5 +293,49 @@ describe('ViewsSyncSchema frame (window-resize placement)', () => {
     ]) {
       expect(ViewsSyncSchema.safeParse({ placements: [], keep: [], frame }).success, JSON.stringify(frame)).toBe(false);
     }
+  });
+});
+
+describe('Browser tabs (D-049)', () => {
+  const ok = (layout: LayoutNode) => WorkspaceSchema.safeParse(workspaceWith(layout)).success;
+  const browser = (tabs: unknown, instanceId = 'app_1', appId = 'browser') =>
+    ({ type: 'leaf', id: 'leaf_a', appId, instanceId, tabs }) as unknown as LayoutNode;
+
+  it('accepts tabs with saved http(s) pages, including the one shown', () => {
+    expect(ok(browser([{ instanceId: 'app_1', url: 'https://a.example/', title: 'A' }, { instanceId: 'app_2' }]))).toBe(true);
+    const leaf = createLeaf('browser');
+    expect(ok(addTab(leaf, leaf.id, 'https://b.example/').root)).toBe(true);
+  });
+
+  it('rejects tabs outside Browser tiles, without the shown tab, duplicated, or with other schemes', () => {
+    expect(ok(browser([{ instanceId: 'app_1' }], 'app_1', 'discord'))).toBe(false);
+    expect(ok(browser([{ instanceId: 'app_2' }, { instanceId: 'app_3' }]))).toBe(false);
+    expect(ok(browser([{ instanceId: 'app_1' }, { instanceId: 'app_1' }]))).toBe(false);
+    expect(ok(browser([]))).toBe(false);
+    expect(ok(browser([{ instanceId: 'app_1', url: 'file:///etc/passwd' }]))).toBe(false);
+    expect(ok(browser([{ instanceId: 'app_1', url: 'javascript:alert(1)' }]))).toBe(false);
+    expect(ok(browser([{ instanceId: 'app_1', title: 'x'.repeat(301) }]))).toBe(false);
+    expect(ok(browser([{ instanceId: 'app_1', extra: true }]))).toBe(false);
+    expect(ok(browser(Array.from({ length: MAX_TABS + 1 }, (_, i) => ({ instanceId: `app_${i + 1}` }))))).toBe(false);
+  });
+
+  it('rejects a tab instance also used by another tile', () => {
+    const layout: LayoutNode = {
+      type: 'split',
+      id: 'split_1',
+      direction: 'row',
+      ratio: 0.5,
+      first: browser([{ instanceId: 'app_1' }, { instanceId: 'app_2' }]),
+      second: { type: 'leaf', id: 'leaf_b', appId: 'discord', instanceId: 'app_2' },
+    };
+    expect(ok(layout)).toBe(false);
+  });
+
+  it('placements may carry an http(s) start page; keep lists cover hidden tabs', () => {
+    const p = { leafId: 'leaf_1', instanceId: 'app_1', appId: 'browser', profile: 'default', bounds: { x: 0, y: 0, width: 10, height: 10 } };
+    expect(PlacementsSchema.safeParse([{ ...p, url: 'https://a.example/' }]).success).toBe(true);
+    expect(PlacementsSchema.safeParse([{ ...p, url: 'file:///etc/passwd' }]).success).toBe(false);
+    const keep = Array.from({ length: MAX_TILES * 2 }, (_, i) => `app_${i + 10}`);
+    expect(ViewsSyncSchema.safeParse({ placements: [p], keep }).success).toBe(true);
   });
 });

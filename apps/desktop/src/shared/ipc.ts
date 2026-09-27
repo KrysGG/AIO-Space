@@ -60,6 +60,13 @@ export const VIEW_RADIUS = 8;
 /** Tile header height and the gap between tiles (px). */
 export const TILE_HEADER = 34;
 export const TILE_GUTTER = 6;
+/** Browser tiles with more than one tab show a tab strip under the header (D-049). */
+export const TAB_BAR = 30;
+
+/** Height above a tile's web view: the header, plus the tab strip when the tile has tabs. */
+export function tileHeaderHeight(tabs: number): number {
+  return TILE_HEADER + (tabs > 1 ? TAB_BAR : 0);
+}
 
 /**
  * The active space's layout and where the tile area sits in the window (distance from each edge).
@@ -80,6 +87,8 @@ export interface ViewPlacement {
   /** Account of the app (ROADMAP 2.12): picks the session partition. */
   profile: string;
   bounds: Rect;
+  /** Browser tabs: the page to open when the view is created (the tab's last page, D-049). */
+  url?: string;
 }
 
 export type ViewCommand = 'back' | 'forward' | 'reload' | 'home' | 'zoom-in' | 'zoom-out' | 'zoom-reset' | 'allow-http';
@@ -111,11 +120,15 @@ export interface ViewState {
   audible: boolean;
 }
 
-/** A Browser tile link asked for a new tab. `background` = middle-click / Ctrl+click: keep focus where it is. */
+/**
+ * A link asked for a new tab. `background` = middle-click / Ctrl+click: keep focus where it is.
+ * `tab`: open it as a tab of the Browser tile it came from (D-049) instead of in a new tile.
+ */
 export interface OpenInNewTile {
   fromLeafId: string;
   url: string;
   background: boolean;
+  tab?: boolean;
 }
 
 /** One download as the UI shows it. Paths stay in main; the UI only gets the file name. */
@@ -144,7 +157,9 @@ export type ShortcutAction =
   | { kind: 'focus-address' }
   | { kind: 'zoom'; change: ZoomChange }
   | { kind: 'help' }
-  | { kind: 'toggle-rail' };
+  | { kind: 'toggle-rail' }
+  | { kind: 'new-tab' }
+  | { kind: 'switch-tab'; delta: 1 | -1 };
 
 /** Exposed on window.aio by the preload script. */
 export interface AioApi {

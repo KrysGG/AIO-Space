@@ -470,3 +470,22 @@ visible view and the UI itself. (2) The blurred fill behind page stills (a 24px 
 tile-sized image, every frame of a drag) is gone: the still is shown at its own size and its right
 and bottom edges fade (14px mask) into the tile. Checked at 5120x1440: views match the tiles, stills
 stay crisp mid-drag. Not reproducible here: real Wayland maximize (owner to confirm).
+
+**D-049: Browser tabs; tabs can move to their own tile. UI repaints after page state changes.**
+(1) A Browser tile holds tabs (`LeafNode.tabs`, optional, so no workspace version bump). Each tab is
+its own running instance (web view, same session as the tile); the leaf's `instanceId` is the tab on
+screen. Tabs not on screen go to main in the `keep` list, like apps in other spaces (hidden, still
+running, put to sleep by the same setting); a tab never opened this run starts when first shown.
+The strip appears under the header once a tile has two tabs (`TAB_BAR`, `tileHeaderHeight()` in
+shared/ipc.ts, used by the UI and main alike). "Open in new tile" (strip button, tab right-click,
+right or below) moves the tab's instance into a new tile, so its page keeps running. In a Browser,
+`target=_blank` links and "Open link in new tab" / selection searches open as tabs (supersedes the
+Browser part of D-015; other apps' links still open a new Browser tile). Shortcuts: Ctrl+T (a Browser
+elsewhere), Ctrl+W closes the tab when there are several, Ctrl+Tab / Ctrl+Shift+Tab / Ctrl+PageUp/Down.
+Tabs remember their last http(s) page and title in the workspace to reopen after a restart, except
+when the Browser is set to "forget when AIO Space closes" (then pages are stripped before saving);
+views receive that page through `ViewPlacement.url` (zod-checked http(s)), Browser only.
+(2) Owner report (Wayland, 5120x1440): a Browser tile's header went blank except for the back and
+forward buttons, which had just changed. Header and view bounds were correct; only the redrawn parts
+came back. Main now invalidates the UI page 250 ms after any view state change (debounced), which
+redraws the whole window without re-rendering React.

@@ -44,6 +44,19 @@ const item = (items: MenuItemConstructorOptions[], label: string) => {
 const click = (i: MenuItemConstructorOptions) => (i.click as () => void)();
 
 describe('contextMenuTemplate', () => {
+  it('Browser pages: links and searches open in a new tab first (D-049)', () => {
+    const openInNewTab = vi.fn();
+    const a = actions({ openInNewTab });
+    const m = contextMenuTemplate(params({ linkURL: 'https://example.com/x' }), a);
+    expect(labels(m)).toEqual(['Open link in new tab', 'Open link in new Browser tile', 'Open link in system browser', 'Copy link address']);
+    click(item(m, 'Open link in new tab'));
+    expect(openInNewTab).toHaveBeenCalledWith('https://example.com/x');
+    const search = contextMenuTemplate(params({ selectionText: 'cats' }), a);
+    click(item(search, 'Search DuckDuckGo for “cats”'));
+    expect(openInNewTab).toHaveBeenLastCalledWith('https://duckduckgo.com/?q=cats');
+    expect(a.openInNewTile).not.toHaveBeenCalled();
+  });
+
   it('plain page: back, forward, reload (with history state)', () => {
     const m = contextMenuTemplate(params(), actions());
     expect(labels(m)).toEqual(['Back', 'Forward', 'Reload']);

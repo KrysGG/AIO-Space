@@ -5,7 +5,17 @@ import {
   allowHttpHost,
   addSpace,
   addressToUrl,
+  addTab,
   assignApp,
+  closeTab,
+  forgetTabPages,
+  hiddenTabsOf,
+  instancesOf,
+  isWebUrl,
+  moveTabToNewTile,
+  selectTab,
+  setTabInfo,
+  tabsOf,
   catalogOf,
   computeLayout,
   disallowHttpHost,
@@ -37,6 +47,8 @@ import {
   urlAfterEngineSwitch,
   type PrivacySettings,
   type SearchEngineId,
+  type LayoutNode,
+  type Space,
   type SplitDirection,
   type Unread,
   type WebAppDef,
@@ -46,6 +58,8 @@ import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../
 import { AddAppDialog } from './components/AddAppDialog';
 import { AppStore } from './components/AppStore';
 import { RailMenu } from './components/RailMenu';
+import { TabMenu } from './components/TabMenu';
+import { tabLabel } from './components/TabStrip';
 import { anyMedia, mergeMedia } from './components/MediaIndicators';
 import type { MediaInUse } from '../../shared/webapp';
 import { DownloadsPanel } from './components/DownloadsPanel';
@@ -66,6 +80,93 @@ const SNAPSHOT_WAIT_MS = 250;
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 const activeSpaceHasApps = (ws: Workspace): boolean => listLeaves(activeSpace(ws).layout).some((l) => l.appId !== null);
+/** Longest tab title kept in the workspace (the schema's limit). */
+const MAX_TAB_TITLE = 300;
+
+/** Every space's layout through `fn`; the same workspace when nothing changed (no re-render, no save). */
+function mapLayouts(ws: Workspace, fn: (layout: LayoutNode) => LayoutNode): Workspace {
+  let changed = false;
+  const spaces = ws.spaces.map((s) => {
+    const layout = fn(s.layout);
+    if (layout === s.layout) return s;
+    changed = true;
+    return { ...s, layout };
+  });
+  return changed ? { ...ws, spaces } : ws;
+}
+
+/** Put the keyboard in a tile's address bar (after the next render, once it's there). */
+function focusAddress(leafId: string): void {
+  requestAnimationFrame(() => {
+    const input = document.querySelector<HTMLInputElement>(`[data-address-for="${leafId}"]`);
+    if (!input) return;
+    window.aio.focusView(null);
+    input.focus();
+  });
+}
+
+/** Browser tab actions on the active space (D-049), for the tab strip, its menu, shortcuts and links. */
+function tabActions(ws: Workspace, edit: (fn: (w: Workspace) => Workspace) => void) {
+  const layout = activeSpace(ws).layout;
+  const canAddTile = listLeaves(layout).length < MAX_TILES;
+  const onSpace = (fn: (s: Space) => Space): void => edit((w) => updateActiveSpace(w, fn));
+  return {
+    /**
+     * Open a tab in a Browser tile, at `url` or the search engine's home page; `background` keeps
+     * the current tab on screen. Elsewhere (Ctrl+T), a Browser opens in the tile if it's empty, or in
+     * a new tile beside it. False when nothing was opened.
+     */
+    newTab(leafId: string, url?: string, background = false): boolean {
+      const leaf = findLeaf(layout, leafId);
+      if (!leaf) return false;
+      if (leaf.appId !== 'browser') {
+        if (url) return false;
+        if (leaf.appId === null) {
+          onSpace((s) => ({ ...s, layout: assignApp(s.layout, leafId, 'browser'), focusedLeafId: leafId }));
+        } else if (canAddTile) {
+          onSpace((s) => {
+            const r = splitLeaf(s.layout, leafId, 'row', 'browser');
+            return { ...s, layout: r.root, focusedLeafId: r.newLeafId ?? s.focusedLeafId };
+          });
+        } else return false;
+        return true;
+      }
+      const r = addTab(layout, leafId, url);
+      if (!r.instanceId) return false;
+      const next = background && leaf.instanceId ? selectTab(r.root, leafId, leaf.instanceId) : r.root;
+      onSpace((s) => ({ ...s, layout: next, focusedLeafId: background ? s.focusedLeafId : leafId }));
+      if (!background) {
+        if (url) window.aio.focusView(leafId);
+        else focusAddress(leafId);
+      }
+      return true;
+    },
+    select(leafId: string, instanceId: string): void {
+      onSpace((s) => ({ ...s, layout: selectTab(s.layout, leafId, instanceId), focusedLeafId: leafId }));
+      window.aio.focusView(leafId);
+    },
+    close(leafId: string, instanceId: string): void {
+      onSpace((s) => ({ ...s, layout: closeTab(s.layout, leafId, instanceId) }));
+    },
+    closeOthers(leafId: string, keepId: string): void {
+      onSpace((s) => {
+        const leaf = findLeaf(s.layout, leafId);
+        if (!leaf) return s;
+        const others = tabsOf(leaf).filter((t) => t.instanceId !== keepId);
+        return { ...s, layout: others.reduce((l, t) => closeTab(l, leafId, t.instanceId), selectTab(s.layout, leafId, keepId)) };
+      });
+    },
+    /** Move a tab into a new tile to the right (`row`) or below (`column`); the page keeps running. */
+    move(leafId: string, instanceId: string, direction: SplitDirection = 'row'): void {
+      if (!canAddTile) return;
+      const r = moveTabToNewTile(layout, leafId, instanceId, direction);
+      const newLeafId = r.newLeafId;
+      if (!newLeafId) return;
+      onSpace((s) => ({ ...s, layout: r.root, focusedLeafId: newLeafId }));
+      window.aio.focusView(newLeafId);
+    },
+  };
+}
 
 export function App() {
   const [ws, setWs] = useState<Workspace | null>(null);
@@ -86,6 +187,8 @@ export function App() {
   const [store, setStore] = useState<{ leafId: string | null } | null>(null);
   /** Right-click menu of a sidebar app. */
   const [railMenu, setRailMenu] = useState<{ appId: string; at: { x: number; y: number } } | null>(null);
+  /** Right-click menu of a Browser tab. */
+  const [tabMenu, setTabMenu] = useState<{ leafId: string; instanceId: string; at: { x: number; y: number } } | null>(null);
   // Tile whose Shields panel is open (ROADMAP 3.1).
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
   /** The rail is animating (D-038): views are hidden and sharp snapshots stand in for them. */
@@ -114,7 +217,14 @@ export function App() {
         setBuiltins(c);
       })
       .catch((e: unknown) => setError(String(e)));
-    const offState = window.aio.onViewState((s) => setViewStates((prev) => ({ ...prev, [s.instanceId]: s })));
+    const offState = window.aio.onViewState((s) => {
+      setViewStates((prev) => ({ ...prev, [s.instanceId]: s }));
+      // Browser tabs remember their page, to reopen it after a restart (D-049).
+      if (s.appId === 'browser' && isWebUrl(s.url) && s.url.length <= 2048) {
+        const info = { url: s.url, title: s.title.slice(0, MAX_TAB_TITLE) };
+        setWs((prev) => (prev ? mapLayouts(prev, (l) => setTabInfo(l, s.instanceId, info)) : prev));
+      }
+    });
     const offFocus = window.aio.onViewFocused((leafId) =>
       setWs((prev) => (prev ? updateActiveSpace(prev, (s) => ({ ...s, focusedLeafId: leafId })) : prev)),
     );
@@ -157,7 +267,9 @@ export function App() {
     if (!ws) return;
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      window.aio.saveWorkspace(ws).catch((e: unknown) => setError(`Couldn't save layout: ${String(e)}`));
+      // Browser set to "forget when AIO Space closes": its tabs' pages are never written to disk.
+      const saved = ws.forgetOnClose.includes('browser') ? mapLayouts(ws, forgetTabPages) : ws;
+      window.aio.saveWorkspace(saved).catch((e: unknown) => setError(`Couldn't save layout: ${String(e)}`));
     }, SAVE_DELAY_MS);
   }, [ws]);
 
@@ -170,6 +282,7 @@ export function App() {
   const closeAdding = useCallback(() => setAdding(null), []);
   const closeStore = useCallback(() => setStore(null), []);
   const closeRailMenu = useCallback(() => setRailMenu(null), []);
+  const closeTabMenu = useCallback(() => setTabMenu(null), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const closeShields = useCallback(() => setShieldsLeaf(null), []);
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
@@ -186,7 +299,7 @@ export function App() {
       if (!ws || railMoving) return;
       const flip = (): void => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const hasViews = activeSpaceHasApps(ws);
-      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null || store !== null || railMenu !== null;
+      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null || store !== null || railMenu !== null || tabMenu !== null;
       const reduceMotion = ws.ui.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // Views already hidden (a popover is open), none to hide, or no animation wanted: just switch.
       if (!hasViews || popoverOpen || reduceMotion) return flip();
@@ -237,7 +350,24 @@ export function App() {
           );
           window.aio.focusView(null); // the new tile is empty: the launcher lives in the UI
           return;
+        case 'new-tab':
+          tabActions(ws, edit).newTab(focused);
+          return;
+        case 'switch-tab': {
+          const leaf = findLeaf(space.layout, focused);
+          const tabs = leaf ? tabsOf(leaf) : [];
+          if (!leaf || tabs.length < 2) return;
+          const i = tabs.findIndex((t) => t.instanceId === leaf.instanceId);
+          tabActions(ws, edit).select(focused, tabs[(i + action.delta + tabs.length) % tabs.length]!.instanceId);
+          return;
+        }
         case 'close': {
+          // A Browser tile with tabs closes the tab on screen, not the whole tile.
+          const leaf = findLeaf(space.layout, focused);
+          if (leaf?.instanceId && tabsOf(leaf).length > 1) {
+            tabActions(ws, edit).close(focused, leaf.instanceId);
+            return;
+          }
           const after = ensureFocus({ ...space, layout: removeLeaf(space.layout, focused) });
           edit((w) => updateActiveSpace(w, () => after));
           window.aio.focusView(after.focusedLeafId);
@@ -260,10 +390,13 @@ export function App() {
     };
 
     // A Browser tile link asked for a new tab: open it in a new Browser tile to the right (D-015).
-    openInNewTileRef.current = ({ fromLeafId, url, background }) => {
+    openInNewTileRef.current = ({ fromLeafId, url, background, tab }) => {
       if (!ws) return;
       const space = activeSpace(ws);
-      if (!findLeaf(space.layout, fromLeafId)) return;
+      const from = findLeaf(space.layout, fromLeafId);
+      if (!from) return;
+      // Browser links asking for a new tab open as a tab of the same tile (D-049).
+      if (tab && from.appId === 'browser' && tabActions(ws, edit).newTab(fromLeafId, url, background)) return;
       if (listLeaves(space.layout).length >= MAX_TILES) {
         window.aio.navigate(fromLeafId, url); // no room: same tile, like before
         return;
@@ -287,19 +420,23 @@ export function App() {
   const focused = space.focusedLeafId;
   const catalog = catalogOf(ws, builtins);
   // Apps in the other spaces keep running (hidden) so switching is instant (ROADMAP 2.8).
-  const backgroundInstances = ws.spaces
-    .filter((s) => s.id !== space.id)
-    .flatMap((s) => listLeaves(s.layout).flatMap((l) => (l.instanceId ? [l.instanceId] : [])));
+  // So do Browser tabs that aren't on screen (D-049).
+  const backgroundInstances = [
+    ...ws.spaces.filter((s) => s.id !== space.id).flatMap((s) => instancesOf(s.layout)),
+    ...hiddenTabsOf(space.layout),
+  ];
 
   // Unread per app for the rail, from every tile's page title (all spaces: they all run).
   const unreadByApp: Record<string, Unread> = {};
   // Microphone/camera/screen in use per app, across every space (privacy dots on the rail).
   const mediaByApp: Record<string, MediaInUse> = {};
   for (const leaf of ws.spaces.flatMap((sp) => listLeaves(sp.layout))) {
-    const state = leaf.instanceId ? viewStates[leaf.instanceId] : undefined;
-    const title = state?.title;
-    if (leaf.appId && title) unreadByApp[leaf.appId] = sumUnread([unreadByApp[leaf.appId] ?? null, unreadFromTitle(title)]);
-    if (leaf.appId && state && anyMedia(state.media)) mediaByApp[leaf.appId] = mergeMedia(mediaByApp[leaf.appId], state.media);
+    for (const { instanceId } of tabsOf(leaf)) {
+      const state = viewStates[instanceId];
+      const title = state?.title;
+      if (leaf.appId && title) unreadByApp[leaf.appId] = sumUnread([unreadByApp[leaf.appId] ?? null, unreadFromTitle(title)]);
+      if (leaf.appId && state && anyMedia(state.media)) mediaByApp[leaf.appId] = mergeMedia(mediaByApp[leaf.appId], state.media);
+    }
   }
 
   // The sidebar in the user's order, without hidden apps (the launcher still lists every app).
@@ -408,6 +545,9 @@ export function App() {
   const shieldsLeafNode = shieldsLeaf ? findLeaf(space.layout, shieldsLeaf) : null;
   const shieldsApp = shieldsLeafNode?.appId ? catalog.find((a) => a.id === shieldsLeafNode.appId) : undefined;
 
+  const canAddTile = listLeaves(space.layout).length < MAX_TILES;
+  const tabs = tabActions(ws, edit);
+
   const setSearchEngine = (leafId: string, searchEngine: SearchEngineId): void => {
     edit((w) => ({ ...w, browser: { ...w.browser, searchEngine } }));
     // Make the switch visible: a tile showing a search engine moves to the new one (same search).
@@ -469,6 +609,12 @@ export function App() {
         onAllowHttp={(host) => edit((w) => allowHttpHost(w, host))}
         onAddApp={(leafId) => setStore({ leafId })}
         onRemoveApp={removeApp}
+        onNewTab={(leafId) => tabs.newTab(leafId)}
+        onSelectTab={tabs.select}
+        onCloseTab={tabs.close}
+        onMoveTab={(leafId, id) => tabs.move(leafId, id)}
+        onTabMenu={(leafId, instanceId, at) => setTabMenu({ leafId, instanceId, at })}
+        canAddTile={canAddTile}
       />
       {helpOpen && <ShortcutsHelp onClose={closeHelp} onClosed={refocusTile} />}
       {menuOpen && (
@@ -527,6 +673,27 @@ export function App() {
             hide={() => edit((w) => setHiddenInRail(w, menuApp.id, true))}
             {...(menuApp.id.startsWith('custom-') ? { remove: () => removeApp(menuApp.id) } : {})}
             onClose={closeRailMenu}
+            onClosed={refocusTile}
+          />
+        );
+      })()}
+      {tabMenu && (() => {
+        const leaf = findLeaf(space.layout, tabMenu.leafId);
+        const tab = leaf && tabsOf(leaf).find((t) => t.instanceId === tabMenu.instanceId);
+        if (!leaf || !tab) return null;
+        const several = tabsOf(leaf).length > 1;
+        return (
+          <TabMenu
+            title={tabLabel(tab, viewStates[tab.instanceId])}
+            at={tabMenu.at}
+            canMove={several && canAddTile}
+            canClose={several}
+            newTab={() => tabs.newTab(leaf.id)}
+            moveRight={() => tabs.move(leaf.id, tab.instanceId, 'row')}
+            moveDown={() => tabs.move(leaf.id, tab.instanceId, 'column')}
+            close={() => tabs.close(leaf.id, tab.instanceId)}
+            closeOthers={() => tabs.closeOthers(leaf.id, tab.instanceId)}
+            onClose={closeTabMenu}
             onClosed={refocusTile}
           />
         );

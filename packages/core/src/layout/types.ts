@@ -25,7 +25,22 @@ export interface LeafNode {
    * the first account, 'default'.
    */
   profile?: string;
+  /**
+   * Browser tiles only: the tile's tabs, in order (D-049). Each is its own running instance (web
+   * view); `instanceId` above is the one on screen and is always listed here. Missing means one tab.
+   */
+  tabs?: BrowserTab[];
 }
+
+/** A Browser tab. `url` and `title` are the last page it showed, to reopen it after a restart. */
+export interface BrowserTab {
+  instanceId: string;
+  url?: string;
+  title?: string;
+}
+
+/** Most tabs one Browser tile may hold. */
+export const MAX_TABS = 20;
 
 export interface SplitNode {
   type: 'split';
@@ -55,7 +70,7 @@ export interface DividerRect {
 }
 
 export interface ComputedLayout {
-  tiles: Array<{ leafId: string; appId: string | null; instanceId: string | null; profile: string; rect: Rect }>;
+  tiles: Array<{ leafId: string; appId: string | null; instanceId: string | null; profile: string; tabs: number; rect: Rect }>;
   dividers: DividerRect[];
 }
 

@@ -16,6 +16,16 @@ const press = (keys: Keys) =>
   });
 
 describe('shortcutFor', () => {
+  it('maps browser tab keys: Ctrl+T, Ctrl+(Shift+)Tab, Ctrl+PageDown/PageUp (D-049)', () => {
+    expect(press({ control: true, key: 't', code: 'KeyT' })).toEqual({ kind: 'new-tab' });
+    expect(press({ control: true, key: 'Tab', code: 'Tab' })).toEqual({ kind: 'switch-tab', delta: 1 });
+    expect(press({ control: true, shift: true, key: 'Tab', code: 'Tab' })).toEqual({ kind: 'switch-tab', delta: -1 });
+    expect(press({ control: true, key: 'PageDown', code: 'PageDown' })).toEqual({ kind: 'switch-tab', delta: 1 });
+    expect(press({ control: true, key: 'PageUp', code: 'PageUp' })).toEqual({ kind: 'switch-tab', delta: -1 });
+    expect(press({ key: 'Tab', code: 'Tab' })).toBeNull(); // plain Tab stays with the page
+    expect(press({ control: true, alt: true, key: 'Tab', code: 'Tab' })).toBeNull();
+  });
+
   it('maps Ctrl+Alt+Arrow to focus movement', () => {
     expect(press({ control: true, alt: true, key: 'ArrowLeft', code: 'ArrowLeft' })).toEqual({ kind: 'focus-direction', direction: 'left' });
     expect(press({ control: true, alt: true, key: 'ArrowDown', code: 'ArrowDown' })).toEqual({ kind: 'focus-direction', direction: 'down' });
