@@ -45,3 +45,29 @@ export function parseMediaReport(message: string, key: string): MediaInUse | nul
   if (!m || m[1] !== key) return null;
   return { mic: m[2] === '1', camera: m[3] === '1', screen: m[4] === '1' };
 }
+
+/**
+ * Identity providers' sign-in pages (hosts they hop between during a login). The app's own page
+ * scripts (fingerprinting, media tracking, scriptlets) never run there: their bot checks treat
+ * wrapped browser functions as an unsafe browser ("Couldn't sign you in", D-046).
+ */
+export const SIGN_IN_HOSTS = [
+  // Google (accounts.youtube.com sets YouTube's cookie during a Google login).
+  'accounts.google.com',
+  'accounts.youtube.com',
+  'myaccount.google.com',
+  'gds.google.com',
+  // Apple
+  'appleid.apple.com',
+  'idmsa.apple.com',
+  // Microsoft
+  'login.microsoftonline.com',
+  'login.live.com',
+  'account.live.com',
+];
+
+/** A sign-in provider's page (host or subdomain of SIGN_IN_HOSTS). */
+export function isSignInHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return SIGN_IN_HOSTS.some((s) => h === s || h.endsWith(`.${s}`));
+}

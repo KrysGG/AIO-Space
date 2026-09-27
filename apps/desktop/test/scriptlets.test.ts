@@ -45,6 +45,17 @@ describe('scriptlets (ROADMAP 3.6)', () => {
     expect(run('youtube.com', '1')).toHaveLength(1);
     expect(run('www.youtube.com', '0')).toHaveLength(0); // Block ads off
     expect(run('notyoutube.com', '1')).toHaveLength(0);
+
+    // Never on a sign-in provider's page, even when its site has scriptlets (D-046).
+    const google = buildScriptletPreload({ 'google.com': ['window.x = 1;'] });
+    const runOn = (host: string) => {
+      const calls: string[] = [];
+      const contextBridge = { executeInMainWorld: () => calls.push('ran') };
+      new Function('require', 'process', 'location', google)(() => ({ contextBridge }), { argv: ['--aio-webapp=standard,1,abc12345,1'] }, { hostname: host });
+      return calls.length;
+    };
+    expect(runOn('www.google.com')).toBe(1);
+    expect(runOn('accounts.google.com')).toBe(0);
   });
 
   it('writes one file per session and rewrites it when the lists change', () => {

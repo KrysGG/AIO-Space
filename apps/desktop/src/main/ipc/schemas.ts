@@ -126,6 +126,10 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   ui: z.object({ railCollapsed: z.boolean(), reduceMotion: z.boolean() }),
   twitch: z.object({ adScript: z.enum(['vaft', 'video-swap-new', 'off']) }),
   identity: z.object({ shareGoogle: z.boolean() }),
+  rail: z.object({
+    order: z.array(Id).max(300).refine(unique, 'duplicate app id'),
+    hidden: z.array(Id).max(300).refine(unique, 'duplicate app id'),
+  }),
   forgetOnClose: z.array(Id).max(200).refine(unique, 'duplicate app id'),
   dismissedNotices: z.array(z.enum(NOTICE_IDS)).max(NOTICE_IDS.length).refine(unique, 'duplicate notice'),
   customApps: z

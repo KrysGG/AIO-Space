@@ -440,3 +440,22 @@ part, so a second Google identity still works side by side. Clearing one app's d
 it doesn't sign the others out. Turning it on pools open apps' sign-in and reloads them. Trade-off, stated
 in the setting: Google can link these apps to one person. Also fixed: Escape didn't close the menu after
 ticking one of its switches (checkboxes counted as text fields).
+
+**D-046: No page scripts on sign-in providers' pages.**
+Owner report: Gmail showed Google's "Couldn't sign you in: this browser or app may not be secure".
+Google sign-in worked before 3.4 (Firefox UA, D-012); since then the fingerprinting script (it wraps
+canvas/WebGL/audio methods and `Function.prototype.toString`) and the uBlock scriptlets also ran on
+accounts.google.com, and Google's bot checks flag tampered browser functions. Now neither the web app
+preload's page script (fingerprinting, media tracking) nor the scriptlet preload runs on
+`SIGN_IN_HOSTS` (moved to `shared/webapp.ts`, `isSignInHost`); the page gets the plain browser
+plus the Firefox UA, as before. X's login error ("An unexpected error occurred") may have the same
+cause (our farbling is script-level, unlike Brave's, so bot-detection can see it), but X's login runs
+on x.com itself; the lists only block its telemetry (checked). Owner to test with fingerprinting off
+for X (Backlog).
+
+**D-047: Sidebar right-click menu: open, open in a new tile, move up/down, hide, remove.**
+Owner request (part of ROADMAP 4.7). `workspace.rail` (v16): `order` (the user's arrangement; apps
+not listed follow in catalog order, so new apps join at the end) and `hidden` (still in the launcher,
+restorable under Settings > "Hidden from the sidebar"). Core: `railApps`, `moveInRail`,
+`setHiddenInRail`. The menu is a small glass popover at the pointer (views hidden while open, like
+other popovers); "Remove app..." appears for added apps only.

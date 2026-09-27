@@ -31,10 +31,12 @@ interface Props {
   onToggleCollapsed(): void;
   /** Opens the app store. */
   onAddApp(): void;
+  /** Right-click on an app: its options menu at the pointer. */
+  onAppMenu(appId: string, at: { x: number; y: number }): void;
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, media, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed, onAddApp }: Props) {
+export function Sidebar({ catalog, unread, media, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed, onAddApp, onAppMenu }: Props) {
   const attention = menuNotice || Object.values(unread).some(Boolean) || activeDownloads > 0;
   // One structure for both states, so the width can animate while the buttons fade out and the edge
   // fades in. `inert` keeps the hidden half out of the tab order and away from the pointer.
@@ -66,6 +68,10 @@ export function Sidebar({ catalog, unread, media, onOpen, onSplit, canSplit, onM
               title={`Open ${app.name} in the focused tile`}
               aria-label={`Open ${app.name}`}
               onClick={() => onOpen(app.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onAppMenu(app.id, { x: e.clientX, y: e.clientY });
+              }}
             >
               <AppIcon app={app} size={20} />
               <UnreadBadge unread={unread[app.id] ?? null} className="rail-badge" />

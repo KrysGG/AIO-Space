@@ -23,3 +23,11 @@ describe('media reports (privacy dots)', () => {
     expect(parseMediaReport('hello', 'abc123')).toBeNull();
   });
 });
+
+describe('sign-in hosts (D-046)', () => {
+  it('matches providers’ sign-in pages only', async () => {
+    const { isSignInHost } = await import('../src/shared/webapp');
+    for (const h of ['accounts.google.com', 'ACCOUNTS.GOOGLE.COM', 'appleid.apple.com', 'login.microsoftonline.com']) expect(isSignInHost(h), h).toBe(true);
+    for (const h of ['mail.google.com', 'www.google.com', 'x.com', 'notaccounts.google.com.evil.net']) expect(isSignInHost(h), h).toBe(false);
+  });
+});

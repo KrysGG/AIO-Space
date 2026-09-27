@@ -10,6 +10,9 @@ import {
   computeLayout,
   disallowHttpHost,
   dismissNotice,
+  moveInRail,
+  railApps,
+  setHiddenInRail,
   appFromStore,
   setForgetOnClose,
   ensureFocus,
@@ -42,6 +45,7 @@ import {
 import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
 import { AddAppDialog } from './components/AddAppDialog';
 import { AppStore } from './components/AppStore';
+import { RailMenu } from './components/RailMenu';
 import { anyMedia, mergeMedia } from './components/MediaIndicators';
 import type { MediaInUse } from '../../shared/webapp';
 import { DownloadsPanel } from './components/DownloadsPanel';
@@ -80,6 +84,8 @@ export function App() {
   const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
   /** The app store is open; `leafId` is the empty tile it was opened from (its pick opens there). */
   const [store, setStore] = useState<{ leafId: string | null } | null>(null);
+  /** Right-click menu of a sidebar app. */
+  const [railMenu, setRailMenu] = useState<{ appId: string; at: { x: number; y: number } } | null>(null);
   // Tile whose Shields panel is open (ROADMAP 3.1).
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
   /** The rail is animating (D-038): views are hidden and sharp snapshots stand in for them. */
@@ -163,6 +169,7 @@ export function App() {
   const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
   const closeAdding = useCallback(() => setAdding(null), []);
   const closeStore = useCallback(() => setStore(null), []);
+  const closeRailMenu = useCallback(() => setRailMenu(null), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const closeShields = useCallback(() => setShieldsLeaf(null), []);
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
@@ -179,7 +186,7 @@ export function App() {
       if (!ws || railMoving) return;
       const flip = (): void => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const hasViews = activeSpaceHasApps(ws);
-      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null || store !== null;
+      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null || store !== null || railMenu !== null;
       const reduceMotion = ws.ui.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // Views already hidden (a popover is open), none to hide, or no animation wanted: just switch.
       if (!hasViews || popoverOpen || reduceMotion) return flip();
@@ -295,6 +302,20 @@ export function App() {
     if (leaf.appId && state && anyMedia(state.media)) mediaByApp[leaf.appId] = mergeMedia(mediaByApp[leaf.appId], state.media);
   }
 
+  // The sidebar in the user's order, without hidden apps (the launcher still lists every app).
+  const sidebarApps = railApps(catalog, ws.rail);
+
+  /** Open an app in a new tile to the right of the focused one (or in the focused tile at the tile limit). */
+  const openInNewTile = (appId: string): void => {
+    if (!focused || listLeaves(space.layout).length >= MAX_TILES) return openApp(appId);
+    edit((w) =>
+      updateActiveSpace(w, (s) => {
+        const r = splitLeaf(s.layout, focused, 'row', appId);
+        return { ...s, layout: r.root, focusedLeafId: r.newLeafId ?? s.focusedLeafId };
+      }),
+    );
+  };
+
   const openApp = (appId: string, leafId = focused): void => {
     if (!leafId) return;
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: assignApp(s.layout, leafId, appId), focusedLeafId: leafId })));
@@ -403,7 +424,7 @@ export function App() {
   return (
     <div className={`shell${railMoving ? ' is-rail-moving' : ''}`}>
       <Sidebar
-        catalog={catalog}
+        catalog={sidebarApps}
         unread={unreadByApp}
         media={mediaByApp}
         onOpen={(id) => openApp(id)}
@@ -421,6 +442,7 @@ export function App() {
         menuNotice={keyringNotice}
         collapsed={ws.ui.railCollapsed}
         onAddApp={() => setStore({ leafId: null })}
+        onAppMenu={(appId, at) => setRailMenu({ appId, at })}
         onToggleCollapsed={() => toggleRailRef.current()}
       />
       <TileLayout
@@ -465,6 +487,8 @@ export function App() {
           onReduceMotion={(on) => edit((w) => ({ ...w, ui: { ...w.ui, reduceMotion: on } }))}
           onTwitchScript={(adScript) => edit((w) => ({ ...w, twitch: { adScript } }))}
           onShareGoogle={(shareGoogle) => edit((w) => ({ ...w, identity: { shareGoogle } }))}
+          hiddenApps={catalog.filter((a) => ws.rail.hidden.includes(a.id))}
+          onShowApp={(appId) => edit((w) => setHiddenInRail(w, appId, false))}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}
@@ -486,6 +510,27 @@ export function App() {
           onClosed={refocusTile}
         />
       )}
+      {railMenu && (() => {
+        const menuApp = catalog.find((a) => a.id === railMenu.appId);
+        if (!menuApp) return null;
+        const index = sidebarApps.findIndex((a) => a.id === menuApp.id);
+        return (
+          <RailMenu
+            app={menuApp}
+            at={railMenu.at}
+            canMoveUp={index > 0}
+            canMoveDown={index >= 0 && index < sidebarApps.length - 1}
+            open={() => openApp(menuApp.id)}
+            openInNewTile={() => openInNewTile(menuApp.id)}
+            moveUp={() => edit((w) => moveInRail(w, catalog, menuApp.id, -1))}
+            moveDown={() => edit((w) => moveInRail(w, catalog, menuApp.id, 1))}
+            hide={() => edit((w) => setHiddenInRail(w, menuApp.id, true))}
+            {...(menuApp.id.startsWith('custom-') ? { remove: () => removeApp(menuApp.id) } : {})}
+            onClose={closeRailMenu}
+            onClosed={refocusTile}
+          />
+        );
+      })()}
       {store && (
         <AppStore
           catalog={catalog}

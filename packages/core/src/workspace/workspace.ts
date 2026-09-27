@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 15;
+export const WORKSPACE_VERSION = 16;
 
 export interface Space {
   id: string;
@@ -63,6 +63,42 @@ export interface Workspace {
   twitch: TwitchSettings;
   /** Signing in across apps. Added in version 15. */
   identity: IdentitySettings;
+  /** The sidebar's app order and hidden apps (ROADMAP 4.7). Added in version 16. */
+  rail: RailSettings;
+}
+
+export interface RailSettings {
+  /** App ids in the order the user arranged them; apps not listed follow in catalog order. */
+  order: string[];
+  /** App ids hidden from the sidebar (still in the launcher, and restorable in Settings). */
+  hidden: string[];
+}
+
+/** The sidebar's apps: the user's order first, then the rest in catalog order; hidden ones left out. */
+export function railApps<T extends { id: string }>(catalog: T[], rail: RailSettings): T[] {
+  const rank = new Map(rail.order.map((id, i) => [id, i]));
+  const hidden = new Set(rail.hidden);
+  return catalog
+    .map((app, i) => ({ app, i }))
+    .filter(({ app }) => !hidden.has(app.id))
+    .sort((a, b) => (rank.get(a.app.id) ?? rail.order.length + a.i) - (rank.get(b.app.id) ?? rail.order.length + b.i))
+    .map(({ app }) => app);
+}
+
+/** Move an app up (-1) or down (+1) among the visible sidebar apps; the new order is saved in full. */
+export function moveInRail(ws: Workspace, catalog: Array<{ id: string }>, appId: string, delta: -1 | 1): Workspace {
+  const ids = railApps(catalog, ws.rail).map((a) => a.id);
+  const from = ids.indexOf(appId);
+  const to = from + delta;
+  if (from < 0 || to < 0 || to >= ids.length) return ws;
+  [ids[from], ids[to]] = [ids[to]!, ids[from]!];
+  return { ...ws, rail: { ...ws.rail, order: ids } };
+}
+
+export function setHiddenInRail(ws: Workspace, appId: string, hidden: boolean): Workspace {
+  const has = ws.rail.hidden.includes(appId);
+  if (hidden === has) return ws;
+  return { ...ws, rail: { ...ws.rail, hidden: hidden ? [...ws.rail.hidden, appId] : ws.rail.hidden.filter((id) => id !== appId) } };
 }
 
 export interface IdentitySettings {
@@ -139,6 +175,7 @@ export function defaultWorkspace(): Workspace {
     ui: { railCollapsed: false, reduceMotion: false },
     twitch: { adScript: 'vaft' },
     identity: { shareGoogle: false },
+    rail: { order: [], hidden: [] },
   };
 }
 
@@ -196,6 +233,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   }
   if (w['version'] === 13) w = { ...w, version: 14, twitch: { adScript: 'vaft' } };
   if (w['version'] === 14) w = { ...w, version: 15, identity: { shareGoogle: false } };
+  if (w['version'] === 15) w = { ...w, version: 16, rail: { order: [], hidden: [] } };
   return w as unknown as Workspace;
 }
 

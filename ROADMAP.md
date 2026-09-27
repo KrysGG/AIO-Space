@@ -323,7 +323,8 @@ Save a space as a template; import/export the workspace (without cookies) as a f
 **Done when:** Exported workspace loads on another machine with the same layout.
 
 ### - [ ] 4.7 Rail customization
-Reorder, hide and pin apps in the rail; compact mode. (Hiding the whole rail to a thin edge is done, D-038.)
+Reorder, hide and pin apps in the rail; compact mode. (Done: hiding the whole rail, D-038; reorder and hide
+from the right-click menu, D-047. Left: drag to reorder, pinning.)
 **Done when:** Rail order persists.
 
 ---
@@ -467,6 +468,10 @@ Add items found while working on other steps here, with the step where they were
   YouTube that video ads are gone.
 - (3.6) Twitch stream ads: handled with TwitchAdSolutions (D-043). Owner: confirm on real Twitch that
   vaft skips ads (and try video-swap-new if not); report which works better so the default fits.
+- (D-046) X shows "An unexpected error occurred" at login. The lists only block X telemetry (jot,
+  csp_report), as uBlock does. Suspect our script-level fingerprinting (X's login bot checks can see
+  wrapped functions). Owner: set Block fingerprinting to Off in X's Shields panel and try again; if
+  that fixes it, make X's default an exception (or make farbling harder to detect).
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

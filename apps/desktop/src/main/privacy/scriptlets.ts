@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FiltersEngine } from '@ghostery/adblocker';
+import { SIGN_IN_HOSTS } from '../../shared/webapp';
 
 /**
  * Scriptlets (ROADMAP 3.6, D-041): uBlock Origin's small page scripts that the ad lists attach to
@@ -45,7 +46,10 @@ const blockAds = arg.slice('--aio-webapp='.length).split(',')[3] === '1';
 const sites = {
 ${entries.join(',\n')}
 };
-if (blockAds) {
+// Never on sign-in providers' pages (D-046).
+const signIn = ${JSON.stringify(SIGN_IN_HOSTS)};
+const onSignIn = signIn.some((h) => location.hostname === h || location.hostname.endsWith('.' + h));
+if (blockAds && !onSignIn) {
   const host = location.hostname;
   for (const site of Object.keys(sites)) {
     if (host === site || host.endsWith('.' + site)) {

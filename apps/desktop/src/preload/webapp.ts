@@ -6,7 +6,7 @@
 import { contextBridge } from 'electron';
 import { getDomain } from 'tldts';
 import { farble, type FarbleConfig } from './farble';
-import { parseWebAppArgs } from '../shared/webapp';
+import { isSignInHost, parseWebAppArgs } from '../shared/webapp';
 
 const args = parseWebAppArgs(process.argv);
 
@@ -17,8 +17,9 @@ function hash(text: string): number {
   return h >>> 0;
 }
 
-// Always runs: the media indicators need it even with fingerprinting protection off.
-{
+// Always runs (the media indicators need it even with fingerprinting protection off), except on
+// sign-in providers' pages, whose bot checks reject wrapped browser functions (D-046).
+if (!isSignInHost(location.hostname)) {
   const host = location.hostname;
   const site = getDomain(host) ?? host;
   const config: FarbleConfig = {

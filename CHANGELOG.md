@@ -2,6 +2,8 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Sidebar] Right-click an app in the sidebar: open here or in a new tile, move up/down, hide (restore in Settings), remove added apps (workspace v16, D-047).
+- [Fix] Google sign-in ("Couldn't sign you in") works again: no page scripts run on sign-in providers' pages (D-046).
 - [Sign-in] "Share Google sign-in between apps" (Settings, off by default): sign in to Google once for every app's first account; only Google's cookies are shared, everything else stays in each app (workspace v15, D-045). Escape now closes the menu after ticking a switch.
 - [Fix] "Continue with Google/Apple/Microsoft" stays in the app (blank-first popups and full-page sign-in redirects no longer open the system browser); new-tab links on an app's own site load in its tile (D-044).
 - [Twitch] Twitch is a built-in app; stream ads are skipped with TwitchAdSolutions (vaft or video-swap-new, chosen in Shields; bundled and updated daily; workspace v14, D-043).

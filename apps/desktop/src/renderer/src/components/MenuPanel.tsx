@@ -13,6 +13,7 @@ import {
   type PrivacySettings,
   type SearchEngineId,
   type SleepAfterMinutes,
+  type WebAppDef,
   type Workspace,
 } from '@aio/core';
 import { FilterListStatus } from './FilterListStatus';
@@ -36,6 +37,9 @@ interface Props {
   onReduceMotion(on: boolean): void;
   onTwitchScript(script: TwitchAdScript): void;
   onShareGoogle(on: boolean): void;
+  /** Apps hidden from the sidebar, to show again. */
+  hiddenApps: WebAppDef[];
+  onShowApp(appId: string): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -44,7 +48,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTwitchScript, onShareGoogle, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTwitchScript, onShareGoogle, hiddenApps, onShowApp, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
@@ -166,6 +170,21 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               <button className="text-btn" onClick={onDismissKeyring}>
                 Got it
               </button>
+            </div>
+          )}
+          {hiddenApps.length > 0 && (
+            <div className="hidden-apps">
+              <span>Hidden from the sidebar (still in the launcher)</span>
+              <ul>
+                {hiddenApps.map((a) => (
+                  <li key={a.id}>
+                    {a.name}
+                    <button className="text-btn" onClick={() => onShowApp(a.id)}>
+                      Show
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           <label className="shield-switch">

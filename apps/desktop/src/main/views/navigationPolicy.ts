@@ -1,4 +1,7 @@
 import { hostMatches, isWebUrl, type WebAppDef } from '@aio/core';
+import { SIGN_IN_HOSTS } from '../../shared/webapp';
+
+export { SIGN_IN_HOSTS };
 
 /**
  * Where an app's navigations and new windows go (ROADMAP 1.6, D-044). Pure, so the rules are tested
@@ -9,22 +12,6 @@ import { hostMatches, isWebUrl, type WebAppDef } from '@aio/core';
  * and back, and both must stay inside the app (in its own session), or the login ends up in the
  * system browser where the app can't see it.
  */
-
-/** Identity providers' sign-in pages (hosts they hop between during a login). */
-export const SIGN_IN_HOSTS = [
-  // Google (accounts.youtube.com sets YouTube's cookie during a Google login).
-  'accounts.google.com',
-  'accounts.youtube.com',
-  'myaccount.google.com',
-  'gds.google.com',
-  // Apple
-  'appleid.apple.com',
-  'idmsa.apple.com',
-  // Microsoft
-  'login.microsoftonline.com',
-  'login.live.com',
-  'account.live.com',
-];
 
 function hostOf(url: string): string {
   try {

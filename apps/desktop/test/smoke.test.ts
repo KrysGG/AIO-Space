@@ -49,7 +49,7 @@ describe('desktop smoke test', () => {
     await address.fill('example.com');
     await address.press('Enter');
     await expect
-      .poll(() => app.evaluate(({ webContents }) => webContents.getAllWebContents().some((w) => w.getURL() === 'https://example.com/')))
+      .poll(() => app.evaluate(({ webContents }) => webContents.getAllWebContents().some((w) => w.getURL() === 'https://example.com/')), { timeout: 15_000 })
       .toBe(true);
   });
 
@@ -58,11 +58,12 @@ describe('desktop smoke test', () => {
     const address = ui.getByRole('textbox', { name: 'Address or search' });
     await address.fill('aio space test');
     await address.press('Enter');
-    await expect.poll(async () => (await urls()).some((u) => u.startsWith('https://duckduckgo.com/?q=aio'))).toBe(true);
+    // Real sites: allow for a slow network (the default 1 s poll made this fail on busy machines).
+    await expect.poll(async () => (await urls()).some((u) => u.startsWith('https://duckduckgo.com/?q=aio')), { timeout: 15_000 }).toBe(true);
 
     await ui.getByRole('combobox', { name: 'Search engine' }).selectOption('brave');
     await expect
-      .poll(async () => (await urls()).some((u) => u.startsWith('https://search.brave.com/search?q=aio%20space%20test')))
+      .poll(async () => (await urls()).some((u) => u.startsWith('https://search.brave.com/search?q=aio%20space%20test')), { timeout: 15_000 })
       .toBe(true);
   });
 
@@ -192,5 +193,38 @@ describe('desktop smoke test', () => {
     await expect.poll(viewCount).toBe(1);
     await tiles().first().getByRole('button', { name: 'Close tile' }).click();
     await expect.poll(viewCount).toBe(0);
+  });
+
+  it('right-click on a sidebar app: move it, hide it, show it again, open it in a new tile', async () => {
+    const railOrder = () => ui.locator('.rail-apps .app-glyph').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')));
+    const menu = () => ui.getByRole('menu', { name: 'YouTube options' });
+    const rightClick = async () => {
+      await ui.getByRole('button', { name: 'Open YouTube' }).click({ button: 'right' });
+      await menu().waitFor();
+    };
+    const before = await railOrder();
+    expect(before.slice(0, 2)).toEqual(['Open Discord', 'Open YouTube']);
+
+    await rightClick();
+    await menu().getByRole('menuitem', { name: 'Move up' }).click();
+    await expect.poll(async () => (await railOrder()).slice(0, 2)).toEqual(['Open YouTube', 'Open Discord']);
+
+    await rightClick();
+    expect(await menu().getByRole('menuitem', { name: 'Move up' }).isDisabled()).toBe(true); // already first
+    await menu().getByRole('menuitem', { name: 'Hide from sidebar' }).click();
+    await expect.poll(async () => (await railOrder()).includes('Open YouTube')).toBe(false);
+
+    await ui.locator('.rail-menu').click();
+    await ui.locator('.hidden-apps').getByRole('button', { name: 'Show' }).click();
+    await ui.keyboard.press('Escape');
+    await expect.poll(async () => (await railOrder()).includes('Open YouTube')).toBe(true);
+
+    const count = await tiles().count();
+    await rightClick();
+    await menu().getByRole('menuitem', { name: 'Open in a new tile' }).click();
+    await expect.poll(() => tiles().count()).toBe(count + 1);
+    await expect.poll(() => tiles().last().getAttribute('aria-label')).toBe('YouTube');
+    await tiles().last().getByRole('button', { name: 'Close tile' }).click();
+    await expect.poll(() => tiles().count()).toBe(count);
   });
 });
