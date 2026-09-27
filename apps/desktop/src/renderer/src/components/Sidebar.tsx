@@ -1,11 +1,15 @@
 import type { SplitDirection, Unread, WebAppDef } from '@aio/core';
 import { AppIcon } from './AppIcon';
 import { UnreadBadge } from './UnreadBadge';
+import { MediaDot, mergeMedia } from './MediaIndicators';
+import type { MediaInUse } from '../../../shared/webapp';
 
 interface Props {
   catalog: WebAppDef[];
   /** Unread per app id, summed over its tiles. */
   unread: Record<string, Unread>;
+  /** Microphone/camera/screen in use per app id. */
+  media: Record<string, MediaInUse>;
   onOpen(appId: string): void;
   onSplit(dir: SplitDirection): void;
   canSplit: boolean;
@@ -30,7 +34,7 @@ interface Props {
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed, onAddApp }: Props) {
+export function Sidebar({ catalog, unread, media, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed, onAddApp }: Props) {
   const attention = menuNotice || Object.values(unread).some(Boolean) || activeDownloads > 0;
   // One structure for both states, so the width can animate while the buttons fade out and the edge
   // fades in. `inert` keeps the hidden half out of the tab order and away from the pointer.
@@ -39,6 +43,7 @@ export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, me
       <button className="rail-edge" onClick={onToggleCollapsed} title="Show sidebar (Ctrl+Shift+B)" aria-label="Show sidebar" inert={!collapsed}>
         <span className="rail-edge-handle" />
         {attention && <i className="rail-edge-dot" aria-label="Something needs attention" />}
+        <MediaDot media={Object.values(media).reduce<MediaInUse | undefined>((a, m) => mergeMedia(a, m), undefined)} className="rail-edge-media" />
       </button>
       <div className="rail-inner" inert={collapsed}>
         <button className="rail-btn rail-menu" title={`Menu (space: ${spaceName})`} aria-label={`Menu, space ${spaceName}`} aria-expanded={menuOpen} onClick={onMenu}>
@@ -64,6 +69,7 @@ export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, me
             >
               <AppIcon app={app} size={20} />
               <UnreadBadge unread={unread[app.id] ?? null} className="rail-badge" />
+              <MediaDot media={media[app.id]} className="rail-media" />
             </button>
           ))}
           <button className="rail-btn rail-add" onClick={onAddApp} title="Add an app (app store)" aria-label="Add an app">

@@ -571,7 +571,8 @@ button { font: inherit; color: inherit; }
 .rail-edge-handle { width: 4px; height: 44px; border-radius: 2px; background: var(--line); transition: background 140ms, height 140ms; }
 .rail-edge:hover { background: linear-gradient(90deg, rgb(255 255 255 / 0.05), transparent); }
 .rail-edge:hover .rail-edge-handle, .rail-edge:focus-visible .rail-edge-handle { height: 64px; background: var(--muted); }
-.rail-edge-dot { position: absolute; top: 12px; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #e8793b; }
+/* Soft white: orange, green and blue are reserved for the microphone, camera and screen dots. */
+.rail-edge-dot { position: absolute; top: 12px; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #e6e9ef; box-shadow: 0 0 6px rgb(255 255 255 / 0.35); }
 
 /* ---- Motion (D-039) ------------------------------------------------------------ */
 /* Panels arrive from where they're anchored, with a slight settle; backdrops fade. */
@@ -694,3 +695,20 @@ button { font: inherit; color: inherit; }
 .store-name strong { min-width: 0; }
 .store-name .store-pill { margin-left: 0; flex: none; }
 .store-mono svg { width: 22px; height: 22px; fill: #fff; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.25)); }
+
+/* ---- Privacy dots: microphone, camera, screen sharing, sound ----------------------- */
+:root { --media-camera: #34c759; --media-mic: #ff9f0a; --media-screen: #0a84ff; }
+@keyframes aio-breathe { 0%, 100% { box-shadow: 0 0 0 0 currentColor; } 50% { box-shadow: 0 0 6px 1px currentColor; } }
+.media-dot { display: block; width: 7px; height: 7px; border-radius: 50%; animation: aio-badge-in var(--dur) var(--ease-spring) both, aio-breathe 2.4s ease-in-out 0.3s infinite; }
+.media-dot-camera { background: var(--media-camera); color: rgb(52 199 89 / 0.6); }
+.media-dot-mic { background: var(--media-mic); color: rgb(255 159 10 / 0.6); }
+.media-dot-screen { background: var(--media-screen); color: rgb(10 132 255 / 0.6); }
+.rail-media { position: absolute; left: 3px; bottom: 3px; box-shadow: 0 0 0 2px var(--rail); }
+.rail-edge-media { position: absolute; top: 26px; left: 50%; margin-left: -3.5px; }
+.tile-media { display: inline-flex; align-items: center; gap: 3px; margin-right: 4px; animation: aio-fade-in var(--dur) ease both; }
+.media-icon { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.media-camera { color: var(--media-camera); }
+.media-mic { color: var(--media-mic); }
+.media-screen { color: var(--media-screen); }
+.media-audio { color: var(--muted); }
+:root.instant .media-dot { animation: none; }

@@ -19,7 +19,8 @@ These are enforced by review, and several by ESLint. Do not break them.
 3. Web app views get only `preload/webapp.ts` (ROADMAP 3.4) and their session's generated scriptlet preload
    (3.6, D-041). Neither uses IPC or exposes anything to the page. They read settings from
    `additionalArguments` and run code only in the page's own world: fingerprinting protection
-   (`preload/farble.ts`) and uBlock scriptlets from the ad lists.
+   (`preload/farble.ts`), media-in-use tracking for the privacy dots (a one-way console report tagged
+   with the view's secret key, D-042), and uBlock scriptlets from the ad lists.
 4. The UI window never navigates away from our bundled page; it cannot open windows.
 5. IPC handlers accept messages only from the UI window's main frame (`fromUi()`), and parse every
    payload with zod. Invalid input is dropped.

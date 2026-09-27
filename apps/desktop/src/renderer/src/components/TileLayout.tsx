@@ -19,6 +19,7 @@ import { AddressBar } from './AddressBar';
 import { AppIcon } from './AppIcon';
 import { UnreadBadge } from './UnreadBadge';
 import { Launcher } from './Launcher';
+import { TileMedia } from './MediaIndicators';
 
 const GUTTER = TILE_GUTTER;
 const HEADER = TILE_HEADER;
@@ -294,6 +295,7 @@ export function TileLayout(props: Props) {
                     <option value="+add">+ Add account</option>
                   </select>
                 )}
+                {t.appId && <TileMedia media={state?.media} audible={state?.audible ?? false} />}
                 {t.appId && (
                   <button
                     className={`shield-btn${props.shieldsUp(t.appId) ? '' : ' is-down'}`}

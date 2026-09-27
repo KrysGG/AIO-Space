@@ -1,7 +1,7 @@
 /**
  * Preload for WEB APP views (ROADMAP 3.4). Never exposes anything to the page and never uses IPC:
  * it only reads its settings from the command line main gave this view and installs the
- * fingerprinting protection in the page's main world. Runs sandboxed; tldts is bundled in.
+ * fingerprinting protection and media tracking in the page's main world. Runs sandboxed; tldts is bundled in.
  */
 import { contextBridge } from 'electron';
 import { getDomain } from 'tldts';
@@ -17,10 +17,16 @@ function hash(text: string): number {
   return h >>> 0;
 }
 
-if (args.fingerprinting !== 'off' || args.gpc) {
+// Always runs: the media indicators need it even with fingerprinting protection off.
+{
   const host = location.hostname;
   const site = getDomain(host) ?? host;
-  const config: FarbleConfig = { level: args.fingerprinting, gpc: args.gpc, seed: hash(`${args.key}|${site}`) };
+  const config: FarbleConfig = {
+    level: args.fingerprinting,
+    gpc: args.gpc,
+    seed: hash(`${args.key}|${site}`),
+    mediaKey: args.key,
+  };
   try {
     contextBridge.executeInMainWorld({ func: farble, args: [config] });
   } catch {

@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [UX] Privacy dots: camera (green), microphone (orange), screen sharing (blue) and sound in tile headers, on rail icons and on the hidden sidebar's edge; pages can't fake or hide them (D-042).
 - [3.6] YouTube ad blocking: uBlock Origin's scriptlets (`##+js()` rules) run in the page before its own code, via a generated per-app session preload; verified with YouTube's real rules on a YouTube-shaped page (D-041). Twitch video ads: Backlog.
 - [Store] App store (rail "+" or an empty tile's Add app): ~26 popular web apps in one click with brand icons, search and categories; DRM apps marked (D-040).
 - [UX] Seamless resizing: views follow the window edge in the same tick (main places them), crisp 1:1 page stills during drags and sidebar animation; one motion system (panels, modals, badges, presses); "Reduce animations and effects" in Settings (workspace v13, D-039).

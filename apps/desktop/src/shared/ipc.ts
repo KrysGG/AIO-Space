@@ -2,6 +2,7 @@
  * The ONLY contract between renderer (UI) and main. Keep it small.
  * Every channel added here must also get a zod schema in main/ipc/schemas.ts.
  */
+import type { MediaInUse } from './webapp';
 import type { FocusDirection, LayoutNode, Rect, SplitDirection, WebAppDef, Workspace, ZoomChange } from '@aio/core';
 
 export const IPC = {
@@ -104,6 +105,10 @@ export interface ViewState {
    * offers to continue over http. `url` is the http:// address, `error` Chromium's description.
    */
   httpsFailed?: { host: string; url: string; error: string };
+  /** Microphone, camera or screen share in use by the page (privacy dots). */
+  media: MediaInUse;
+  /** The page is playing sound. */
+  audible: boolean;
 }
 
 /** A Browser tile link asked for a new tab. `background` = middle-click / Ctrl+click: keep focus where it is. */

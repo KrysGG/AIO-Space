@@ -38,7 +38,7 @@ import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
-import { webAppArgs, type WebAppArgs } from '../../shared/webapp';
+import { NO_MEDIA, parseMediaReport, webAppArgs, type MediaInUse, type WebAppArgs } from '../../shared/webapp';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
 /** Isolated world (not the page's) where main reads class names and ids for cosmetic filtering. */
@@ -75,6 +75,9 @@ interface Entry {
   blocked: number;
   /** Pending throttled state update for the blocked count. */
   blockedTimer?: NodeJS.Timeout;
+  /** Microphone, camera, screen share in use (reported by the page-world script) and sound. */
+  media: MediaInUse;
+  audible: boolean;
   /** What the web app preload was started with (ROADMAP 3.4); a change needs a new view. */
   preloadArgs: WebAppArgs;
   /** The upgraded https:// load failed: view hidden, tile offers http (ROADMAP 3.2). */
@@ -343,7 +346,8 @@ export class ViewManager {
     for (const [instanceId, entry] of [...this.views]) {
       const wc = entry.view.webContents;
       if (entry.hiddenSince === undefined || entry.hiddenSince > cutoff || wc.isDestroyed()) continue;
-      if (wc.isCurrentlyAudible() || hasUsedMedia(wc) || entry.def.permissions.includes('notifications')) continue;
+      const capturing = entry.media.mic || entry.media.camera || entry.media.screen;
+      if (wc.isCurrentlyAudible() || capturing || hasUsedMedia(wc) || entry.def.permissions.includes('notifications')) continue;
       const url = wc.getURL();
       this.sleeping.set(instanceId, { url: isWebUrl(url) ? url : this.homeOf(entry.def), appId: entry.appId });
       this.destroy(instanceId);
@@ -388,7 +392,7 @@ export class ViewManager {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
-    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs };
+    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs, media: NO_MEDIA, audible: false };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
@@ -668,6 +672,8 @@ export class ViewManager {
         crashed,
         zoom: wc.getZoomFactor(),
         blocked: entry.blocked,
+        media: entry.media,
+        audible: entry.audible,
         ...(entry.httpsFailed ? { httpsFailed: entry.httpsFailed } : {}),
       };
       this.win.webContents.send(IPC.viewState, state);
@@ -698,6 +704,24 @@ export class ViewManager {
     wc.on('did-start-navigation', (d) => {
       if (!d.isMainFrame || d.isSameDocument) return;
       entry.blocked = 0;
+      emit();
+    });
+    // A committed new document starts with nothing captured (the old page's tracks ended with it).
+    // Not at navigation start: a download link clicked during a call must not hide the mic dot.
+    wc.on('did-navigate', () => {
+      entry.media = NO_MEDIA;
+      emit();
+    });
+    // Privacy dots: the page-world script reports mic/camera/screen tracks, tagged with this view's
+    // secret key; anything else on the console (or without the key) is ignored.
+    wc.on('console-message', (e) => {
+      const media = parseMediaReport(e.message, entry.preloadArgs.key);
+      if (!media) return;
+      entry.media = media;
+      emit();
+    });
+    wc.on('audio-state-changed', (e) => {
+      entry.audible = e.audible;
       emit();
     });
     wc.on('did-navigate', () => emit());

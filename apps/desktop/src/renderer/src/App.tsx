@@ -42,6 +42,8 @@ import {
 import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
 import { AddAppDialog } from './components/AddAppDialog';
 import { AppStore } from './components/AppStore';
+import { anyMedia, mergeMedia } from './components/MediaIndicators';
+import type { MediaInUse } from '../../shared/webapp';
 import { DownloadsPanel } from './components/DownloadsPanel';
 import { MenuPanel } from './components/MenuPanel';
 import { ShieldsPanel } from './components/ShieldsPanel';
@@ -284,9 +286,13 @@ export function App() {
 
   // Unread per app for the rail, from every tile's page title (all spaces: they all run).
   const unreadByApp: Record<string, Unread> = {};
+  // Microphone/camera/screen in use per app, across every space (privacy dots on the rail).
+  const mediaByApp: Record<string, MediaInUse> = {};
   for (const leaf of ws.spaces.flatMap((sp) => listLeaves(sp.layout))) {
-    const title = leaf.instanceId ? viewStates[leaf.instanceId]?.title : undefined;
+    const state = leaf.instanceId ? viewStates[leaf.instanceId] : undefined;
+    const title = state?.title;
     if (leaf.appId && title) unreadByApp[leaf.appId] = sumUnread([unreadByApp[leaf.appId] ?? null, unreadFromTitle(title)]);
+    if (leaf.appId && state && anyMedia(state.media)) mediaByApp[leaf.appId] = mergeMedia(mediaByApp[leaf.appId], state.media);
   }
 
   const openApp = (appId: string, leafId = focused): void => {
@@ -399,6 +405,7 @@ export function App() {
       <Sidebar
         catalog={catalog}
         unread={unreadByApp}
+        media={mediaByApp}
         onOpen={(id) => openApp(id)}
         onSplit={(dir) => focused && split(focused, dir)}
         canSplit={Boolean(focused)}

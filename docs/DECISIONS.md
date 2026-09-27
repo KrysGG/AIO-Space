@@ -385,3 +385,16 @@ for youtube.com and twitch.tv. Verified: YouTube's 29 real scriptlets (244 KB) s
 `adPlacements`, `adSlots` from a YouTube-shaped page and its `/player` fetch; with Block ads off
 they arrive intact; a test scriptlet runs before the page's first script in the app. Twitch: the
 lists have one rule; its video ads are stitched into HLS playlists (Backlog).
+
+**D-042: Privacy dots (microphone, camera, screen sharing, sound) from a keyed console report.**
+Owner request: phone-style indicators. Electron has no capture event, so the page-world script
+(always installed now, even with fingerprinting off) wraps `getUserMedia`, `getDisplayMedia`,
+`MediaStreamTrack.stop/clone`, counts live tracks (polling every 2 s while any are live, for tracks
+that end silently) and reports each change as `console.debug('\u2063aio-media:<key>:<mic><cam><screen>')`
+with the original `console.debug`. `<key>` is the view's secret `--aio-webapp` key, which the page
+can't read, so a page can't fake or hide its dots (tested: a forged report is ignored). Main parses it
+(`parseMediaReport`) on `console-message`; sound comes from `audio-state-changed`. A committed new
+document resets the state (not navigation start: a download link during a call keeps the dot).
+UI: tile header icons (camera green, mic orange, screen blue, speaker grey), a breathing dot on the
+app's rail icon (camera > mic > screen), and on the hidden rail's edge; the edge's "attention" dot
+is now soft white so the colours stay unambiguous. Capturing apps never sleep (2.9).

@@ -10,17 +10,23 @@
  *   and apps (no stable fingerprint to link them). `navigator.webdriver` reads false.
  * - strict: also buckets hardwareConcurrency, deviceMemory and screen size, and removes getBattery.
  * - gpc: `navigator.globalPrivacyControl === true`, matching the Sec-GPC header.
+ * - media (always): counts live microphone, camera and screen-share tracks, so the UI can show
+ *   phone-style privacy dots. Each change is reported to main as a console message tagged with this
+ *   view's secret key (from the command line, never visible to the page), so a page can't fake or
+ *   silence its own indicator; the original `console.debug` is kept, so the page can't intercept it.
  */
 export interface FarbleConfig {
   level: 'off' | 'standard' | 'strict';
   gpc: boolean;
   /** 32-bit seed for this app session, run and site. */
   seed: number;
+  /** Secret key tagging media reports (the view's `--aio-webapp` key). */
+  mediaKey: string;
 }
 
+
 export function farble(config: FarbleConfig): void {
-  const { level, gpc, seed } = config;
-  if (level === 'off' && !gpc) return;
+  const { level, gpc, seed, mediaKey } = config;
 
   // Wrapped functions keep the native look: same name, length and toString output.
   const nativeText = new WeakMap<object, string>();
@@ -58,6 +64,69 @@ export function farble(config: FarbleConfig): void {
     else Object.defineProperty(fn, 'name', { value: `get ${name}` });
     Object.defineProperty(proto, name, { get: fn, set: undefined, enumerable: true, configurable: true });
   };
+
+  // ---- Media in use (privacy dots) -----------------------------------------------------------------
+  const debug = console.debug;
+  const live = new Set<MediaStreamTrack>();
+  const screenTracks = new WeakSet<MediaStreamTrack>();
+  let reported = '000';
+  let poll: ReturnType<typeof setInterval> | undefined;
+  const report = (): void => {
+    let mic = 0, camera = 0, screen = 0;
+    for (const t of live) {
+      if (t.readyState !== 'live') live.delete(t);
+      else if (screenTracks.has(t)) screen++;
+      else if (t.kind === 'audio') mic++;
+      else camera++;
+    }
+    const state = `${mic ? 1 : 0}${camera ? 1 : 0}${screen ? 1 : 0}`;
+    if (state !== reported) {
+      reported = state;
+      // Must match MEDIA_REPORT in shared/webapp.ts (this function can't import).
+      Reflect.apply(debug, console, ['\u2063aio-media:' + mediaKey + ':' + state]);
+    }
+    // Tracks can also end without an event (device unplugged, page GC); check while any are live.
+    if (live.size && !poll) poll = setInterval(report, 2000);
+    if (!live.size && poll) {
+      clearInterval(poll);
+      poll = undefined;
+    }
+  };
+  const watch = (stream: MediaStream, screen: boolean): MediaStream => {
+    for (const t of stream.getTracks()) {
+      live.add(t);
+      if (screen) screenTracks.add(t);
+      t.addEventListener('ended', report);
+    }
+    report();
+    return stream;
+  };
+  for (const [name, screen] of [['getUserMedia', false], ['getDisplayMedia', true]] as const) {
+    wrapMethod(globalThis.MediaDevices?.prototype, name, (original) =>
+      function (this: MediaDevices, ...args: unknown[]) {
+        return (original as unknown as (...a: unknown[]) => Promise<MediaStream>).apply(this, args).then((s) => watch(s, screen));
+      } as Method,
+    );
+  }
+  wrapMethod(globalThis.MediaStreamTrack?.prototype, 'stop', (original) =>
+    function (this: MediaStreamTrack) {
+      const result = (original as unknown as () => void).apply(this);
+      report();
+      return result;
+    } as Method,
+  );
+  wrapMethod(globalThis.MediaStreamTrack?.prototype, 'clone', (original) =>
+    function (this: MediaStreamTrack) {
+      const copy = (original as unknown as () => MediaStreamTrack).apply(this);
+      if (live.has(this)) {
+        live.add(copy);
+        if (screenTracks.has(this)) screenTracks.add(copy);
+        copy.addEventListener('ended', report);
+        report();
+      }
+      return copy;
+    } as Method,
+  );
 
   if (gpc) defineGetter(Navigator.prototype, 'globalPrivacyControl', () => true);
   if (level === 'off') return;
