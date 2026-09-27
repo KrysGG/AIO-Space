@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -9,12 +9,19 @@ import { _electron as electron, type ElectronApplication, type Page } from 'play
 /**
  * Clear data and forget mode (ROADMAP 3.9) in the real app, with a local "site" that logs in by
  * setting a cookie and a localStorage token. Run `electron-vite build` first; `pnpm test` does.
+ *
+ * Only the /login response's own served bytes contain the literal token (a real login endpoint
+ * hands a client a token once; it doesn't keep re-printing it into every later page's markup). Every
+ * other path just reads it back from localStorage/cookies client-side. This matters because D-049
+ * restores a Browser tab to its last URL on the next launch and refetches it: if every response
+ * echoed the token in its own source, that refetch (of a page whose *server-sent bytes* never held
+ * a secret to begin with) would leave a disk-cache copy containing it, which would look like leaked
+ * session data but would actually just be this app correctly behaving like a normal browser.
  */
 const TOKEN = 'tok-secret-5f2a91';
-const PAGE = `<!doctype html><title>site</title><script>
-  if (location.pathname === '/login') localStorage.setItem('token', '${TOKEN}');
-  window.state = { cookie: document.cookie, token: localStorage.getItem('token') };
-</script>`;
+const STATE_SCRIPT = `<script>window.state = { cookie: document.cookie, token: localStorage.getItem('token') };</script>`;
+const LOGIN_PAGE = `<!doctype html><title>site</title><script>localStorage.setItem('token', '${TOKEN}');</script>${STATE_SCRIPT}`;
+const HOME_PAGE = `<!doctype html><title>site</title>${STATE_SCRIPT}`;
 
 /** True if any file under `dir` contains `needle` (cookies, LevelDB logs, caches...). */
 function onDisk(dir: string, needle: string): boolean {
@@ -25,6 +32,18 @@ function onDisk(dir: string, needle: string): boolean {
     if (st.isDirectory() ? onDisk(path, needle) : st.size < 50_000_000 && readFileSync(path).includes(needle)) return true;
   }
   return false;
+}
+
+/**
+ * A marker file dropped straight into the partition folder (not via Chromium at all), so checking
+ * it survives is a direct, deterministic test of "the whole folder gets deleted at next start" -
+ * unlike grepping for a value that might happen to also be cleared some other way, which wouldn't
+ * catch a regression in that specific step (see the "Chromium may keep deleted bytes until they
+ * compact" comment in siteData.ts, which is what the folder delete exists to guard against).
+ */
+const CANARY = 'canary.marker';
+function plantCanary(dir: string): void {
+  writeFileSync(join(dir, CANARY), 'still here');
 }
 
 describe('clear data and forget mode', () => {
@@ -58,6 +77,10 @@ describe('clear data and forget mode', () => {
   const logIn = async (): Promise<void> => {
     await go('/login');
     await expect.poll(state, { timeout: 20_000 }).toEqual({ cookie: 'session=abc123', token: TOKEN });
+    // Load the signed-in home page too, so a session-bound (cookie-echoing) response is what ends
+    // up cached on disk, the way a real account page would.
+    await go('/');
+    await expect.poll(state, { timeout: 20_000 }).toEqual({ cookie: 'session=abc123', token: TOKEN });
     // Let Chromium write it all to disk (it commits storage every few seconds).
     await app.evaluate(async ({ session }) => {
       const ses = session.fromPartition('persist:app-browser-default');
@@ -72,7 +95,7 @@ describe('clear data and forget mode', () => {
     server = createServer((req, res) => {
       const headers: Record<string, string> = { 'content-type': 'text/html' };
       if (req.url === '/login') headers['set-cookie'] = 'session=abc123; Path=/; Max-Age=86400';
-      res.writeHead(200, headers).end(PAGE);
+      res.writeHead(200, headers).end(req.url === '/login' ? LOGIN_PAGE : HOME_PAGE);
     });
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
     origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -87,6 +110,7 @@ describe('clear data and forget mode', () => {
 
   it('"Clear data" logs the app out now and removes its files at the next start', async () => {
     await logIn();
+    plantCanary(partition);
     ui.once('dialog', (d) => void d.accept());
     await ui.locator('.shield-btn').click();
     await ui.getByRole('button', { name: /^Clear data for Browser/ }).click();
@@ -99,10 +123,12 @@ describe('clear data and forget mode', () => {
     await app.close();
     await launch();
     expect(onDisk(partition, TOKEN)).toBe(false);
+    expect(existsSync(join(partition, CANARY))).toBe(false);
   });
 
   it('"Forget when AIO Space closes" clears the app on quit', async () => {
     await logIn();
+    plantCanary(partition);
     await ui.locator('.shield-btn').click();
     await ui.locator('.shield-switch', { hasText: 'Forget Browser when AIO Space closes' }).locator('input').check();
     await ui.keyboard.press('Escape');
@@ -111,6 +137,7 @@ describe('clear data and forget mode', () => {
     await app.close();
     await launch();
     expect(onDisk(partition, TOKEN)).toBe(false);
+    expect(existsSync(join(partition, CANARY))).toBe(false);
     await go('/');
     await expect.poll(state, { timeout: 20_000 }).toEqual({ cookie: '', token: null });
   });
