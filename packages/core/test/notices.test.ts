@@ -37,3 +37,14 @@ describe('forget on close (ROADMAP 3.9)', () => {
     expect(migrateWorkspace(v10).forgetOnClose).toEqual([]);
   });
 });
+
+describe('interface state (v12)', () => {
+  it('starts with the rail shown and migrates v11', () => {
+    expect(defaultWorkspace().ui).toEqual({ railCollapsed: false });
+    const v11: Record<string, unknown> = { ...defaultWorkspace(), version: 11 };
+    delete v11['ui'];
+    const out = migrateWorkspace(v11);
+    expect(out.version).toBe(WORKSPACE_VERSION);
+    expect(out.ui).toEqual({ railCollapsed: false });
+  });
+});

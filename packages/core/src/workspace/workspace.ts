@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 11;
+export const WORKSPACE_VERSION = 12;
 
 export interface Space {
   id: string;
@@ -57,6 +57,13 @@ export interface Workspace {
   dismissedNotices: NoticeId[];
   /** Apps whose data (every account) is cleared when AIO Space closes (ROADMAP 3.9). Added in version 11. */
   forgetOnClose: string[];
+  /** Interface state. Added in version 12. */
+  ui: UiSettings;
+}
+
+export interface UiSettings {
+  /** The app rail is hidden down to a thin edge; click it or press Ctrl+Shift+B to bring it back. */
+  railCollapsed: boolean;
 }
 
 /** Notices shown until dismissed, e.g. 'weak-keyring': logins stored without the system keyring. */
@@ -95,6 +102,7 @@ export function defaultWorkspace(): Workspace {
     httpAllowedHosts: [],
     dismissedNotices: [],
     forgetOnClose: [],
+    ui: { railCollapsed: false },
   };
 }
 
@@ -145,6 +153,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (w['version'] === 8) w = { ...w, version: 9, httpAllowedHosts: [] };
   if (w['version'] === 9) w = { ...w, version: 10, dismissedNotices: [] };
   if (w['version'] === 10) w = { ...w, version: 11, forgetOnClose: [] };
+  if (w['version'] === 11) w = { ...w, version: 12, ui: { railCollapsed: false } };
   return w as unknown as Workspace;
 }
 

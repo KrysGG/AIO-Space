@@ -323,7 +323,7 @@ Save a space as a template; import/export the workspace (without cookies) as a f
 **Done when:** Exported workspace loads on another machine with the same layout.
 
 ### - [ ] 4.7 Rail customization
-Reorder, hide and pin apps in the rail; compact mode.
+Reorder, hide and pin apps in the rail; compact mode. (Hiding the whole rail to a thin edge is done, D-038.)
 **Done when:** Rail order persists.
 
 ---

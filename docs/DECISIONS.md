@@ -332,3 +332,10 @@ before any app session exists, those folders are deleted (`store/siteData.ts`; t
 all its accounts) clears on quit (at most 3 s) and always deletes the folders at start, which also
 covers a crash. Verified end to end: a token found in the partition's files before clearing is gone
 from every file after the restart. New IPC `data:clear` (`{appId, profile}` or `{all: true}`).
+
+**D-038: The rail collapses to a thin edge; tiles take the space.**
+Owner request (part of ROADMAP 4.7's compact mode). Native web views always draw above the UI page,
+so a hidden rail can't slide out over the tiles on hover; instead "Hide sidebar" (bottom of the rail,
+or Ctrl+Shift+B, not Ctrl+B, which editors like Discord use for bold) shrinks it to a 14px edge with a
+handle and the layout reflows. Clicking the edge brings it back. The edge shows a dot when something
+needs attention (unread, downloads, a notice). Saved in `workspace.ui.railCollapsed` (v12).

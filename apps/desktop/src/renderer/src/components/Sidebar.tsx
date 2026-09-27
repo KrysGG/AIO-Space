@@ -22,10 +22,24 @@ interface Props {
   activeDownloads: number;
   /** Something in the menu needs the user's attention once (ROADMAP 3.8): a dot on the menu button. */
   menuNotice: boolean;
+  /** Rail hidden down to a thin edge (the setting lives in the workspace). */
+  collapsed: boolean;
+  onToggleCollapsed(): void;
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice }: Props) {
+export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed }: Props) {
+  const attention = menuNotice || Object.values(unread).some(Boolean) || activeDownloads > 0;
+  if (collapsed) {
+    return (
+      <nav className="rail is-collapsed" aria-label="Apps">
+        <button className="rail-edge" onClick={onToggleCollapsed} title="Show sidebar (Ctrl+Shift+B)" aria-label="Show sidebar">
+          <span className="rail-edge-handle" />
+          {attention && <i className="rail-edge-dot" aria-label="Something needs attention" />}
+        </button>
+      </nav>
+    );
+  }
   return (
     <nav className="rail" aria-label="Apps">
       <button className="rail-btn rail-menu" title={`Menu (space: ${spaceName})`} aria-label={`Menu, space ${spaceName}`} aria-expanded={menuOpen} onClick={onMenu}>
@@ -74,6 +88,9 @@ export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, me
         </button>
         <button className="rail-btn" onClick={onHelp} aria-expanded={helpOpen} title="Keyboard shortcuts (Ctrl+/)" aria-label="Keyboard shortcuts">
           <svg viewBox="0 0 20 20" aria-hidden><rect x="2.5" y="5" width="15" height="10" rx="2" /><path d="M5.5 8h1M9.5 8h1M13.5 8h1M6.5 12h7" /></svg>
+        </button>
+        <button className="rail-btn" onClick={onToggleCollapsed} title="Hide sidebar (Ctrl+Shift+B)" aria-label="Hide sidebar">
+          <svg viewBox="0 0 20 20" aria-hidden><rect x="2.5" y="3.5" width="15" height="13" rx="2" /><path d="M7.5 3.5v13M13.5 8l-2 2 2 2" /></svg>
         </button>
       </div>
     </nav>

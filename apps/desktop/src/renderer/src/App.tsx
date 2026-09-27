@@ -147,6 +147,7 @@ export function App() {
     shortcutRef.current = (action) => {
       if (!ws) return;
       if (action.kind === 'help') return setHelpOpen((open) => !open);
+      if (action.kind === 'toggle-rail') return edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const space = activeSpace(ws);
       const focused = space.focusedLeafId;
       if (!focused) return;
@@ -357,6 +358,8 @@ export function App() {
         downloadsOpen={downloadsOpen}
         activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
         menuNotice={keyringNotice}
+        collapsed={ws.ui.railCollapsed}
+        onToggleCollapsed={() => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }))}
       />
       <TileLayout
         layout={space.layout}

@@ -125,7 +125,8 @@ export type ShortcutAction =
   | { kind: 'reload' }
   | { kind: 'focus-address' }
   | { kind: 'zoom'; change: ZoomChange }
-  | { kind: 'help' };
+  | { kind: 'help' }
+  | { kind: 'toggle-rail' };
 
 /** Exposed on window.aio by the preload script. */
 export interface AioApi {

@@ -537,3 +537,23 @@ button { font: inherit; color: inherit; }
 .btn-danger { border-color: rgb(240 138 138 / 0.5); color: #f3a0a0; }
 .btn-danger:hover:not(:disabled) { border-color: #f08a8a; background: rgb(240 138 138 / 0.12); }
 .btn:disabled { opacity: 0.6; cursor: default; }
+
+/* ---- Collapsible rail ------------------------------------------------------- */
+/* Web views draw above the UI, so the hidden rail can't slide over them; it shrinks to a thin edge
+   and the tiles take the space. Click the edge (or Ctrl+Shift+B) to bring the rail back. */
+.rail.is-collapsed { width: 14px; padding: 0; gap: 0; }
+.rail-edge {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.rail-edge-handle { width: 4px; height: 44px; border-radius: 2px; background: var(--line); transition: background 140ms, height 140ms; }
+.rail-edge:hover { background: linear-gradient(90deg, rgb(255 255 255 / 0.05), transparent); }
+.rail-edge:hover .rail-edge-handle, .rail-edge:focus-visible .rail-edge-handle { height: 64px; background: var(--muted); }
+.rail-edge-dot { position: absolute; top: 12px; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #e8793b; }
