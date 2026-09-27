@@ -38,6 +38,7 @@ import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
 import { contextMenuTemplate } from './contextMenu';
+import { navigationDecision, popupNavigationDecision, windowDecision } from './navigationPolicy';
 import { NO_MEDIA, parseMediaReport, webAppArgs, type MediaInUse, type WebAppArgs } from '../../shared/webapp';
 import type { WorkspaceStore } from '../store/workspaceStore';
 
@@ -618,26 +619,18 @@ export class ViewManager {
   }
 
   /** Keep each app inside its own sites; everything else opens in the system browser. */
+  /** Keep each app inside its own sites (sign-in pages included, D-044); other links open outside. */
   private guardNavigation(def: WebAppDef, view: WebContentsView): void {
     const wc = view.webContents;
-    const isWeb = (url: string): boolean => /^https?:\/\//i.test(url);
-    const host = (url: string): string => {
-      try {
-        return new URL(url).hostname;
-      } catch {
-        return '';
-      }
-    };
     const openOutside = (url: string): void => {
-      if (isWeb(url)) void shell.openExternal(url);
+      if (isWebUrl(url)) void shell.openExternal(url);
     };
 
     wc.on('will-navigate', (e) => {
-      if (!isWeb(e.url)) return e.preventDefault();
-      if (!hostMatches(host(e.url), def.allowedHosts)) {
-        e.preventDefault();
-        openOutside(e.url);
-      }
+      const decision = navigationDecision(def, e.url);
+      if (decision === 'allow') return;
+      e.preventDefault();
+      if (decision === 'external') openOutside(e.url);
     });
 
     // Sign-in popups. Child inherits this app's session; hardening applies to it too.
@@ -653,29 +646,34 @@ export class ViewManager {
     } as const;
 
     wc.setWindowOpenHandler(({ url, disposition }) => {
-      if (!isWeb(url)) return { action: 'deny' };
-      if (def.kind === 'browser') {
-        // Links asking for a new tab open in a new Browser tile (D-015). Scripted popups
-        // (window.open with features, e.g. "Sign in with ...") stay popups so they keep their opener.
-        if (disposition === 'new-window') return popup;
-        if (disposition === 'foreground-tab' || disposition === 'background-tab') {
+      switch (windowDecision(def, url, disposition)) {
+        case 'popup':
+          return popup;
+        case 'new-tile': {
           const leafId = this.leafOf(wc);
           if (leafId && !this.win.isDestroyed()) {
             const request: OpenInNewTile = { fromLeafId: leafId, url, background: disposition === 'background-tab' };
             this.win.webContents.send(IPC.openInNewTile, request);
-            return { action: 'deny' };
-          }
+          } else void wc.loadURL(url);
+          return { action: 'deny' };
         }
-        void wc.loadURL(url);
-        return { action: 'deny' };
+        case 'same-tile':
+          void wc.loadURL(url);
+          return { action: 'deny' };
+        case 'external':
+          openOutside(url);
+          return { action: 'deny' };
+        default:
+          return { action: 'deny' };
       }
-      if (hostMatches(host(url), def.popupHosts)) return popup;
-      if (hostMatches(host(url), def.allowedHosts)) {
-        void wc.loadURL(url);
-        return { action: 'deny' };
-      }
-      openOutside(url);
-      return { action: 'deny' };
+    });
+
+    // Inside a popup: web pages only, and no further windows (the login stays in this one window).
+    wc.on('did-create-window', (child) => {
+      child.webContents.on('will-navigate', (e) => {
+        if (popupNavigationDecision(e.url) !== 'allow') e.preventDefault();
+      });
+      child.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     });
   }
 

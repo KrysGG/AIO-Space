@@ -28,7 +28,9 @@ These are enforced by review, and several by ESLint. Do not break them.
    app's `permissions`. The UI session denies all permissions.
 7. App views may navigate only within `allowedHosts`. Other links go to the system browser, and
    only `http(s)` URLs are ever opened externally.
-8. Popups are allowed only for `popupHosts` (sign-in flows), with the same hardened preferences.
+8. Popups are allowed only for sign-in (the app's `popupHosts`, known providers in `SIGN_IN_HOSTS`, or a blank
+   scripted popup that loads one), with the same hardened preferences; popups show only web pages and
+   can't open further windows (D-044). Provider sign-in pages may also load in the app's own tile.
 9. Workspace file is written atomically with mode `0600`.
 10. No telemetry, analytics, or crash upload from this app. Anything like that must be opt-in and
     documented here first.

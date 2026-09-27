@@ -415,3 +415,16 @@ combined (upstream warns against it), and runs only while Block ads is on. Chang
 preload files and reloads twitch.tv pages. Verified: injected through the generated session preload,
 both scripts install before the page's first script (`window.Worker` already hooked,
 `twitchAdSolutionsVersion` set); real Twitch playback needs the owner's check.
+
+**D-044: Sign-in stays in the app: provider pages allowed as popups and full-page redirects.**
+Owner report: "Continue with Google" opened the system browser. Two gaps: Google's button often opens
+`about:blank` first and loads the provider into it (blank popups were denied as non-http), and the
+site then falls back to sending the whole page to accounts.google.com, which wasn't an allowed host,
+so it went to the system browser. The rules now live in `main/views/navigationPolicy.ts` (pure,
+unit-tested): sign-in pages (the app's `popupHosts` plus known providers: Google incl.
+accounts.youtube.com, Apple, Microsoft; `SIGN_IN_HOSTS`) may load in the tile or as a popup; blank
+scripted popups are allowed (hardened window, app session); popups may only show web pages and can't
+open more windows; links to the app's own sites load in the tile (only scripted `new-window` popups on
+them stay popups: before, "new tab" links on apps whose `popupHosts` include their own site became
+popup windows). Other links still go to the system browser. Verified end to end with a recorder in
+place of the system browser.

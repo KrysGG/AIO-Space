@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Fix] "Continue with Google/Apple/Microsoft" stays in the app (blank-first popups and full-page sign-in redirects no longer open the system browser); new-tab links on an app's own site load in its tile (D-044).
 - [Twitch] Twitch is a built-in app; stream ads are skipped with TwitchAdSolutions (vaft or video-swap-new, chosen in Shields; bundled and updated daily; workspace v14, D-043).
 - [UX] Privacy dots: camera (green), microphone (orange), screen sharing (blue) and sound in tile headers, on rail icons and on the hidden sidebar's edge; pages can't fake or hide them (D-042).
 - [3.6] YouTube ad blocking: uBlock Origin's scriptlets (`##+js()` rules) run in the page before its own code, via a generated per-app session preload; verified with YouTube's real rules on a YouTube-shaped page (D-041). Twitch video ads: Backlog.
