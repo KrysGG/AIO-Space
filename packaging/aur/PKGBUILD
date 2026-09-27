@@ -1,0 +1,38 @@
+# Maintainer: Christian Giraudo <christiangiraudr at gmail dot com>
+# Repackages the release build (ROADMAP 5.2); built and uploaded to GitHub Releases by CI (5.5).
+# After a release: bump pkgver, reset pkgrel=1, run `updpkgsums` and `makepkg --printsrcinfo > .SRCINFO`.
+pkgname=spaceaio-bin
+_pkgname=spaceaio
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='All-in-one tiled workspace for web apps, each with its own login, with ad and tracker blocking'
+arch=('x86_64')
+url='https://github.com/KrysGG/AIO-Space'
+# TODO(ROADMAP 5.2): the project has no license yet; set the real SPDX id before publishing to the AUR.
+license=('LicenseRef-unknown')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libxtst' 'libnotify' 'libsecret' 'at-spi2-core' 'xdg-utils')
+provides=("$_pkgname")
+# aio-space: this app before it was renamed (D-058).
+conflicts=("$_pkgname" 'aio-space')
+# Electron's binaries ship stripped and signed with fuses; don't touch them.
+options=('!strip' '!debug')
+source=("$_pkgname-$pkgver-x64.tar.gz::$url/releases/download/v$pkgver/$_pkgname-$pkgver-x64.tar.gz"
+        "$_pkgname-$pkgver.svg::https://raw.githubusercontent.com/KrysGG/AIO-Space/v$pkgver/apps/desktop/build/icon.svg"
+        "$_pkgname.desktop")
+sha256sums=('f1eacf61f7281b1570234477e2ce3fcc71616828b3e162595796be0423b0e704'
+            '2a3ac779b5708864800f94374a8fba9b95e240101fef9b400bd27b0195ea48a4'
+            '3cecf22887c739c25445a4c140f733c044d359da290db974e266af94985033f1')
+
+package() {
+  install -d "$pkgdir/opt/$_pkgname"
+  cp -a "$srcdir/$_pkgname-$pkgver-x64/." "$pkgdir/opt/$_pkgname/"
+  # Arch kernels allow unprivileged user namespaces, so Chromium's sandbox needs no setuid helper.
+  chmod 0755 "$pkgdir/opt/$_pkgname/chrome-sandbox"
+
+  install -d "$pkgdir/usr/bin"
+  ln -s "/opt/$_pkgname/$_pkgname" "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 "$srcdir/$_pkgname.desktop" "$pkgdir/usr/share/applications/$_pkgname.desktop"
+  install -Dm644 "$srcdir/$_pkgname-$pkgver.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/$_pkgname.svg"
+  install -Dm644 "$srcdir/$_pkgname-$pkgver-x64/LICENSE.electron.txt" "$pkgdir/usr/share/licenses/$pkgname/LICENSE.electron.txt"
+  install -Dm644 "$srcdir/$_pkgname-$pkgver-x64/LICENSES.chromium.html" "$pkgdir/usr/share/licenses/$pkgname/LICENSES.chromium.html"
+}

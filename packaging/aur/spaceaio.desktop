@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=SpaceAIO
+GenericName=Web app workspace
+Comment=Web apps side by side in resizable tiles, with separate logins
+Exec=spaceaio %U
+Terminal=false
+Type=Application
+Icon=spaceaio
+StartupWMClass=spaceaio
+Categories=Network;
+Keywords=discord;youtube;twitch;tiles;workspace;browser;
