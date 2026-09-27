@@ -10,7 +10,6 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   NOTICE_IDS,
-  STORE_APPS,
   SEARCH_ENGINES,
   type AppPermission,
   type LayoutNode,
@@ -71,7 +70,8 @@ export const CustomAppSchema: z.ZodType<WebAppDef> = z.object({
   permissions: z.array(z.enum(PERMISSIONS)).max(PERMISSIONS.length),
   glyph: z.string().min(1).max(3),
   icon: IconDataUrl.optional(),
-  brand: z.enum(STORE_APPS.map((a) => a.id) as [string, ...string[]]).optional(),
+  // Any slug: an app added from the store stays valid if its entry later moves or goes (e.g. Twitch).
+  brand: z.string().regex(/^[a-z0-9-]{1,32}$/).optional(),
   color: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
 });
 
@@ -124,6 +124,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
     .refine((p) => Object.keys(p).length <= 100, 'too many apps with accounts'),
   httpAllowedHosts: z.array(Host).max(200).refine(unique, 'duplicate host'),
   ui: z.object({ railCollapsed: z.boolean(), reduceMotion: z.boolean() }),
+  twitch: z.object({ adScript: z.enum(['vaft', 'video-swap-new', 'off']) }),
   forgetOnClose: z.array(Id).max(200).refine(unique, 'duplicate app id'),
   dismissedNotices: z.array(z.enum(NOTICE_IDS)).max(NOTICE_IDS.length).refine(unique, 'duplicate notice'),
   customApps: z

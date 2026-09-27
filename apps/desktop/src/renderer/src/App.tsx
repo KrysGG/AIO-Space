@@ -463,6 +463,7 @@ export function App() {
           onDismissKeyring={() => edit((w) => dismissNotice(w, 'weak-keyring'))}
           onClearAll={() => window.aio.clearData({ all: true })}
           onReduceMotion={(on) => edit((w) => ({ ...w, ui: { ...w.ui, reduceMotion: on } }))}
+          onTwitchScript={(adScript) => edit((w) => ({ ...w, twitch: { adScript } }))}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}
@@ -478,6 +479,7 @@ export function App() {
           profile={profilesOf(ws, shieldsApp.id).find((p) => p.id === (shieldsLeafNode.profile ?? 'default')) ?? profilesOf(ws, shieldsApp.id)[0]!}
           accounts={profilesOf(ws, shieldsApp.id).length}
           onForget={(forget) => edit((w) => setForgetOnClose(w, shieldsApp.id, forget))}
+          onTwitchScript={(adScript) => edit((w) => ({ ...w, twitch: { adScript } }))}
           onClearData={(profile) => window.aio.clearData({ appId: shieldsApp.id, profile })}
           onClose={closeShields}
           onClosed={refocusTile}

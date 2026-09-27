@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   resolvePrivacy,
   FINGERPRINT_CHOICES,
+  TWITCH_AD_SCRIPTS,
+  type TwitchAdScript,
   SHIELD_SWITCHES,
   WEBRTC_CHOICES,
   type AppProfile,
@@ -22,6 +24,7 @@ interface Props {
   /** How many accounts the app has (names the account in the button when there are several). */
   accounts: number;
   onForget(forget: boolean): void;
+  onTwitchScript(script: TwitchAdScript): void;
   onClearData(profile: string): Promise<void>;
   onClose(): void;
   onClosed(): void;
@@ -31,7 +34,7 @@ interface Props {
  * Shields for one app (ROADMAP 3.1), opened from the shield in its tile header. Changes are per-app
  * overrides of the defaults in the menu, and apply to that app immediately. Hides views while open.
  */
-export function ShieldsPanel({ ws, app, blocked, onSet, onReset, profile, accounts, onForget, onClearData, onClose, onClosed }: Props) {
+export function ShieldsPanel({ ws, app, blocked, onSet, onReset, profile, accounts, onForget, onTwitchScript, onClearData, onClose, onClosed }: Props) {
   const [clearing, setClearing] = useState<'idle' | 'busy' | 'done'>('idle');
   const who = accounts > 1 ? `${app.name} (${profile.name})` : app.name;
   const clear = (): void => {
@@ -92,6 +95,21 @@ export function ShieldsPanel({ ws, app, blocked, onSet, onReset, profile, accoun
               ))}
             </select>
           </label>
+          {(app.id === 'twitch' || app.kind === 'browser' || app.brand === 'twitch') && (
+            <label className="shield-switch">
+            <span>
+              Twitch ad blocking
+              <small>Skips the ads Twitch puts into streams, using TwitchAdSolutions. Works while Block ads is on. Reloads Twitch.</small>
+            </span>
+            <select value={ws.twitch.adScript} onChange={(e) => onTwitchScript(e.target.value as TwitchAdScript)} aria-label="Twitch ad blocking">
+              {TWITCH_AD_SCRIPTS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          )}
           <label className="shield-switch">
             <span>
               WebRTC IP protection

@@ -32,7 +32,7 @@ describe('desktop smoke test', () => {
 
   it('opens with one empty tile showing the launcher', async () => {
     await expect.poll(() => tiles().count()).toBe(1);
-    for (const name of ['Discord', 'YouTube', 'Reddit', 'X', 'Instagram', 'Browser']) {
+    for (const name of ['Discord', 'YouTube', 'Twitch', 'Reddit', 'X', 'Instagram', 'Browser']) {
       await ui.locator('.tile-body button', { hasText: name }).first().waitFor();
     }
     expect(await viewCount()).toBe(0);
@@ -178,9 +178,10 @@ describe('desktop smoke test', () => {
     await ui.getByRole('button', { name: 'Add an app' }).click();
     const store = ui.getByRole('dialog', { name: 'App store' });
     await store.waitFor();
-    await store.locator('.store-card', { hasText: 'Twitch' }).getByRole('button', { name: 'Add' }).click();
-    await ui.getByRole('button', { name: 'Open Twitch' }).waitFor(); // in the rail
-    await expect.poll(() => store.locator('.store-card', { hasText: 'Twitch' }).locator('button').innerText()).toBe('Open');
+    await store.getByRole('searchbox', { name: 'Search apps' }).fill('kick');
+    await store.locator('.store-card', { hasText: 'Kick' }).getByRole('button', { name: 'Add' }).click();
+    await ui.getByRole('button', { name: 'Open Kick' }).waitFor(); // in the rail
+    await expect.poll(() => store.locator('.store-card', { hasText: 'Kick' }).locator('button').innerText()).toBe('Open');
     await ui.keyboard.press('Escape');
     await store.waitFor({ state: 'detached' });
 

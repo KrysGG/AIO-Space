@@ -66,9 +66,14 @@ interface Registration {
 export class ScriptletFiles {
   private readonly registered = new Map<string, Registration>();
 
+  /**
+   * @param siteScripts Extra page scripts for a site that replace the lists' scriptlets there
+   *   (Twitch ad blocking, D-043); empty to use the lists.
+   */
   constructor(
     private readonly dir: string,
     private readonly engine: () => FiltersEngine | undefined,
+    private readonly siteScripts: (site: string) => string[] = () => [],
   ) {}
 
   /** Write the file for a session partition and return its path (for `registerPreloadScript`). */
@@ -88,6 +93,11 @@ export class ScriptletFiles {
     const engine = this.engine();
     const scripts: Record<string, string[]> = {};
     for (const site of sites) {
+      const own = this.siteScripts(site);
+      if (own.length) {
+        scripts[site] = own; // e.g. a Twitch ad-blocking script: never combined with other Twitch rules
+        continue;
+      }
       try {
         scripts[site] = engine ? scriptletsFor(engine, site) : [];
       } catch {

@@ -4,6 +4,7 @@ import { DownloadManager } from './downloads/DownloadManager';
 import { registerIpc } from './ipc/handlers';
 import { FilterLists } from './privacy/filterLists';
 import { ScriptletFiles } from './privacy/scriptlets';
+import { TwitchScripts } from './privacy/twitchScripts';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { handleUiScheme, registerUiScheme } from './security/uiProtocol';
 import { cleanUserAgent } from './sessions/userAgent';
@@ -51,8 +52,13 @@ app.whenReady().then(async () => {
   const win = createMainWindow();
   const downloads = new DownloadManager(win);
   const filterLists = new FilterLists(join(app.getPath('userData'), 'filters'), fetchFilterList);
-  const scriptlets = new ScriptletFiles(join(app.getPath('userData'), 'scriptlets'), () => filterLists.engine('ads'));
+  const twitch = new TwitchScripts(join(app.getPath('userData'), 'twitch'), fetchFilterList);
+  const scriptlets = new ScriptletFiles(join(app.getPath('userData'), 'scriptlets'), () => filterLists.engine('ads'), (site) =>
+    site === 'twitch.tv' ? twitch.scriptsFor(store.get().twitch.adScript) : [],
+  );
   filterLists.onUpdated = () => scriptlets.refresh();
+  twitch.onUpdated = () => scriptlets.refresh();
+  void twitch.start();
   // Cached lists are loaded first; the scriptlet files then get their code (sessions may exist already).
   void filterLists.start().then(() => scriptlets.refresh());
   const views = new ViewManager(win, store, downloads, filterLists, scriptlets);

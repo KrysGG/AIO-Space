@@ -23,7 +23,7 @@ describe('app store (catalog)', () => {
   });
 
   it('knows which entries were added already', () => {
-    const twitch = STORE_APPS.find((a) => a.id === 'twitch')!;
+    const twitch = STORE_APPS.find((a) => a.id === 'kick')!;
     const res = appFromStore(twitch, []);
     if (!res.ok) throw new Error(res.error);
     expect(installedFromStore(twitch, [...BUILTIN_APPS])).toBeUndefined();
@@ -31,7 +31,7 @@ describe('app store (catalog)', () => {
   });
 
   it('searches names, descriptions and categories; filters by category and Popular', () => {
-    expect(searchStore('twitch', 'All').map((a) => a.id)).toEqual(['twitch']);
+    expect(searchStore('kick', 'All').map((a) => a.id)).toEqual(['kick']);
     expect(searchStore('email', 'All').map((a) => a.id)).toEqual(expect.arrayContaining(['gmail', 'outlook']));
     expect(searchStore('', 'Music').every((a) => a.category === 'Music')).toBe(true);
     expect(searchStore('', 'Popular').every((a) => a.popular)).toBe(true);

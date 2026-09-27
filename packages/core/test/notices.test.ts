@@ -53,3 +53,12 @@ describe('interface state (v12)', () => {
     expect(migrateWorkspace(v12).ui).toEqual({ railCollapsed: true, reduceMotion: false });
   });
 });
+
+describe('Twitch ad blocking setting (v14)', () => {
+  it('defaults to vaft and migrates v13', () => {
+    expect(defaultWorkspace().twitch).toEqual({ adScript: 'vaft' });
+    const v13: Record<string, unknown> = { ...defaultWorkspace(), version: 13 };
+    delete v13['twitch'];
+    expect(migrateWorkspace(v13).twitch).toEqual({ adScript: 'vaft' });
+  });
+});

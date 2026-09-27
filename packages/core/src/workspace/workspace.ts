@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 13;
+export const WORKSPACE_VERSION = 14;
 
 export interface Space {
   id: string;
@@ -59,6 +59,24 @@ export interface Workspace {
   forgetOnClose: string[];
   /** Interface state. Added in version 12. */
   ui: UiSettings;
+  /** Twitch ad blocking (TwitchAdSolutions scripts). Added in version 14. */
+  twitch: TwitchSettings;
+}
+
+/**
+ * Which TwitchAdSolutions script blocks Twitch's stream ads (they're stitched into the video, so
+ * filter lists can't): 'vaft' (recommended: switches to a clean stream as fast as it can),
+ * 'video-swap-new' (older approach), or 'off'. Runs on twitch.tv while "Block ads" is on.
+ */
+export type TwitchAdScript = 'vaft' | 'video-swap-new' | 'off';
+export const TWITCH_AD_SCRIPTS: Array<{ value: TwitchAdScript; label: string }> = [
+  { value: 'vaft', label: 'vaft (recommended)' },
+  { value: 'video-swap-new', label: 'video-swap-new' },
+  { value: 'off', label: 'Off' },
+];
+
+export interface TwitchSettings {
+  adScript: TwitchAdScript;
 }
 
 export interface UiSettings {
@@ -108,6 +126,7 @@ export function defaultWorkspace(): Workspace {
     dismissedNotices: [],
     forgetOnClose: [],
     ui: { railCollapsed: false, reduceMotion: false },
+    twitch: { adScript: 'vaft' },
   };
 }
 
@@ -163,6 +182,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
     const ui = (w['ui'] && typeof w['ui'] === 'object' ? w['ui'] : {}) as Record<string, unknown>;
     w = { ...w, version: 13, ui: { ...ui, reduceMotion: false } };
   }
+  if (w['version'] === 13) w = { ...w, version: 14, twitch: { adScript: 'vaft' } };
   return w as unknown as Workspace;
 }
 

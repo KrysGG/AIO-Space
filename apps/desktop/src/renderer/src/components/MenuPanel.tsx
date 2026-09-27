@@ -5,6 +5,8 @@ import {
   MAX_SPACES,
   SEARCH_ENGINES,
   FINGERPRINT_CHOICES,
+  TWITCH_AD_SCRIPTS,
+  type TwitchAdScript,
   SHIELD_SWITCHES,
   SLEEP_CHOICES,
   WEBRTC_CHOICES,
@@ -32,6 +34,7 @@ interface Props {
   onDismissKeyring(): void;
   onClearAll(): Promise<void>;
   onReduceMotion(on: boolean): void;
+  onTwitchScript(script: TwitchAdScript): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -40,7 +43,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTwitchScript, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
@@ -217,6 +220,19 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
             </span>
             <select value={ws.privacy.fingerprinting} onChange={(e) => onShieldDefault('fingerprinting', e.target.value as PrivacySettings['fingerprinting'])}>
               {FINGERPRINT_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="shield-switch">
+            <span>
+              Twitch ad blocking
+              <small>Skips the ads Twitch puts into streams, using TwitchAdSolutions. Works while Block ads is on. Reloads Twitch.</small>
+            </span>
+            <select value={ws.twitch.adScript} onChange={(e) => onTwitchScript(e.target.value as TwitchAdScript)} aria-label="Twitch ad blocking">
+              {TWITCH_AD_SCRIPTS.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>

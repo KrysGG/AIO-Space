@@ -33,7 +33,6 @@ export interface StoreApp {
 const CHAT: AppPermission[] = ['notifications', 'media', 'display-capture', 'fullscreen'];
 
 export const STORE_APPS: StoreApp[] = [
-  { id: 'twitch', name: 'Twitch', url: 'https://www.twitch.tv/', category: 'Streaming', description: 'Live streams and chat.', allowedHosts: ['twitch.tv'], permissions: ['notifications', 'fullscreen'], color: '#9146ff', popular: true },
   { id: 'spotify', name: 'Spotify', url: 'https://open.spotify.com/', category: 'Music', description: 'Music and podcasts.', allowedHosts: ['spotify.com'], permissions: ['fullscreen'], color: '#1ed760', drm: true, popular: true },
   { id: 'netflix', name: 'Netflix', url: 'https://www.netflix.com/', category: 'Streaming', description: 'Films and series.', allowedHosts: ['netflix.com'], permissions: ['fullscreen'], color: '#e50914', drm: true, popular: true },
   { id: 'whatsapp', name: 'WhatsApp', url: 'https://web.whatsapp.com/', category: 'Chat', description: 'Messages from your phone.', allowedHosts: ['whatsapp.com'], permissions: ['notifications', 'media'], color: '#25d366', popular: true },

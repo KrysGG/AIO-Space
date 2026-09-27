@@ -518,6 +518,28 @@ export class ViewManager {
     }
   }
 
+  private lastTwitchScript: string | undefined;
+
+  /** The Twitch ad script changed (D-043): rebuild the scriptlet files, reload pages on twitch.tv. */
+  private applyTwitchScript(): void {
+    const choice = this.store.get().twitch.adScript;
+    if (this.lastTwitchScript === undefined || this.lastTwitchScript === choice) {
+      this.lastTwitchScript = choice;
+      return;
+    }
+    this.lastTwitchScript = choice;
+    this.scriptlets?.refresh();
+    for (const entry of this.views.values()) {
+      const wc = entry.view.webContents;
+      if (wc.isDestroyed()) continue;
+      try {
+        if (hostMatches(new URL(wc.getURL()).hostname, ['twitch.tv'])) wc.reload();
+      } catch {
+        // No page yet.
+      }
+    }
+  }
+
   private preloadArgsFor(appId: string, profile: string): WebAppArgs {
     const privacy = this.store.privacyFor(appId);
     const partition = `${appId}/${profile}`;
@@ -536,6 +558,7 @@ export class ViewManager {
    * Other Shields settings apply per request.
    */
   applyPrivacy(): void {
+    this.applyTwitchScript();
     let replaced = false;
     for (const [instanceId, entry] of [...this.views]) {
       const wc = entry.view.webContents;

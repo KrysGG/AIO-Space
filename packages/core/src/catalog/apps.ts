@@ -56,6 +56,17 @@ export const BUILTIN_APPS: WebAppDef[] = [
     glyph: 'Yt',
   },
   {
+    id: 'twitch',
+    name: 'Twitch',
+    url: 'https://www.twitch.tv/',
+    kind: 'app',
+    allowedHosts: ['twitch.tv'],
+    // Sign-in, and "Log in with Google/Apple" for linked accounts.
+    popupHosts: ['twitch.tv', 'accounts.google.com', 'appleid.apple.com'],
+    permissions: ['notifications', 'fullscreen', 'clipboard-sanitized-write'],
+    glyph: 'Tw',
+  },
+  {
     id: 'reddit',
     name: 'Reddit',
     url: 'https://www.reddit.com',

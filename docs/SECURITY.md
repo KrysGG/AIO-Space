@@ -40,6 +40,8 @@ These are enforced by review, and several by ESLint. Do not break them.
 13. Filter lists are fetched only from `raw.githubusercontent.com`, in their own in-memory session with
     no credentials. List rules feed the blocking engine; uBlock's scriptlet library (also from there) runs
     only inside web pages' own world, with the page's own privileges, never in the UI or main.
+14. Twitch ad blocking runs TwitchAdSolutions (MIT, vendored, D-043) in twitch.tv pages' own world only.
+    Daily updates come from the same host and are used only if they pass `isTwitchUserscript`.
 
 ## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 

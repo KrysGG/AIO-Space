@@ -1,4 +1,4 @@
-import { siDiscord, siInstagram, siReddit, siX, siYoutube } from 'simple-icons';
+import { siDiscord, siInstagram, siReddit, siTwitch, siX, siYoutube } from 'simple-icons';
 import type { WebAppDef } from '@aio/core';
 import { STORE_MARKS, visibleOnDark } from './BrandMarks';
 
@@ -11,6 +11,7 @@ import { STORE_MARKS, visibleOnDark } from './BrandMarks';
 const BRAND: Record<string, { path: string; color: string }> = {
   discord: { path: siDiscord.path, color: `#${siDiscord.hex}` },
   youtube: { path: siYoutube.path, color: `#${siYoutube.hex}` },
+  twitch: { path: siTwitch.path, color: `#${siTwitch.hex}` },
   reddit: { path: siReddit.path, color: `#${siReddit.hex}` },
   x: { path: siX.path, color: 'currentColor' },
   instagram: { path: siInstagram.path, color: `#${siInstagram.hex}` },

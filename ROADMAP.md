@@ -465,18 +465,8 @@ Add items found while working on other steps here, with the step where they were
 - (3.6) Not done yet: cosmetic filtering and scriptlets in subframes, redirect surrogates (uBlock resources)
   instead of plain blocking. Scriptlets for YouTube are done (D-041); the owner should confirm on real
   YouTube that video ads are gone.
-- (3.6) Twitch video ads are stitched into the HLS playlists (`usher.ttvnw.net`, `*.hls.ttvnw.net`), which
-  request filters can't rewrite. Options: intercept those playlist requests with `protocol.handle` in
-  the Twitch session and drop ad segments (`#EXT-X-DATERANGE ... twitch-stitched-ad`), or request an
-  ad-free player type; both need careful testing on real Twitch. Check licences before reusing any
-  existing userscript (several are GPL).
-- (3.8) Built; the warning is verified on a system without a keyring (this environment: `basic_text`).
-  Not ticked until the owner confirms it does not appear on their normal KDE setup.
-- (Store) Widevine DRM for Netflix, Spotify, Prime Video, Disney+: stock Electron has none. Options:
-  castlabs' "Electron for Content Security" (ECS) build with Widevine, which needs VMP signing for
-  production. Evaluate before 5.1 packaging.
-- (Store) "Submit an app" to the store: needs a small backend (submissions, review, signed catalog
-  updates) so the store can list and promote community apps. Owner idea; design before building.
+- (3.6) Twitch stream ads: handled with TwitchAdSolutions (D-043). Owner: confirm on real Twitch that
+  vaft skips ads (and try video-swap-new if not); report which works better so the default fits.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a

@@ -398,3 +398,20 @@ document resets the state (not navigation start: a download link during a call k
 UI: tile header icons (camera green, mic orange, screen blue, speaker grey), a breathing dot on the
 app's rail icon (camera > mic > screen), and on the hidden rail's edge; the edge's "attention" dot
 is now soft white so the colours stay unambiguous. Capturing apps never sleep (2.9).
+
+**D-043: Twitch as a built-in app, with TwitchAdSolutions (vaft / video-swap-new) for stream ads.**
+Owner request. Twitch moved from the app store to the built-in apps (brand icon; store entries added
+earlier keep working: `brand` is now any slug). Its stream ads are stitched into the HLS video, so
+lists can't block them; the owner's proven fix is TwitchAdSolutions (github.com/ryanbr/TwitchAdSolutions,
+MIT). Both userscripts are vendored in `apps/desktop/vendor/twitch-ad-solutions/` (commit `e4dfb26`,
+licence kept) and bundled into main with Vite `?raw`, so they work offline. They're refreshed daily from
+the repo's `master` (Twitch changes often) through the filter-list fetcher (raw.githubusercontent.com
+only, isolated session) and a download is used only if it's still a `@match *://*.twitch.tv/*`,
+`@grant none`, `@run-at document-start` userscript under 2 MB; otherwise the bundled copy stays.
+`workspace.twitch.adScript` (v14): 'vaft' (default, recommended upstream), 'video-swap-new' or 'off',
+chosen in Twitch's (and the Browser tile's) Shields panel and in the menu. The chosen script replaces
+the lists' Twitch scriptlets in the scriptlet preload (D-041) for twitch.tv, so solutions are never
+combined (upstream warns against it), and runs only while Block ads is on. Changing it rebuilds the
+preload files and reloads twitch.tv pages. Verified: injected through the generated session preload,
+both scripts install before the page's first script (`window.Worker` already hooked,
+`twitchAdSolutionsVersion` set); real Twitch playback needs the owner's check.
