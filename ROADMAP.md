@@ -338,7 +338,7 @@ electron-builder AppImage and pacman targets with icons and a `.desktop` file (W
 **Done when:** `pnpm dist:linux` produces both; installing the pacman package on CachyOS adds a
 working menu entry.
 
-### - [ ] 5.2 AUR package
+### - [x] 5.2 AUR package
 `PKGBUILD` for `spaceaio-bin` in `packaging/aur/`.
 **Done when:** `makepkg -si` installs and runs.
 
@@ -471,6 +471,11 @@ Add items found while working on other steps here, with the step where they were
   csp_report), as uBlock does. Suspect our script-level fingerprinting (X's login bot checks can see
   wrapped functions). Owner: set Block fingerprinting to Off in X's Shields panel and try again; if
   that fixes it, make X's default an exception (or make farbling harder to detect).
+- (Rename, D-058) After installing spaceaio-bin over the old package, the owner stayed logged in everywhere
+  except Twitch. Every other app kept its cookies, so the key handoff works; Twitch may bind its session
+  to something else that changed (the app name in the UA is stripped; check `navigator.userAgentData`
+  brands, or whether Twitch's cookies were written by an unfused dev build). Low priority: signing in
+  again fixes it.
 - (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
   (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
 - (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.
