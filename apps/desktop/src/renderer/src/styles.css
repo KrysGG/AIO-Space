@@ -59,6 +59,7 @@ button { font: inherit; color: inherit; }
   padding: 10px 0;
   background: var(--rail);
   border-right: 1px solid var(--line);
+  transition: width 200ms ease, padding 200ms ease, gap 200ms ease;
 }
 .rail-apps { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; flex: 1; }
 .rail-actions { display: flex; flex-direction: column; gap: 6px; }
@@ -541,7 +542,25 @@ button { font: inherit; color: inherit; }
 /* ---- Collapsible rail ------------------------------------------------------- */
 /* Web views draw above the UI, so the hidden rail can't slide over them; it shrinks to a thin edge
    and the tiles take the space. Click the edge (or Ctrl+Shift+B) to bring the rail back. */
-.rail.is-collapsed { width: 14px; padding: 0; gap: 0; }
+.rail.is-collapsed {
+  width: 14px;
+  padding: 0;
+  gap: 0;
+}
+/* Fade rail contents when collapsed so buttons don't just clip harshly. */
+.rail.is-collapsed :is(.rail-btn, .rail-space, .rail-edge-handle) {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.rail:not(.is-collapsed) :is(.rail-btn, .rail-space, .rail-edge-handle) {
+  opacity: 1;
+  transition: opacity 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail { transition: none; }
+  .rail.is-collapsed :is(.rail-btn, .rail-space, .rail-edge-handle) { transition: none; }
+  .rail:not(.is-collapsed) :is(.rail-btn, .rail-space, .rail-edge-handle) { transition: none; }
+}
 .rail-edge {
   position: relative;
   flex: 1;
