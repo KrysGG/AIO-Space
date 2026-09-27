@@ -34,6 +34,10 @@ export const IPC = {
   extensionsInstallFolder: 'extensions:install-folder',
   extensionsRemove: 'extensions:remove',
   extensionsOpen: 'extensions:open',
+  updatesStatus: 'updates:status',
+  updatesState: 'updates:state',
+  updatesCheck: 'updates:check',
+  updatesInstall: 'updates:install',
   pluginsList: 'plugins:list',
   pluginsInstall: 'plugins:install',
   pluginsRemove: 'plugins:remove',
@@ -41,6 +45,16 @@ export const IPC = {
 
 /** Result of saving or opening a workspace file (ROADMAP 4.6); main shows the file dialogs itself. */
 export type WorkspaceFileResult<T = undefined> = ({ ok: true } & (T extends undefined ? unknown : { workspace: T })) | { ok: false; error: string } | { ok: false; cancelled: true };
+
+/** AppImage updates (ROADMAP 5.4). `supported` is false for pacman/AUR installs and dev runs. */
+export interface UpdateStatus {
+  supported: boolean;
+  state: 'idle' | 'checking' | 'none' | 'downloading' | 'ready' | 'error';
+  /** The new version (downloading or ready). */
+  version?: string;
+  percent?: number;
+  error?: string;
+}
 
 /** An installed Chrome extension as the UI shows it (ROADMAP 4.5). Its files stay in main. */
 export interface ExtensionInfo {
@@ -249,6 +263,13 @@ export interface AioApi {
   exportWorkspace(): Promise<WorkspaceFileResult>;
   /** Read and validate a workspace file the user picks. Nothing changes until the UI adopts (and saves) it. */
   importWorkspace(): Promise<WorkspaceFileResult<Workspace>>;
+  /** AppImage updates (ROADMAP 5.4). */
+  getUpdateStatus(): Promise<UpdateStatus>;
+  onUpdateStatus(cb: (status: UpdateStatus) => void): () => void;
+  /** Check now, even with automatic checks off. */
+  checkForUpdates(): void;
+  /** Restart into the downloaded update. */
+  installUpdate(): void;
   /** Installed Chrome extensions (ROADMAP 4.5). Which apps run them is `workspace.extensions`. */
   listExtensions(): Promise<ExtensionInfo[]>;
   /** Download and install (or update) from a Chrome Web Store link or extension id. */

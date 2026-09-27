@@ -187,6 +187,7 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   extensions: z
     .record(Id, z.array(ExtensionId).max(50).refine(unique, 'duplicate extension id'))
     .refine((e) => Object.keys(e).length <= 200, 'too many apps with extensions'),
+  updates: z.object({ auto: z.boolean() }).strict(),
   enabledPlugins: z.array(PluginId).max(100).refine(unique, 'duplicate plugin id'),
   forgetOnClose: z.array(Id).max(200).refine(unique, 'duplicate app id'),
   dismissedNotices: z.array(z.enum(NOTICE_IDS)).max(NOTICE_IDS.length).refine(unique, 'duplicate notice'),

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@ghostery/adblocker": "^2.18.2",
+    "electron-updater": "^6.8.9",
     "tldts": "^7.4.15",
     "zod": "^4.6.5"
   },

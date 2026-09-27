@@ -627,3 +627,29 @@ tar.gz) instead of trusting `linux-unpacked`, since each target repackages the a
 validation is set but Electron enforces it only on macOS/Windows; on Linux the check makes sure there's
 no loose `resources/app` folder next to `app.asar`.
 
+**D-060: Releases come only from the tag workflow; the AUR files are generated with them.**
+ROADMAP 5.5. `.github/workflows/release.yml` runs on `v*` tags: the tag must equal
+`apps/desktop/package.json`'s version, then typecheck, tests (xvfb), lint, `dist:linux`,
+`verify:release` (D-059), `SHA256SUMS`, and `packaging/aur/update.cjs` (writes PKGBUILD/.SRCINFO for the
+release; output identical to `makepkg --printsrcinfo`, checked), then `gh release create` with the
+AppImage, pacman package, tar.gz, `latest-linux.yml`, `SHA256SUMS`, `PKGBUILD` and `SRCINFO`, and
+generated notes. "Run workflow" by hand does all of it but publishing (files kept 7 days as an artifact).
+electron-builder has a GitHub `publish` config only so it writes update metadata; `--publish never`
+everywhere, so nothing but that last step uploads. Releasing = bump the version, commit, tag, push the tag.
+
+
+**D-061: AppImage-only updates with electron-updater; installed on quit; SIGTERM quits properly.**
+ROADMAP 5.4. `electron-updater` (MIT; its dependencies MIT/ISC) from GitHub Releases. `main/updates.ts`
+creates `AppImageUpdater` itself instead of the auto-detected updater: electron-builder writes
+`package-type = pacman` into the pacman build, where the default would run `pkexec pacman -U`; pacman/AUR
+users update with their package manager. It starts only in a packaged app with `APPIMAGE` set, checks 15 s
+after start and every 6 h while `workspace.updates.auto` (v17, on by default; Menu > Updates, shown only
+in the AppImage; "Check now" works with it off), downloads in the background (sha512 from
+`latest-linux.yml`), and installs on quit or with "Restart to update" (menu dot when ready).
+`SPACEAIO_UPDATE_FEED` (loopback URLs only) points it at a local server and turns its log on, for tests.
+Verified: a 0.1.0 AppImage served 0.1.1 locally downloaded it, and on quit the installed AppImage became
+byte-identical to 0.1.1; the tar.gz build never contacted the server. Found on the way: SIGTERM (logout,
+shutdown) ended the app without its quit steps, so updates never installed and "forget when SpaceAIO
+closes" never ran; `process.on('SIGTERM', () => app.quit())` fixes both. The updater's cache folder is
+`~/.cache/@aiodesktop-updater` (derived from the npm package name, not configurable).
+

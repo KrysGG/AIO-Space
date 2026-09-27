@@ -25,7 +25,7 @@ import {
 import { FilterListStatus } from './FilterListStatus';
 import { PluginsSection } from './PluginsSection';
 import { ExtensionsSection } from './ExtensionsSection';
-import type { ExtensionInfo } from '../../../shared/ipc';
+import type { ExtensionInfo, UpdateStatus } from '../../../shared/ipc';
 
 interface Props {
   ws: Workspace;
@@ -60,6 +60,9 @@ interface Props {
   /** A validated workspace file the user chose to load in place of everything (ROADMAP 4.6). */
   onImported(ws: Workspace): void;
   onPluginEnabled(pluginId: string, on: boolean): void;
+  /** AppImage updates (ROADMAP 5.4); the section shows only when supported. */
+  updateStatus: UpdateStatus;
+  onAutoUpdates(auto: boolean): void;
   /** Chrome extensions (ROADMAP 4.5). */
   extensions: ExtensionInfo[];
   onExtensionsChanged(): void;
@@ -75,7 +78,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTheme, onImportTheme, onRemoveTheme, onTwitchScript, onShareGoogle, apps, onCustomCss, onSaveTemplate, onAddFromTemplate, onRemoveTemplate, onImported, onPluginEnabled, extensions, onExtensionsChanged, onExtensionRemoved, hiddenApps, onShowApp, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTheme, onImportTheme, onRemoveTheme, onTwitchScript, onShareGoogle, apps, onCustomCss, onSaveTemplate, onAddFromTemplate, onRemoveTemplate, onImported, onPluginEnabled, updateStatus, onAutoUpdates, extensions, onExtensionsChanged, onExtensionRemoved, hiddenApps, onShowApp, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
@@ -333,6 +336,44 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
         />
 
         <PluginsSection enabled={ws.enabledPlugins} apps={apps} onEnabled={onPluginEnabled} />
+
+        {updateStatus.supported && (
+          <section>
+            <h2 className="popover-title">Updates</h2>
+            {updateStatus.state === 'ready' ? (
+              <div className="notice" role="status">
+                <strong>SpaceAIO {updateStatus.version} is ready</strong>
+                <p>Restart to use it. It’s also installed the next time you quit.</p>
+                <button className="text-btn" onClick={() => window.aio.installUpdate()}>
+                  Restart to update
+                </button>
+              </div>
+            ) : (
+              <div className="site-data-row">
+                <button
+                  className="text-btn"
+                  disabled={updateStatus.state === 'checking' || updateStatus.state === 'downloading'}
+                  onClick={() => window.aio.checkForUpdates()}
+                >
+                  Check now
+                </button>
+                <small role="status">
+                  {updateStatus.state === 'checking' && 'Checking…'}
+                  {updateStatus.state === 'none' && 'You have the latest version.'}
+                  {updateStatus.state === 'downloading' && `Downloading ${updateStatus.version} (${updateStatus.percent ?? 0}%)…`}
+                  {updateStatus.state === 'error' && `Couldn’t check for updates: ${updateStatus.error}. Try again later.`}
+                </small>
+              </div>
+            )}
+            <label className="shield-switch">
+              <span>
+                Check for updates automatically
+                <small>Asks GitHub for new releases a little after start and every 6 hours, and downloads them in the background.</small>
+              </span>
+              <input type="checkbox" checked={ws.updates.auto} onChange={(e) => onAutoUpdates(e.target.checked)} />
+            </label>
+          </section>
+        )}
 
         <section>
           <h2 className="popover-title">Settings</h2>

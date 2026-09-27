@@ -64,7 +64,7 @@ import {
   type WebAppDef,
   type Workspace,
 } from '@aio/core';
-import type { DownloadInfo, ExtensionInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
+import type { DownloadInfo, ExtensionInfo, OpenInNewTile, ShortcutAction, UpdateStatus, ViewState } from '../../shared/ipc';
 import { AddAppDialog } from './components/AddAppDialog';
 import { AppStore } from './components/AppStore';
 import { CssEditor } from './components/CssEditor';
@@ -202,6 +202,12 @@ export function App() {
   const [railMenu, setRailMenu] = useState<{ appId: string; at: { x: number; y: number } } | null>(null);
   /** Right-click menu of a Browser tab. */
   const [tabMenu, setTabMenu] = useState<{ leafId: string; instanceId: string; at: { x: number; y: number } } | null>(null);
+  /** AppImage updates (ROADMAP 5.4). */
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ supported: false, state: 'idle' });
+  useEffect(() => {
+    void window.aio.getUpdateStatus().then(setUpdateStatus);
+    return window.aio.onUpdateStatus(setUpdateStatus);
+  }, []);
   /** Installed Chrome extensions (ROADMAP 4.5), and the tile whose extensions panel is open. */
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([]);
   const refreshExtensions = useCallback(() => void window.aio.listExtensions().then(setExtensions), []);
@@ -608,7 +614,7 @@ export function App() {
         onDownloads={() => setDownloadsOpen(!downloadsOpen)}
         downloadsOpen={downloadsOpen}
         activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
-        menuNotice={keyringNotice}
+        menuNotice={keyringNotice || updateStatus.state === 'ready'}
         collapsed={ws.ui.railCollapsed}
         onAddApp={() => setStore({ leafId: null })}
         onAppMenu={(appId, at) => setRailMenu({ appId, at })}
@@ -696,6 +702,8 @@ export function App() {
             setMenuOpen(false);
           }}
           onPluginEnabled={(id, on) => edit((w) => setPluginEnabled(w, id, on))}
+          updateStatus={updateStatus}
+          onAutoUpdates={(auto) => edit((w) => ({ ...w, updates: { auto } }))}
           extensions={extensions}
           onExtensionsChanged={refreshExtensions}
           onExtensionRemoved={(id) => edit((w) => forgetExtension(w, id))}

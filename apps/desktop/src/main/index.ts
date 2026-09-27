@@ -18,6 +18,8 @@ import { APP_NAME, LEGACY_NAME, legacyProfileInUse, migrateLegacyProfile } from 
 import { createTray } from './tray';
 import { ViewManager } from './views/ViewManager';
 import { createMainWindow } from './window';
+import { Updates } from './updates';
+import { IPC } from '../shared/ipc';
 
 // ---- Before ready -----------------------------------------------------------
 app.enableSandbox();
@@ -97,7 +99,12 @@ app.whenReady().then(async () => {
   );
   const views = new ViewManager(win, store, downloads, filterLists, scriptlets, signIn, plugins, extensionHost);
   views.applyPrivacy(); // records the current settings, so later changes are detected
-  registerIpc(win, store, views, downloads, filterLists, plugins, extensionStore);
+  const updates = new Updates(
+    () => store.get().updates.auto,
+    (status) => !win.isDestroyed() && win.webContents.send(IPC.updatesState, status),
+  );
+  registerIpc(win, store, views, downloads, filterLists, plugins, extensionStore, updates);
+  updates.start();
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);
 
@@ -121,6 +128,10 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => app.quit());
+
+// Logging out or shutting down sends SIGTERM, which would otherwise end the app without its quit steps:
+// "forget when SpaceAIO closes" (ROADMAP 3.9) and installing a downloaded update (5.4) run on quit.
+process.on('SIGTERM', () => app.quit());
 
 /**
  * Filter lists are fetched in their own in-memory session (no cookies, nothing shared with apps or

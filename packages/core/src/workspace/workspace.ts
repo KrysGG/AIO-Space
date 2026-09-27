@@ -74,6 +74,8 @@ export interface Workspace {
   enabledPlugins: string[];
   /** Installed Chrome extensions turned on per app id (ROADMAP 4.5); off until listed here. Added in version 17. */
   extensions: Record<string, string[]>;
+  /** Automatic update checks (ROADMAP 5.4; AppImage only). Added in version 17. */
+  updates: { auto: boolean };
   /** Saved space layouts to start new spaces from (ROADMAP 4.6). Added in version 17. */
   templates: SpaceTemplate[];
 }
@@ -255,6 +257,7 @@ export function defaultWorkspace(): Workspace {
     enabledPlugins: [],
     templates: [],
     extensions: {},
+    updates: { auto: true },
   };
 }
 
@@ -316,7 +319,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
   if (w['version'] === 16) {
     const ui = (w['ui'] && typeof w['ui'] === 'object' ? w['ui'] : {}) as Record<string, unknown>;
     const rail = (w['rail'] && typeof w['rail'] === 'object' ? w['rail'] : {}) as Record<string, unknown>;
-    w = { ...w, version: 17, ui: { ...ui, theme: SYSTEM_THEME }, rail: { ...rail, pinned: [] }, themes: [], appCss: {}, enabledPlugins: [], templates: [], extensions: {} };
+    w = { ...w, version: 17, ui: { ...ui, theme: SYSTEM_THEME }, rail: { ...rail, pinned: [] }, themes: [], appCss: {}, enabledPlugins: [], templates: [], extensions: {}, updates: { auto: true } };
   }
   return w as unknown as Workspace;
 }

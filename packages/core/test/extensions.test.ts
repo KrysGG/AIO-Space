@@ -24,5 +24,6 @@ describe('extensions per app (ROADMAP 4.5)', () => {
     const v16: Record<string, unknown> = { ...defaultWorkspace(), version: 16 };
     delete v16['extensions'];
     expect(migrateWorkspace(v16).extensions).toEqual({});
+    expect(migrateWorkspace(v16).updates).toEqual({ auto: true }); // ROADMAP 5.4
   });
 });

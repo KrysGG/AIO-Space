@@ -345,7 +345,7 @@ working menu entry.
 ### - [x] 5.3 Hardening at build time
 Fuses and ASAR integrity from 3.7 applied in the release build; verify on the packaged app.
 
-### - [ ] 5.4 Updates
+### - [x] 5.4 Updates
 AppImage auto-update with `electron-updater` from GitHub Releases (signed releases). pacman/AUR
 users update through their package manager, so disable the updater there.
 **Done when:** An older AppImage updates itself to a newer release.
@@ -476,6 +476,12 @@ Add items found while working on other steps here, with the step where they were
   to something else that changed (the app name in the UA is stripped; check `navigator.userAgentData`
   brands, or whether Twitch's cookies were written by an unfused dev build). Low priority: signing in
   again fixes it.
+- (5.4) Recheck the updater against real GitHub releases once v0.1.0 and a later version exist (verified
+  locally against a loopback server serving the same files). Releases aren't GPG-signed; consider signing
+  `SHA256SUMS` once there's a key to keep. The updater cache folder is `~/.cache/@aiodesktop-updater`
+  (from the npm package name `@aio/desktop`).
+- (5.5) The first real run of the release workflow needs the owner: a dry run from the Actions tab, then
+  tagging v0.1.0 (a public release: decide the license first, see 5.2).
 - (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
   (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
 - (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.

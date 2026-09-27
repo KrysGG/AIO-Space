@@ -4,6 +4,7 @@ import { IPC, type ExtensionInstallResult, type PluginInstallResult, type Worksp
 import { exportWorkspace, importWorkspace } from '../store/workspaceFile';
 import type { PluginStore } from '../plugins/pluginStore';
 import type { ExtensionStore } from '../extensions/extensionStore';
+import type { Updates } from '../updates';
 import { clearHttpAllowedThisRun } from '../privacy/httpsFallback';
 import type { WorkspaceStore } from '../store/workspaceStore';
 import type { DownloadManager } from '../downloads/DownloadManager';
@@ -34,6 +35,7 @@ export function registerIpc(
   filterLists: FilterLists,
   plugins: PluginStore,
   extensions: ExtensionStore,
+  updates: Updates,
 ): void {
   /** Only the UI window's top frame may talk to main. Web app views have no preload anyway. */
   const fromUi = (e: IpcMainEvent | IpcMainInvokeEvent): boolean =>
@@ -183,6 +185,20 @@ export function registerIpc(
     guard(e);
     await plugins.remove(PluginId.parse(raw));
     views.applyPlugins();
+  });
+
+  ipcMain.handle(IPC.updatesStatus, (e, raw: unknown) => {
+    guard(e);
+    NoPayloadSchema.parse(raw);
+    return updates.get();
+  });
+
+  ipcMain.on(IPC.updatesCheck, (e, raw: unknown) => {
+    if (fromUi(e) && NoPayloadSchema.safeParse(raw).success) updates.check(true);
+  });
+
+  ipcMain.on(IPC.updatesInstall, (e, raw: unknown) => {
+    if (fromUi(e) && NoPayloadSchema.safeParse(raw).success) updates.install();
   });
 
   ipcMain.handle(IPC.extensionsList, (e, raw: unknown) => {

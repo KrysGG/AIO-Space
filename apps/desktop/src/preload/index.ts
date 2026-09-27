@@ -10,6 +10,7 @@ import {
   type DownloadInfo,
   type OpenInNewTile,
   type ShortcutAction,
+  type UpdateStatus,
   type ViewState,
 } from '../shared/ipc';
 
@@ -34,6 +35,14 @@ const api: AioApi = {
   installExtensionFromFolder: () => ipcRenderer.invoke(IPC.extensionsInstallFolder),
   removeExtension: (id) => ipcRenderer.invoke(IPC.extensionsRemove, id),
   openExtensionPage: (leafId, extensionId, page) => ipcRenderer.send(IPC.extensionsOpen, { leafId, extensionId, page }),
+  getUpdateStatus: () => ipcRenderer.invoke(IPC.updatesStatus),
+  checkForUpdates: () => ipcRenderer.send(IPC.updatesCheck),
+  installUpdate: () => ipcRenderer.send(IPC.updatesInstall),
+  onUpdateStatus: (cb) => {
+    const listener = (_e: IpcRendererEvent, status: UpdateStatus): void => cb(status);
+    ipcRenderer.on(IPC.updatesState, listener);
+    return () => ipcRenderer.removeListener(IPC.updatesState, listener);
+  },
   listPlugins: () => ipcRenderer.invoke(IPC.pluginsList),
   installPlugin: () => ipcRenderer.invoke(IPC.pluginsInstall),
   removePlugin: (id) => ipcRenderer.invoke(IPC.pluginsRemove, id),

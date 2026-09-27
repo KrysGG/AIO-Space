@@ -429,3 +429,13 @@ describe('Chrome extensions (ROADMAP 4.5)', () => {
     }
   });
 });
+
+describe('update settings (ROADMAP 5.4)', () => {
+  it('stores automatic update checks as a switch, nothing else', () => {
+    expect(defaultWorkspace().updates).toEqual({ auto: true });
+    expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), updates: { auto: false } }).success).toBe(true);
+    for (const updates of [{ auto: 'yes' }, { auto: true, feed: 'http://x' }, {}]) {
+      expect(WorkspaceSchema.safeParse({ ...defaultWorkspace(), updates }).success).toBe(false);
+    }
+  });
+});

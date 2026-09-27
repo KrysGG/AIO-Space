@@ -59,6 +59,12 @@ These are enforced by review, and several by ESLint. Do not break them.
     sandboxed window that can show only that extension's pages; web links go to the system browser.
     Extensions keep their own powers inside that app (reading its pages, their own network requests):
     that is what the user opts into.
+17. Updates (ROADMAP 5.4, D-061) run only in the AppImage (never pacman/AUR installs or dev), with a
+    setting to turn automatic checks off. They contact GitHub Releases (the release's `latest-linux.yml`,
+    then the AppImage) in electron-updater's own cookie-less session, and a download is used only if its
+    SHA-512 matches `latest-linux.yml`. No identifier is sent; electron-updater's "staging user ID" stays
+    on disk (only used for staged rollouts, which we don't use). Releases aren't GPG-signed yet: HTTPS
+    from GitHub plus the hash is the trust chain (Backlog).
 
 ## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 
