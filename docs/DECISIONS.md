@@ -589,3 +589,33 @@ two stacked ones) is a placeholder the owner can replace; PNGs are rendered from
 `for s in 16 24 32 48 64 128 256 512; do rsvg-convert -w $s -h $s build/icon.svg -o build/icons/${s}x${s}.png; done`
 (in apps/desktop) and committed, so CI needs no SVG tools.
 
+**D-057: AUR `aio-space-bin` repackages a `tar.gz` release build.**
+ROADMAP 5.2. electron-builder now also builds `aio-space-<version>-x64.tar.gz` (the fused app folder
+alone). `packaging/aur/PKGBUILD` downloads it from the GitHub release `v<version>`, plus the icon SVG
+from the same tag, and installs to `/opt/aio-space` with `/usr/bin/aio-space`, its own
+`aio-space.desktop` (same app_id `aio-space` as D-056) and a scalable icon. It `provides`/`conflicts`
+`aio-space` (the pacman package from releases), keeps binaries unstripped, and leaves
+`chrome-sandbox` 0755 (Arch allows user namespaces). Dependencies match D-056. Not the AppImage: that
+would need FUSE 2 at build time and extraction; not the .pacman file: repackaging a package is odd for
+the AUR. Local test: copy a built tarball and `apps/desktop/build/icon.svg` (as
+`aio-space-<version>.svg`) next to the PKGBUILD, `updpkgsums`, `makepkg -si`. The checksums in the repo
+match the local build of 2026-09-27; they must be regenerated from the real release tarball.
+
+**D-058: The app is SpaceAIO; old profiles move over with their cookie key name.**
+Owner's decision (2026-09-27), before any release: "SpaceAIO", one word. Visible name `SpaceAIO`
+(package.json `productName`: window, notifications, data folder `~/.config/SpaceAIO`); technical name
+`spaceaio` (command, pacman package, AUR `spaceaio-bin`, `spaceaio.desktop`, Wayland app_id, release
+files); supersedes the `aio-space` names in D-056/D-057. Internal code names stay (`@aio/core`,
+`@aio/desktop`, `window.aio`, `AIO_USER_DATA_DIR`): users never see them. Before this the app was
+effectively named `@aio/desktop` (no productName) with data in `~/.config/@aio/desktop`.
+Checked on the fused build: Chromium encrypts cookies (v11) with a keyring entry named after the app,
+and a renamed app can't decrypt them and **deletes** them, logging every app out. So
+`store/legacyProfile.ts`, before anything touches the profile: moves `~/.config/@aio/desktop` to
+`~/.config/SpaceAIO` once (only if the new folder doesn't exist; refuses while the old app is running
+on it, per its SingletonLock), writes `.keyring-name` = `@aio/desktop`, and on every start of such a
+profile the app carries that name until `ready` (Chromium reads it for the key while starting) and
+takes `SpaceAIO` back first thing after. Verified: cookies written by the old name stay readable, and
+new ones too, across restarts. The UA cleanup strips both names. New installs are SpaceAIO throughout.
+The GitHub repo is still `KrysGG/AIO-Space` (URLs in package.json and the PKGBUILD) until the owner
+renames it; GitHub redirects the old URL.
+

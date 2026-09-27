@@ -1,4 +1,4 @@
-import { app, net, session } from 'electron';
+import { app, dialog, net, session } from 'electron';
 import { join } from 'node:path';
 import { DownloadManager } from './downloads/DownloadManager';
 import { registerIpc } from './ipc/handlers';
@@ -14,6 +14,7 @@ import { handleUiScheme, registerUiScheme } from './security/uiProtocol';
 import { cleanUserAgent } from './sessions/userAgent';
 import { clearPartitionNow, partitionsOfApp, wipeAtStartup } from './store/siteData';
 import { WorkspaceStore } from './store/workspaceStore';
+import { APP_NAME, LEGACY_NAME, legacyProfileInUse, migrateLegacyProfile } from './store/legacyProfile';
 import { createTray } from './tray';
 import { ViewManager } from './views/ViewManager';
 import { createMainWindow } from './window';
@@ -24,7 +25,19 @@ app.enableSandbox();
 // Tests run against a throwaway profile so they never touch the real workspace or logins.
 // Must come before the single-instance lock, which is tied to the userData path.
 const userDataOverride = process.env['AIO_USER_DATA_DIR'];
-if (userDataOverride) app.setPath('userData', userDataOverride);
+// Built by hand, not app.getPath('userData'): that call creates the folder, which would hide whether
+// this profile is new (the migration below needs to know).
+const userData = userDataOverride ?? join(app.getPath('appData'), APP_NAME);
+
+// Before the rename to SpaceAIO (D-058) the profile lived in ~/.config/@aio/desktop: move it over once,
+// and keep the name Chromium's cookie key is stored under, or every app would be logged out.
+if (!userDataOverride && legacyProfileInUse(app.getPath('appData'), userData)) {
+  dialog.showErrorBox('Close the old version first', 'The old version of AIO Space is still running. Close it, then start SpaceAIO again: your apps and logins move over.');
+  app.exit(1);
+}
+const keyringName = userDataOverride ? null : migrateLegacyProfile(app.getPath('appData'), userData);
+// Pinned: the app's name changes for a moment below, and the data folder must not follow it.
+app.setPath('userData', userData);
 
 if (process.platform === 'linux') {
   // Native Wayland on CachyOS/KDE/GNOME. Recent Electron defaults to this; if it doesn't
@@ -38,13 +51,18 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 // Strip "Electron/x" and our app token so sites (Google sign-in especially) see normal Chrome.
-app.userAgentFallback = cleanUserAgent(app.userAgentFallback, app.getName());
+app.userAgentFallback = cleanUserAgent(app.userAgentFallback, [APP_NAME, LEGACY_NAME]);
+
+// Chromium reads the app's name for its cookie key while starting up; a moved profile keeps the old
+// one until then, and gets its own name back first thing once ready.
+if (keyringName) app.setName(keyringName);
 
 installGlobalHardening();
 registerUiScheme();
 
 // ---- Ready ------------------------------------------------------------------
 app.whenReady().then(async () => {
+  if (keyringName) app.setName(APP_NAME);
   lockDownUiSession();
   handleUiScheme(join(__dirname, '../renderer'));
 
@@ -83,7 +101,7 @@ app.whenReady().then(async () => {
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);
 
-  // "Forget when AIO Space closes" (ROADMAP 3.9): clear those apps before quitting (their folders
+  // "Forget when SpaceAIO closes" (ROADMAP 3.9): clear those apps before quitting (their folders
   // are deleted at the next start). Once, and at most a few seconds.
   let forgotten = false;
   app.on('before-quit', (e) => {

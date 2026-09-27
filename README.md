@@ -1,4 +1,4 @@
-# AIO Space
+# SpaceAIO
 
 All your web apps in one window, tiled the way you want. Make the app your space.
 
@@ -22,16 +22,19 @@ If the window opens under XWayland instead of native Wayland, see ROADMAP step 0
 `pnpm dist:linux` writes both packages to `apps/desktop/release`:
 
 ```bash
-# pacman package: menu entry, icon, and an `aio-space` command
-sudo pacman -U apps/desktop/release/aio-space-0.1.0-x64.pacman
+# pacman package: menu entry, icon, and a `spaceaio` command
+sudo pacman -U apps/desktop/release/spaceaio-0.1.0-x64.pacman
 
 # or the AppImage (needs FUSE 2: sudo pacman -S fuse2)
-chmod +x apps/desktop/release/aio-space-0.1.0-x86_64.AppImage
-./apps/desktop/release/aio-space-0.1.0-x86_64.AppImage
+chmod +x apps/desktop/release/spaceaio-0.1.0-x86_64.AppImage
+./apps/desktop/release/spaceaio-0.1.0-x86_64.AppImage
 ```
 
-Remove the pacman package with `sudo pacman -R aio-space`; your logins and settings stay in
-`~/.config/@aio/desktop` (see the Backlog in `ROADMAP.md`).
+From the AUR (once published): `spaceaio-bin`, or build it here with `cd packaging/aur && makepkg -si`
+after copying the release's `spaceaio-<version>-x64.tar.gz` next to the PKGBUILD (see D-057).
+
+Remove the pacman package with `sudo pacman -R spaceaio`; your logins and settings stay in
+`~/.config/SpaceAIO`. Coming from a build named AIO Space? SpaceAIO moves your data and logins over on first start (D-058).
 
 ## Commands
 

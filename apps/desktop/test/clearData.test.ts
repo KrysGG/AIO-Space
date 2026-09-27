@@ -126,11 +126,11 @@ describe('clear data and forget mode', () => {
     expect(existsSync(join(partition, CANARY))).toBe(false);
   });
 
-  it('"Forget when AIO Space closes" clears the app on quit', async () => {
+  it('"Forget when SpaceAIO closes" clears the app on quit', async () => {
     await logIn();
     plantCanary(partition);
     await ui.locator('.shield-btn').click();
-    await ui.locator('.shield-switch', { hasText: 'Forget Browser when AIO Space closes' }).locator('input').check();
+    await ui.locator('.shield-switch', { hasText: 'Forget Browser when SpaceAIO closes' }).locator('input').check();
     await ui.keyboard.press('Escape');
     await expect.poll(() => ui.evaluate(async () => (await window.aio.getWorkspace()).forgetOnClose)).toEqual(['browser']);
 

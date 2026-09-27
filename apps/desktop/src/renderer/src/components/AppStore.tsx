@@ -91,7 +91,7 @@ export function AppStore({ catalog, onInstall, onOpen, onCustom, onClose, onClos
                   <span className="store-name">
                     <strong>{entry.name}</strong>
                     {entry.drm && (
-                      <span className="store-pill" title="Its videos or music use Widevine DRM, which this version of AIO Space can’t play yet. Browsing and signing in work.">
+                      <span className="store-pill" title="Its videos or music use Widevine DRM, which this version of SpaceAIO can’t play yet. Browsing and signing in work.">
                         DRM
                       </span>
                     )}

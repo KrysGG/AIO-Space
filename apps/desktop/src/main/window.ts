@@ -15,7 +15,7 @@ export function createMainWindow(): BrowserWindow {
     show: false,
     backgroundColor: BG,
     autoHideMenuBar: true,
-    title: 'AIO Space',
+    title: 'SpaceAIO',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

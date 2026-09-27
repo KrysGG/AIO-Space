@@ -1,4 +1,4 @@
-import { app, session, webContents, type Session, type WebContents } from 'electron';
+import { session, webContents, type Session, type WebContents } from 'electron';
 import { partitionFor, type AppPermission, type PrivacySettings, type WebAppDef } from '@aio/core';
 import { noteUpgrade } from '../privacy/httpsFallback';
 import { installRequestPipeline } from '../privacy/requestPipeline';
@@ -8,6 +8,7 @@ import type { SharedSignIn } from './sharedSignIn';
 import { buildShieldFilters } from '../privacy/shields';
 import { appSites } from '../privacy/sites';
 import { cleanUserAgent, googleSignInFilter } from './userAgent';
+import { APP_NAME, LEGACY_NAME } from '../store/legacyProfile';
 
 const configured = new Map<string, Session>();
 
@@ -36,7 +37,7 @@ export function getAppSession(
   if (existing) return existing;
 
   const ses = session.fromPartition(partition);
-  ses.setUserAgent(cleanUserAgent(ses.getUserAgent(), app.getName()));
+  ses.setUserAgent(cleanUserAgent(ses.getUserAgent(), [APP_NAME, LEGACY_NAME]));
 
   const allowed = new Set<string>(def.permissions satisfies AppPermission[]);
   ses.setPermissionRequestHandler((wc, permission, callback) => {

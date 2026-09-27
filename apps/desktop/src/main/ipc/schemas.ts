@@ -273,7 +273,7 @@ export const PluginManifestSchema = z
     version: z.string().regex(/^[0-9]{1,5}(\.[0-9]{1,5}){0,3}$/),
     description: z.string().trim().max(300).default(''),
     apps: z.array(Id).min(1).max(20).refine(unique, 'duplicate app id'),
-    permissions: z.array(z.string()).max(0, 'AIO Space doesn’t offer plugin permissions yet').default([]),
+    permissions: z.array(z.string()).max(0, 'SpaceAIO doesn’t offer plugin permissions yet').default([]),
     scripts: z.array(PluginFile('js')).max(10).refine(unique, 'duplicate file').default([]),
     styles: z.array(PluginFile('css')).max(10).refine(unique, 'duplicate file').default([]),
   })

@@ -1,4 +1,4 @@
-# AIO Space roadmap
+# SpaceAIO roadmap
 
 All-in-one interface for web apps: resizable tiles, isolated logins, Brave-style privacy,
 plugins, and deep customization. Linux (CachyOS) first, then Windows, then Android and iOS.
@@ -339,7 +339,7 @@ electron-builder AppImage and pacman targets with icons and a `.desktop` file (W
 working menu entry.
 
 ### - [ ] 5.2 AUR package
-`PKGBUILD` for `aio-space-bin` in `packaging/aur/`.
+`PKGBUILD` for `spaceaio-bin` in `packaging/aur/`.
 **Done when:** `makepkg -si` installs and runs.
 
 ### - [ ] 5.3 Hardening at build time
@@ -414,9 +414,6 @@ Share settings model with desktop.
 
 Add items found while working on other steps here, with the step where they were found.
 
-- (0.2) In dev, userData is `~/.config/@aio/desktop` (package name), not `~/.config/AIO Space` as
-  ARCHITECTURE.md says. Set `productName` in `apps/desktop/package.json` or call `app.setName()`
-  early so dev and packaged builds share the documented path.
 - (0.1) `pnpm install` warns that `esbuild` and `electron-winstaller` build scripts were ignored:
   pnpm 10.0 reads `onlyBuiltDependencies` from `package.json` only, so the list in
   `pnpm-workspace.yaml` has no effect. Pick one place. Electron 44 no longer needs to be listed.
@@ -474,11 +471,6 @@ Add items found while working on other steps here, with the step where they were
   csp_report), as uBlock does. Suspect our script-level fingerprinting (X's login bot checks can see
   wrapped functions). Owner: set Block fingerprinting to Off in X's Shields panel and try again; if
   that fixes it, make X's default an exception (or make farbling harder to detect).
-- (5.1, was 0.2) The app's name is still `@aio/desktop` (no `productName` in package.json): the packaged
-  build stores data in `~/.config/@aio/desktop` like dev, and notifications may show "@aio/desktop".
-  Setting `productName: "AIO Space"` fixes both, but moves the data folder and very likely changes the
-  keyring entry Chromium encrypts cookies with (it's named after the app), which would log every app
-  out. Needs a migration (move the folder, keep the old keyring name) before changing it; owner's call.
 - (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
   (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
 - (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.

@@ -56,7 +56,7 @@ export function PluginsSection({ enabled, apps, onEnabled }: Props) {
   const remove = async (p: PluginInfo): Promise<void> => {
     if (
       !window.confirm(
-        `Remove “${p.name}”? Its files are deleted from AIO Space; your plugin folder stays.`,
+        `Remove “${p.name}”? Its files are deleted from SpaceAIO; your plugin folder stays.`,
       )
     )
       return;

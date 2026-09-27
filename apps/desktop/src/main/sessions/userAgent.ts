@@ -2,11 +2,13 @@ import type { WebContents } from 'electron';
 import type { RequestFilter } from '../privacy/requestPipeline';
 
 /** Remove Electron and app-name tokens from a UA string, leaving a normal Chrome UA. */
-export function cleanUserAgent(ua: string, appName: string): string {
-  const escaped = appName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return ua
-    .replace(/\sElectron\/\S+/gi, '')
-    .replace(new RegExp(`\\s${escaped}\\/\\S+`, 'gi'), '')
+export function cleanUserAgent(ua: string, appNames: string | string[]): string {
+  let out = ua.replace(/\sElectron\/\S+/gi, '');
+  for (const name of Array.isArray(appNames) ? appNames : [appNames]) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`\\s${escaped}\\/\\S+`, 'gi'), '');
+  }
+  return out
     .replace(/\s{2,}/g, ' ')
     .trim();
 }

@@ -51,10 +51,10 @@ Native views cover anything the UI draws in their area. Rules:
 
 | Data | Where | Format |
 | --- | --- | --- |
-| Workspace (spaces, layouts, privacy settings) | `~/.config/AIO Space/workspace.json` (Linux) | JSON, `WORKSPACE_VERSION`, validated by zod |
-| Installed Chrome extensions | `~/.config/AIO Space/extensions/<id>/` | unpacked extension |
-| Installed plugins | `~/.config/AIO Space/plugins/<id>/` | manifest.json + listed scripts/styles |
-| Logins, cookies, cache per app | `~/.config/AIO Space/Partitions/app-<id>-<profile>` | Chromium profile data |
+| Workspace (spaces, layouts, privacy settings) | `~/.config/SpaceAIO/workspace.json` (Linux) | JSON, `WORKSPACE_VERSION`, validated by zod |
+| Installed Chrome extensions | `~/.config/SpaceAIO/extensions/<id>/` | unpacked extension |
+| Installed plugins | `~/.config/SpaceAIO/plugins/<id>/` | manifest.json + listed scripts/styles |
+| Logins, cookies, cache per app | `~/.config/SpaceAIO/Partitions/app-<id>-<profile>` | Chromium profile data |
 
 Changing the workspace shape requires bumping `WORKSPACE_VERSION` and adding a migration in
 `packages/core/src/workspace/workspace.ts`.

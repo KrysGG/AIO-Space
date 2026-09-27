@@ -1,4 +1,4 @@
-// AIO Space plugin script: runs in its own isolated world on youtube.com pages (the page's scripts
+// SpaceAIO plugin script: runs in its own isolated world on youtube.com pages (the page's scripts
 // can't see it). Opens a Short as a normal video, on page loads and on YouTube's in-page navigation.
 (() => {
   const toWatch = () => {

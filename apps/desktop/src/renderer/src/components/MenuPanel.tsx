@@ -340,9 +340,9 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
             <div className="notice" role="alert">
               <strong>Your logins aren’t protected by a keyring</strong>
               <p>
-                AIO Space couldn’t use KWallet or GNOME Keyring, so cookies and logins are saved with a fixed key. Anyone who can read
+                SpaceAIO couldn’t use KWallet or GNOME Keyring, so cookies and logins are saved with a fixed key. Anyone who can read
                 your files could use them. Install and unlock KWallet (KDE) or GNOME Keyring (<code>gnome-keyring</code>,{' '}
-                <code>libsecret</code>), then restart AIO Space.
+                <code>libsecret</code>), then restart SpaceAIO.
               </p>
               <button className="text-btn" onClick={onDismissKeyring}>
                 Got it

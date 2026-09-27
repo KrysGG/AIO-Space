@@ -56,7 +56,7 @@ export interface Workspace {
   httpAllowedHosts: string[];
   /** One-time notices the user dismissed (ROADMAP 3.8). Added in version 10. */
   dismissedNotices: NoticeId[];
-  /** Apps whose data (every account) is cleared when AIO Space closes (ROADMAP 3.9). Added in version 11. */
+  /** Apps whose data (every account) is cleared when SpaceAIO closes (ROADMAP 3.9). Added in version 11. */
   forgetOnClose: string[];
   /** Interface state. Added in version 12. */
   ui: UiSettings;
@@ -218,7 +218,7 @@ export function dismissNotice(ws: Workspace, id: NoticeId): Workspace {
   return ws.dismissedNotices.includes(id) ? ws : { ...ws, dismissedNotices: [...ws.dismissedNotices, id] };
 }
 
-/** Turn "forget when AIO Space closes" on or off for an app (ROADMAP 3.9). */
+/** Turn "forget when SpaceAIO closes" on or off for an app (ROADMAP 3.9). */
 export function setForgetOnClose(ws: Workspace, appId: string, forget: boolean): Workspace {
   const has = ws.forgetOnClose.includes(appId);
   if (forget === has) return ws;

@@ -71,10 +71,10 @@ export function createTray(win: BrowserWindow): AppTray {
     win.show();
     win.focus();
   };
-  tray.setToolTip('AIO Space');
+  tray.setToolTip('SpaceAIO');
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Show AIO Space', click: show },
+      { label: 'Show SpaceAIO', click: show },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() },
     ]),
@@ -87,7 +87,7 @@ export function createTray(win: BrowserWindow): AppTray {
       if (tray.isDestroyed()) return;
       tray.setImage(unread ? icons.unread : icons.read);
       const label = unreadLabel(unread);
-      tray.setToolTip(unread ? `AIO Space: ${label ? `${label} unread` : 'new activity'}` : 'AIO Space');
+      tray.setToolTip(unread ? `SpaceAIO: ${label ? `${label} unread` : 'new activity'}` : 'SpaceAIO');
       // Launcher badge where the desktop supports it (Unity launcher API; KDE task manager).
       app.setBadgeCount(unread && unread !== 'dot' ? unread.count : 0);
     },

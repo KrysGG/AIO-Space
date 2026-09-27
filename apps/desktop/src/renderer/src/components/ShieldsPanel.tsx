@@ -128,7 +128,7 @@ export function ShieldsPanel({ ws, app, blocked, onSet, onReset, profile, accoun
         <section className="site-data">
           <label className="shield-switch">
             <span>
-              Forget {app.name} when AIO Space closes
+              Forget {app.name} when SpaceAIO closes
               <small>Logs out and deletes its data{accounts > 1 ? ' (every account)' : ''} each time you quit.</small>
             </span>
             <input type="checkbox" checked={ws.forgetOnClose.includes(app.id)} onChange={(e) => onForget(e.target.checked)} />

@@ -138,7 +138,7 @@ export function registerIpc(
     const pick = await dialog.showSaveDialog(win, {
       title: 'Export workspace',
       defaultPath: `aio-space-workspace-${new Date().toISOString().slice(0, 10)}.json`,
-      filters: [{ name: 'AIO Space workspace', extensions: ['json'] }],
+      filters: [{ name: 'SpaceAIO workspace', extensions: ['json'] }],
     });
     if (pick.canceled || !pick.filePath) return { ok: false, cancelled: true };
     return exportWorkspace(store.get(), pick.filePath);
@@ -150,7 +150,7 @@ export function registerIpc(
     const pick = await dialog.showOpenDialog(win, {
       title: 'Import workspace',
       properties: ['openFile'],
-      filters: [{ name: 'AIO Space workspace', extensions: ['json'] }],
+      filters: [{ name: 'SpaceAIO workspace', extensions: ['json'] }],
     });
     const file = pick.filePaths[0];
     if (pick.canceled || !file) return { ok: false, cancelled: true };

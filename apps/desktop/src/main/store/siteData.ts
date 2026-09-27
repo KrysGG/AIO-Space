@@ -9,7 +9,7 @@ import { withoutSignInSync } from '../sessions/sharedSignIn';
  * 1. now: the session's cookies, storage, caches and auth are cleared, so the account is logged out
  *    at once (Chromium's databases may keep deleted bytes until they compact);
  * 2. next start: the account's whole partition folder is deleted before any session opens, so nothing
- *    is left on disk. Folders to delete are listed in `wipe.json`; apps set to "forget when AIO Space
+ *    is left on disk. Folders to delete are listed in `wipe.json`; apps set to "forget when SpaceAIO
  *    closes" are always deleted at start too, which also covers a crash before quit.
  */
 const WIPE_FILE = 'wipe.json';

@@ -1,12 +1,13 @@
 {
   "name": "@aio/desktop",
+  "productName": "SpaceAIO",
   "version": "0.1.0",
   "private": true,
-  "description": "AIO Space desktop shell (Electron). Linux first, Windows in Phase 6.",
+  "description": "SpaceAIO desktop shell (Electron). Linux first, Windows in Phase 6.",
   "main": "./out/main/index.js",
-  "author": "AIO Space",
+  "author": "SpaceAIO",
   "homepage": "https://github.com/KrysGG/AIO-Space",
-  "desktopName": "aio-space.desktop",
+  "desktopName": "spaceaio.desktop",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

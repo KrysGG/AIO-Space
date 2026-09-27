@@ -1,5 +1,5 @@
-appId: com.aiospace.app
-productName: AIO Space
+appId: com.spaceaio.app
+productName: SpaceAIO
 directories:
   output: release
   buildResources: build
@@ -10,28 +10,30 @@ asar: true
 # Electron fuses (ROADMAP 3.7, docs/SECURITY.md).
 afterPack: scripts/afterPack.cjs
 linux:
-  executableName: aio-space
-  # File names without spaces (release URLs, AUR sources); the app itself is still "AIO Space".
-  artifactName: aio-space-${version}-${arch}.${ext}
-  # Wayland app_id / WM_CLASS = aio-space, matching aio-space.desktop, so the window gets its icon.
+  executableName: spaceaio
+  # File names without spaces (release URLs, AUR sources); the app itself is "SpaceAIO".
+  artifactName: spaceaio-${version}-${arch}.${ext}
+  # Wayland app_id / WM_CLASS = spaceaio, matching spaceaio.desktop, so the window gets its icon.
   syncDesktopName: true
   target:
     - AppImage
     - pacman
+    # The app folder alone, for the AUR's spaceaio-bin (packaging/aur, ROADMAP 5.2).
+    - tar.gz
   category: Network
-  maintainer: AIO Space
+  maintainer: SpaceAIO
   icon: build/icons
   synopsis: All-in-one tiled workspace for web apps
   description: Web apps side by side in resizable tiles, each with its own login, with ad and tracker blocking.
   desktop:
     entry:
-      Name: AIO Space
+      Name: SpaceAIO
       GenericName: Web app workspace
       Comment: Web apps side by side in resizable tiles, with separate logins
       Keywords: discord;youtube;twitch;tiles;workspace;browser;
-      StartupWMClass: aio-space
+      StartupWMClass: spaceaio
 pacman:
-  packageName: aio-space
+  packageName: spaceaio
   # Electron bundles ffmpeg and friends; electron-builder's default list names packages Arch no
   # longer has (libappindicator-gtk3), which would make `pacman -U` fail.
   depends: [gtk3, nss, alsa-lib, libxss, libxtst, libnotify, libsecret, at-spi2-core, xdg-utils]

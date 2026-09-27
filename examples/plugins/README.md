@@ -1,4 +1,4 @@
-# AIO Space plugins
+# SpaceAIO plugins
 
 A plugin is a folder with a `manifest.json`, scripts and styles. Install it from Menu > Plugins >
 "Install plugin from folder…"; it stays off until you turn it on (ROADMAP 4.4, D-052).
@@ -18,11 +18,11 @@ A plugin is a folder with a `manifest.json`, scripts and styles. Install it from
 
 - Scripts run in the plugin's own isolated world, like a browser extension's content script: they
   share the page's DOM but not its JavaScript, and they have no Node.js, no IPC and no access to
-  AIO Space. They run when the DOM is ready, once per page load; single-page apps (YouTube, Discord)
+  SpaceAIO. They run when the DOM is ready, once per page load; single-page apps (YouTube, Discord)
   need their own listeners or `MutationObserver` for in-page navigation.
 - They run only on the app's own sites, never on sign-in pages (Google, Apple, Microsoft...).
 - Styles are injected before the page's own, so use `!important` to override the site.
 - Files are plain names in the folder (no subfolders), 1 MB at most together.
 - Updating: install the folder again. Turning a plugin on or off reloads its apps.
 
-Modifying Discord's app is against Discord's terms; AIO Space warns before turning on such plugins.
+Modifying Discord's app is against Discord's terms; SpaceAIO warns before turning on such plugins.

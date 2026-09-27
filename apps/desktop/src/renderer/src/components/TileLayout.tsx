@@ -397,7 +397,7 @@ export function TileLayout(props: Props) {
                       </svg>
                       <h3>{state.httpsFailed.host} doesn’t offer a secure connection</h3>
                       <p>
-                        AIO Space tried the secure (https) version and it didn’t work ({state.httpsFailed.error}). The site may only
+                        SpaceAIO tried the secure (https) version and it didn’t work ({state.httpsFailed.error}). The site may only
                         support http, where anyone on your network can see and change what you send and receive.
                       </p>
                       <div className="form-actions">

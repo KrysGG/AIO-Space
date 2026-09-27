@@ -28,23 +28,23 @@ export async function importWorkspace(file: string): Promise<WorkspaceFileResult
   try {
     const stat = await fs.stat(file);
     if (stat.size > MAX_WORKSPACE_FILE)
-      return { ok: false, error: 'This file is too big to be an AIO Space workspace.' };
+      return { ok: false, error: 'This file is too big to be an SpaceAIO workspace.' };
     raw = JSON.parse(await fs.readFile(file, 'utf8'));
   } catch {
     return {
       ok: false,
-      error: 'Couldn’t read this file as JSON. Pick a workspace file exported from AIO Space.',
+      error: 'Couldn’t read this file as JSON. Pick a workspace file exported from SpaceAIO.',
     };
   }
   const version =
     raw && typeof raw === 'object' ? (raw as { version?: unknown }).version : undefined;
   if (typeof version !== 'number')
-    return { ok: false, error: 'This isn’t an AIO Space workspace file.' };
+    return { ok: false, error: 'This isn’t an SpaceAIO workspace file.' };
   // migrateWorkspace() falls back to defaults for versions it can't read; an import must say so instead.
   if (!isSupportedWorkspaceVersion(version))
     return {
       ok: false,
-      error: 'This workspace is from a newer AIO Space. Update AIO Space and try again.',
+      error: 'This workspace is from a newer SpaceAIO. Update SpaceAIO and try again.',
     };
   const parsed = WorkspaceSchema.safeParse(migrateWorkspace(raw));
   if (!parsed.success)

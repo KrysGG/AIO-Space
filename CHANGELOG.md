@@ -2,6 +2,8 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Rename] AIO Space is now SpaceAIO (`spaceaio` command and packages, `~/.config/SpaceAIO`); existing data and logins move over automatically on first start (D-058).
+- [5.2] AUR package `aio-space-bin` in `packaging/aur` (PKGBUILD, .desktop, .SRCINFO): repackages the release's new `tar.gz` build into /opt/aio-space; builds with makepkg (D-057).
 - [5.1] Linux packages: `pnpm dist:linux` builds `aio-space-<version>-x86_64.AppImage` and an `aio-space` pacman package (menu entry, hicolor icons, `/usr/bin/aio-space`, Arch dependencies that exist); new app icon; window linked to its menu entry on Wayland (D-056).
 - [4.5] Chrome extensions: install from a Chrome Web Store link (or an unpacked folder) in the menu, turn them on per app with the new puzzle button in the tile, open their popup and options pages; stand-ins for missing Chrome APIs let more of them start; 12 popular extensions tested (docs/EXTENSIONS.md; workspace v17, D-055).
 - [4.7] Drag sidebar apps to reorder them; pin apps to a group at the top that doesn't scroll (right-click > Pin to top); order and pins persist (workspace v17, D-054).

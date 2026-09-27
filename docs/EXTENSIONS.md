@@ -1,10 +1,10 @@
-# Chrome extensions in AIO Space
+# Chrome extensions in SpaceAIO
 
 ROADMAP 4.5, D-055. Install from Menu > Chrome extensions (paste a Chrome Web Store link, or pick an
 unpacked folder), then turn an extension on per app with the puzzle button in that app's tile.
 Extensions run only in the apps you turn them on for, each app in its own session.
 
-AIO Space uses Electron's built-in extension support (no extra library, D-055), plus small stand-ins
+SpaceAIO uses Electron's built-in extension support (no extra library, D-055), plus small stand-ins
 for Chrome APIs Electron lacks (`preload/extensionShim.ts`). What that means:
 
 - **Content scripts work** (the part of an extension that changes pages). Most "change this site"
@@ -14,7 +14,7 @@ for Chrome APIs Electron lacks (`preload/extensionShim.ts`). What that means:
   am I on?" gets nothing: per-site switches in popups, autofill triggered from the toolbar, context
   menu items, keyboard commands, badges on the toolbar icon.
 - **No `declarativeNetRequest`**, so blocking extensions (uBlock Origin Lite, Privacy Badger's
-  blocking) don't block. AIO Space's own Shields do this already.
+  blocking) don't block. SpaceAIO's own Shields do this already.
 - `storage.sync` is local storage in extension pages and workers (nothing syncs to a Google
   account); in content scripts it's unavailable.
 
@@ -39,7 +39,7 @@ effect where there is one), and its popup/options page rendering.
 | uBlock Origin Lite     | 2026.926.2202 | ❌ No         | Worker crashes; blocking needs `declarativeNetRequest` (D-034). Shields' ad blocking covers this.                                                |
 | Google Translate       | 2.0.17        | ❌ No         | Worker crashes on `contextMenus`; with the stand-ins the test didn't finish (hung).                                                              |
 
-Return YouTube Dislike, Unhook, SponsorBlock and Dark Reader were also installed through AIO Space
+Return YouTube Dislike, Unhook, SponsorBlock and Dark Reader were also installed through SpaceAIO
 itself (store link, per-app switch on the YouTube app) and checked on real YouTube: all four loaded
 into YouTube's session only (none in the UI's), with their effects on the page.
 

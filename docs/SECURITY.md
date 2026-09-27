@@ -79,7 +79,7 @@ Electron fuses are flipped on the packaged binary by `apps/desktop/scripts/after
 is set but has no effect yet.
 
 Verified on a packaged build (`electron-builder --linux dir`, 2026-09-26): `@electron/fuses read`
-shows the values above; with `ELECTRON_RUN_AS_NODE=1` the binary starts AIO Space instead of Node
+shows the values above; with `ELECTRON_RUN_AS_NODE=1` the binary starts SpaceAIO instead of Node
 (stock Electron runs the script); `NODE_OPTIONS=--require ...` and `--inspect` are ignored.
 
 Also run `electronegativity` and go through Electron's security checklist before each release.
@@ -123,7 +123,7 @@ Also run `electronegativity` and go through Electron's security checklist before
 ## Storage encryption (ROADMAP 3.8)
 
 Cookies and logins are encrypted with a key from the system keyring (KWallet or GNOME Keyring via
-libsecret on Linux). Without one, Chromium falls back to a fixed key; AIO Space detects this
+libsecret on Linux). Without one, Chromium falls back to a fixed key; SpaceAIO detects this
 (`main/security/keyring.ts`) and warns once in the menu with how to fix it.
 
 ## Clearing data (ROADMAP 3.9)

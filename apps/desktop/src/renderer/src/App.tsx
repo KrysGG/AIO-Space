@@ -294,7 +294,7 @@ export function App() {
     if (!ws) return;
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      // Browser set to "forget when AIO Space closes": its tabs' pages are never written to disk.
+      // Browser set to "forget when SpaceAIO closes": its tabs' pages are never written to disk.
       const saved = ws.forgetOnClose.includes('browser') ? mapLayouts(ws, forgetTabPages) : ws;
       window.aio.saveWorkspace(saved).catch((e: unknown) => setError(`Couldn't save layout: ${String(e)}`));
     }, SAVE_DELAY_MS);

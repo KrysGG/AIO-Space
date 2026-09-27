@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { cleanUserAgent, firefoxUserAgent, isGoogleSignIn } from '../src/main/sessions/userAgent';
 
 const ELECTRON_UA =
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) AIO Space/0.1.0 Chrome/152.0.7977.130 Electron/44.4.5 Safari/537.36';
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) SpaceAIO/0.1.0 Chrome/152.0.7977.130 Electron/44.4.5 Safari/537.36';
 
 describe('cleanUserAgent', () => {
   it('removes the Electron and app tokens, leaving a normal Chrome UA', () => {
-    expect(cleanUserAgent(ELECTRON_UA, 'AIO Space')).toBe(
+    expect(cleanUserAgent(ELECTRON_UA, 'SpaceAIO')).toBe(
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.7977.130 Safari/537.36',
     );
   });
@@ -15,6 +15,12 @@ describe('cleanUserAgent', () => {
     const ua = 'Mozilla/5.0 Chrome/152.0 a+b/1.0 Safari/537.36';
     expect(cleanUserAgent(ua, 'a+b')).toBe('Mozilla/5.0 Chrome/152.0 Safari/537.36');
     expect(cleanUserAgent(ua, '.*')).toBe(ua);
+  });
+
+  it('strips every name the app may carry while starting (a moved profile starts as @aio/desktop, D-058)', () => {
+    const legacy = ELECTRON_UA.replace('SpaceAIO/0.1.0', '@aio/desktop/0.1.0');
+    const clean = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.7977.130 Safari/537.36';
+    for (const ua of [ELECTRON_UA, legacy]) expect(cleanUserAgent(ua, ['SpaceAIO', '@aio/desktop'])).toBe(clean);
   });
 });
 
