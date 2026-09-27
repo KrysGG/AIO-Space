@@ -11,11 +11,30 @@ asar: true
 afterPack: scripts/afterPack.cjs
 linux:
   executableName: aio-space
+  # File names without spaces (release URLs, AUR sources); the app itself is still "AIO Space".
+  artifactName: aio-space-${version}-${arch}.${ext}
+  # Wayland app_id / WM_CLASS = aio-space, matching aio-space.desktop, so the window gets its icon.
+  syncDesktopName: true
   target:
     - AppImage
     - pacman
   category: Network
   maintainer: AIO Space
+  icon: build/icons
+  synopsis: All-in-one tiled workspace for web apps
+  description: Web apps side by side in resizable tiles, each with its own login, with ad and tracker blocking.
+  desktop:
+    entry:
+      Name: AIO Space
+      GenericName: Web app workspace
+      Comment: Web apps side by side in resizable tiles, with separate logins
+      Keywords: discord;youtube;twitch;tiles;workspace;browser;
+      StartupWMClass: aio-space
+pacman:
+  packageName: aio-space
+  # Electron bundles ffmpeg and friends; electron-builder's default list names packages Arch no
+  # longer has (libappindicator-gtk3), which would make `pacman -U` fail.
+  depends: [gtk3, nss, alsa-lib, libxss, libxtst, libnotify, libsecret, at-spi2-core, xdg-utils]
 win:
   target: nsis
 # Phase 5: add publish/update config.

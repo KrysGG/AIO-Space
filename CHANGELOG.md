@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [5.1] Linux packages: `pnpm dist:linux` builds `aio-space-<version>-x86_64.AppImage` and an `aio-space` pacman package (menu entry, hicolor icons, `/usr/bin/aio-space`, Arch dependencies that exist); new app icon; window linked to its menu entry on Wayland (D-056).
 - [4.5] Chrome extensions: install from a Chrome Web Store link (or an unpacked folder) in the menu, turn them on per app with the new puzzle button in the tile, open their popup and options pages; stand-ins for missing Chrome APIs let more of them start; 12 popular extensions tested (docs/EXTENSIONS.md; workspace v17, D-055).
 - [4.7] Drag sidebar apps to reorder them; pin apps to a group at the top that doesn't scroll (right-click > Pin to top); order and pins persist (workspace v17, D-054).
 - [4.6] Space templates (save a space's layout, start new spaces from it) and workspace export/import from the menu ("Move to another computer"; logins and cookies are never in the file); verified by exporting from one profile and importing into a fresh one (workspace v17, D-053).

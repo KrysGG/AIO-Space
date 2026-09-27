@@ -332,7 +332,7 @@ from the right-click menu, D-047; drag to reorder and pinning, D-054.)
 
 ## Phase 5: Linux release
 
-### - [ ] 5.1 Packaging
+### - [x] 5.1 Packaging
 electron-builder AppImage and pacman targets with icons and a `.desktop` file (Wayland flags in
 `Exec` if 0.4 found they're needed).
 **Done when:** `pnpm dist:linux` produces both; installing the pacman package on CachyOS adds a
@@ -474,6 +474,15 @@ Add items found while working on other steps here, with the step where they were
   csp_report), as uBlock does. Suspect our script-level fingerprinting (X's login bot checks can see
   wrapped functions). Owner: set Block fingerprinting to Off in X's Shields panel and try again; if
   that fixes it, make X's default an exception (or make farbling harder to detect).
+- (5.1, was 0.2) The app's name is still `@aio/desktop` (no `productName` in package.json): the packaged
+  build stores data in `~/.config/@aio/desktop` like dev, and notifications may show "@aio/desktop".
+  Setting `productName: "AIO Space"` fixes both, but moves the data folder and very likely changes the
+  keyring entry Chromium encrypts cookies with (it's named after the app), which would log every app
+  out. Needs a migration (move the folder, keep the old keyring name) before changing it; owner's call.
+- (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
+  (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
+- (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.
+  Consider the static AppImage runtime once electron-builder supports it.
 - (4.5) Extensions: no Chrome tab model, so "which tab am I on" gets nothing (per-site popup switches,
   toolbar-triggered autofill); `storage.sync` is missing in content scripts; no `declarativeNetRequest`.
   A small `chrome.tabs` answering for the view the popup was opened from would fix several popups

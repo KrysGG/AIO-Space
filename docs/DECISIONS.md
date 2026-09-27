@@ -574,3 +574,18 @@ a small sandboxed window in the app's session, restricted to that extension's pa
 blur, like Chrome's). New IPC: `extensions:list`, `extensions:install-store`,
 `extensions:install-folder`, `extensions:remove`, `extensions:open`.
 
+**D-056: Linux packaging: `aio-space` names, explicit pacman dependencies, placeholder icon.**
+ROADMAP 5.1. electron-builder builds `aio-space-<version>-x86_64.AppImage` and a pacman package
+named `aio-space` (the npm name `@aio/desktop` isn't a valid pacman name); file names have no spaces so
+release URLs and the AUR `source=` stay simple. The app installs to `/opt/AIO Space`, with
+`/usr/bin/aio-space`, `aio-space.desktop` (validated with `desktop-file-validate`) and hicolor icons
+16–512 px. `desktopName: aio-space.desktop` plus `syncDesktopName` make the Wayland app_id match the
+.desktop file, so the running window gets its icon and groups with its menu entry. pacman `depends`
+are listed explicitly (gtk3, nss, alsa-lib, libxss, libxtst, libnotify, libsecret, at-spi2-core,
+xdg-utils): electron-builder's default names `libappindicator-gtk3`, which Arch no longer ships, so
+`pacman -U` would refuse the package; Electron bundles ffmpeg and the rest. No Wayland flags in
+`Exec`: `ozone-platform-hint=auto` is set in main (D-011). The icon (`build/icon.svg`: a tall tile beside
+two stacked ones) is a placeholder the owner can replace; PNGs are rendered from it with
+`for s in 16 24 32 48 64 128 256 512; do rsvg-convert -w $s -h $s build/icon.svg -o build/icons/${s}x${s}.png; done`
+(in apps/desktop) and committed, so CI needs no SVG tools.
+

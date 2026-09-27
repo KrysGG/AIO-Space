@@ -1,0 +1,26 @@
+<!-- AIO Space app icon (ROADMAP 5.1). Source for build/icons/*.png: see docs/DECISIONS.md D-056. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3347"/>
+      <stop offset="1" stop-color="#141925"/>
+    </linearGradient>
+    <linearGradient id="a" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8fb4ff"/>
+      <stop offset="1" stop-color="#5b7cf0"/>
+    </linearGradient>
+    <linearGradient id="b" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f3f5fa"/>
+      <stop offset="1" stop-color="#c9d0de"/>
+    </linearGradient>
+    <linearGradient id="c" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb37a"/>
+      <stop offset="1" stop-color="#ef7b45"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+  <rect x="16.5" y="16.5" width="479" height="479" rx="111.5" fill="none" stroke="#ffffff" stroke-opacity="0.12"/>
+  <rect x="96" y="96" width="148" height="320" rx="34" fill="url(#a)"/>
+  <rect x="268" y="96" width="148" height="148" rx="34" fill="url(#b)"/>
+  <rect x="268" y="268" width="148" height="148" rx="34" fill="url(#c)"/>
+</svg>

@@ -5,7 +5,7 @@ All your web apps in one window, tiled the way you want. Make the app your space
 Discord next to YouTube, a browser underneath, each in its own resizable tile, each with its own
 isolated login, with Brave-style privacy protections applied to all of them.
 
-**Status:** skeleton. See `ROADMAP.md` for what is built and what comes next.
+**Status:** in development (Phases 0–4 done). See `ROADMAP.md` for what is built and what comes next.
 
 ## Run it (CachyOS / Arch)
 
@@ -16,6 +16,22 @@ pnpm dev
 ```
 
 If the window opens under XWayland instead of native Wayland, see ROADMAP step 0.4.
+
+## Install a build (CachyOS / Arch)
+
+`pnpm dist:linux` writes both packages to `apps/desktop/release`:
+
+```bash
+# pacman package: menu entry, icon, and an `aio-space` command
+sudo pacman -U apps/desktop/release/aio-space-0.1.0-x64.pacman
+
+# or the AppImage (needs FUSE 2: sudo pacman -S fuse2)
+chmod +x apps/desktop/release/aio-space-0.1.0-x86_64.AppImage
+./apps/desktop/release/aio-space-0.1.0-x86_64.AppImage
+```
+
+Remove the pacman package with `sudo pacman -R aio-space`; your logins and settings stay in
+`~/.config/@aio/desktop` (see the Backlog in `ROADMAP.md`).
 
 ## Commands
 

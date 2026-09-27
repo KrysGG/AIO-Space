@@ -5,6 +5,8 @@
   "description": "AIO Space desktop shell (Electron). Linux first, Windows in Phase 6.",
   "main": "./out/main/index.js",
   "author": "AIO Space",
+  "homepage": "https://github.com/KrysGG/AIO-Space",
+  "desktopName": "aio-space.desktop",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
