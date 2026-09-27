@@ -35,6 +35,7 @@ interface Props {
   onClearAll(): Promise<void>;
   onReduceMotion(on: boolean): void;
   onTwitchScript(script: TwitchAdScript): void;
+  onShareGoogle(on: boolean): void;
   onClose(): void;
   onClosed(): void;
 }
@@ -43,7 +44,7 @@ interface Props {
  * The rail's menu (ROADMAP 2.8): spaces and settings. A popover over the tile area, so native views
  * are hidden while it's open. `onClose` / `onClosed` must be stable.
  */
-export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTwitchScript, onClose, onClosed }: Props) {
+export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEngine, onSleepAfter, onShieldDefault, onDisallowHttp, keyringNotice, onDismissKeyring, onClearAll, onReduceMotion, onTwitchScript, onShareGoogle, onClose, onClosed }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [clearedAll, setClearedAll] = useState<'idle' | 'busy' | 'done'>('idle');
@@ -57,7 +58,9 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
     window.aio.setViewsHidden(true);
     window.aio.focusView(null);
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && !(e.target instanceof HTMLInputElement)) onClose();
+      // Escape in the space-rename field cancels the rename instead; switches and lists close the menu.
+      const typing = e.target instanceof HTMLInputElement && e.target.type === 'text';
+      if (e.key === 'Escape' && !typing) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -165,6 +168,16 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               </button>
             </div>
           )}
+          <label className="shield-switch">
+            <span>
+              Share Google sign-in between apps
+              <small>
+                Sign in to Google once and every app’s first account is signed in; signing out signs them all out. Only Google’s
+                own cookies are shared, everything else stays in each app. Google can then tell these apps are you.
+              </small>
+            </span>
+            <input type="checkbox" checked={ws.identity.shareGoogle} onChange={(e) => onShareGoogle(e.target.checked)} />
+          </label>
           <label className="shield-switch">
             <span>
               Reduce animations and effects

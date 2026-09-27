@@ -2,6 +2,7 @@ import { session } from 'electron';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BUILTIN_APPS, partitionFor, profilesOf, type Workspace } from '@aio/core';
+import { withoutSignInSync } from '../sessions/sharedSignIn';
 
 /**
  * Clearing app data (ROADMAP 3.9). Clearing works in two parts:
@@ -32,13 +33,16 @@ export function allAppPartitions(ws: Workspace): string[] {
 /** Clear one partition's data now (step 1 above). */
 export async function clearPartitionNow(partition: string): Promise<void> {
   const ses = session.fromPartition(partition);
-  await Promise.allSettled([
-    ses.clearStorageData(),
-    ses.clearCache(),
-    ses.clearAuthCache(),
-    ses.clearCodeCaches({}),
-    ses.clearHostResolverCache(),
-  ]);
+  // Clearing one app isn't a Google sign-out for the others (shared sign-in, D-045).
+  await withoutSignInSync(ses, async () => {
+    await Promise.allSettled([
+      ses.clearStorageData(),
+      ses.clearCache(),
+      ses.clearAuthCache(),
+      ses.clearCodeCaches({}),
+      ses.clearHostResolverCache(),
+    ]);
+  });
   ses.flushStorageData();
 }
 

@@ -24,7 +24,8 @@ These are enforced by review, and several by ESLint. Do not break them.
 4. The UI window never navigates away from our bundled page; it cannot open windows.
 5. IPC handlers accept messages only from the UI window's main frame (`fromUi()`), and parse every
    payload with zod. Invalid input is dropped.
-6. Each app has its own session partition. Permission requests are denied unless listed in the
+6. Each app has its own session partition. The one opt-in exception: "Share Google sign-in between apps"
+   copies Google's own account cookies (and nothing else) between each app's first account (D-045). Permission requests are denied unless listed in the
    app's `permissions`. The UI session denies all permissions.
 7. App views may navigate only within `allowedHosts`. Other links go to the system browser, and
    only `http(s)` URLs are ever opened externally.

@@ -4,6 +4,7 @@ import { noteUpgrade } from '../privacy/httpsFallback';
 import { installRequestPipeline } from '../privacy/requestPipeline';
 import type { FilterLists } from '../privacy/filterLists';
 import { BROWSER_SCRIPTLET_SITES, type ScriptletFiles } from '../privacy/scriptlets';
+import type { SharedSignIn } from './sharedSignIn';
 import { buildShieldFilters } from '../privacy/shields';
 import { appSites } from '../privacy/sites';
 import { cleanUserAgent, googleSignInFilter } from './userAgent';
@@ -28,6 +29,7 @@ export function getAppSession(
   httpAllowed: (host: string) => boolean,
   filterLists?: FilterLists,
   scriptlets?: ScriptletFiles,
+  signIn?: SharedSignIn,
 ): Session {
   const partition = partitionFor(def.id, profile);
   const existing = configured.get(partition);
@@ -54,6 +56,9 @@ export function getAppSession(
     const sites = def.kind === 'browser' ? BROWSER_SCRIPTLET_SITES : [...(appSites(def) ?? [])];
     ses.registerPreloadScript({ type: 'frame', filePath: scriptlets.fileFor(partition, sites) });
   }
+
+  // Shared Google sign-in (D-045): first accounts only; a no-op while the setting is off.
+  signIn?.attach(partition, ses);
 
   configured.set(partition, ses);
   return ses;

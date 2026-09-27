@@ -31,6 +31,7 @@ import { IPC, TILE_GUTTER, TILE_HEADER, VIEW_INSET, VIEW_RADIUS, type ViewFrame,
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
 import type { ScriptletFiles } from '../privacy/scriptlets';
+import type { SharedSignIn } from '../sessions/sharedSignIn';
 import { getDomain } from 'tldts';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
 import { getAppSession, hasUsedMedia } from '../sessions/appSession';
@@ -123,6 +124,7 @@ export class ViewManager {
     private readonly downloads: DownloadManager,
     private readonly filterLists?: FilterLists,
     private readonly scriptlets?: ScriptletFiles,
+    private readonly signIn?: SharedSignIn,
   ) {
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
     // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
@@ -367,6 +369,7 @@ export class ViewManager {
       (host) => hostMatches(host, this.store.get().httpAllowedHosts) || isHttpAllowedThisRun(host),
       this.filterLists,
       this.scriptlets,
+      this.signIn,
     );
     this.downloads.attach(ses);
 
@@ -519,6 +522,22 @@ export class ViewManager {
     }
   }
 
+  private lastShareGoogle: boolean | undefined;
+
+  /** "Share Google sign-in" was just turned on (D-045): open apps pool their Google sign-in. */
+  private applySharedSignIn(): void {
+    const on = this.store.get().identity.shareGoogle;
+    const turnedOn = this.lastShareGoogle === false && on;
+    this.lastShareGoogle = on;
+    if (!turnedOn || !this.signIn) return;
+    void this.signIn.enable().then(() => {
+      // Pages that were signed out pick up the shared sign-in.
+      for (const entry of this.views.values()) {
+        if (entry.profile === 'default' && !entry.view.webContents.isDestroyed()) entry.view.webContents.reload();
+      }
+    });
+  }
+
   private lastTwitchScript: string | undefined;
 
   /** The Twitch ad script changed (D-043): rebuild the scriptlet files, reload pages on twitch.tv. */
@@ -560,6 +579,7 @@ export class ViewManager {
    */
   applyPrivacy(): void {
     this.applyTwitchScript();
+    this.applySharedSignIn();
     let replaced = false;
     for (const [instanceId, entry] of [...this.views]) {
       const wc = entry.view.webContents;

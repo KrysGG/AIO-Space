@@ -62,3 +62,12 @@ describe('Twitch ad blocking setting (v14)', () => {
     expect(migrateWorkspace(v13).twitch).toEqual({ adScript: 'vaft' });
   });
 });
+
+describe('shared Google sign-in setting (v15)', () => {
+  it('is off by default and migrates v14', () => {
+    expect(defaultWorkspace().identity).toEqual({ shareGoogle: false });
+    const v14: Record<string, unknown> = { ...defaultWorkspace(), version: 14 };
+    delete v14['identity'];
+    expect(migrateWorkspace(v14).identity).toEqual({ shareGoogle: false });
+  });
+});

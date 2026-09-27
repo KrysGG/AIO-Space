@@ -9,7 +9,7 @@ import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
  * Everything the user has arranged. Persisted as JSON by the platform shell.
  * Bump WORKSPACE_VERSION and add a migration in migrateWorkspace() on any shape change.
  */
-export const WORKSPACE_VERSION = 14;
+export const WORKSPACE_VERSION = 15;
 
 export interface Space {
   id: string;
@@ -61,6 +61,17 @@ export interface Workspace {
   ui: UiSettings;
   /** Twitch ad blocking (TwitchAdSolutions scripts). Added in version 14. */
   twitch: TwitchSettings;
+  /** Signing in across apps. Added in version 15. */
+  identity: IdentitySettings;
+}
+
+export interface IdentitySettings {
+  /**
+   * Share the Google account between apps (D-045): only Google's own account cookies are copied
+   * between each app's first account; everything else stays in each app's container. Off by
+   * default: it lets Google link these apps to one person.
+   */
+  shareGoogle: boolean;
 }
 
 /**
@@ -127,6 +138,7 @@ export function defaultWorkspace(): Workspace {
     forgetOnClose: [],
     ui: { railCollapsed: false, reduceMotion: false },
     twitch: { adScript: 'vaft' },
+    identity: { shareGoogle: false },
   };
 }
 
@@ -183,6 +195,7 @@ export function migrateWorkspace(raw: unknown): Workspace {
     w = { ...w, version: 13, ui: { ...ui, reduceMotion: false } };
   }
   if (w['version'] === 13) w = { ...w, version: 14, twitch: { adScript: 'vaft' } };
+  if (w['version'] === 14) w = { ...w, version: 15, identity: { shareGoogle: false } };
   return w as unknown as Workspace;
 }
 

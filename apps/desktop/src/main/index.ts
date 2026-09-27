@@ -5,6 +5,7 @@ import { registerIpc } from './ipc/handlers';
 import { FilterLists } from './privacy/filterLists';
 import { ScriptletFiles } from './privacy/scriptlets';
 import { TwitchScripts } from './privacy/twitchScripts';
+import { SharedSignIn } from './sessions/sharedSignIn';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { handleUiScheme, registerUiScheme } from './security/uiProtocol';
 import { cleanUserAgent } from './sessions/userAgent';
@@ -61,7 +62,9 @@ app.whenReady().then(async () => {
   void twitch.start();
   // Cached lists are loaded first; the scriptlet files then get their code (sessions may exist already).
   void filterLists.start().then(() => scriptlets.refresh());
-  const views = new ViewManager(win, store, downloads, filterLists, scriptlets);
+  const signIn = new SharedSignIn(() => store.get().identity.shareGoogle);
+  const views = new ViewManager(win, store, downloads, filterLists, scriptlets, signIn);
+  views.applyPrivacy(); // records the current settings, so later changes are detected
   registerIpc(win, store, views, downloads, filterLists);
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);

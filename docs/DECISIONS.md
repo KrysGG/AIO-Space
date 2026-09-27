@@ -428,3 +428,15 @@ open more windows; links to the app's own sites load in the tile (only scripted 
 them stay popups: before, "new tab" links on apps whose `popupHosts` include their own site became
 popup windows). Other links still go to the system browser. Verified end to end with a recorder in
 place of the system browser.
+
+**D-045: Opt-in shared Google sign-in: only Google's cookies are synced between first accounts.**
+Owner request: signing in with Google in every app separately is tedious. Each app keeps its own
+partition; with `workspace.identity.shareGoogle` (v15, off by default, Settings) `sessions/sharedSignIn.ts`
+copies Google's own cookies (google.com, subdomains, country domains) between the sessions of each
+app's first account, through a hub partition (`persist:aio-google-identity`) that seeds apps opened
+later. Every change (`cookies.on('changed')`) is applied to the others only if it differs, which also
+stops the copies' own events from bouncing. Sign-out (removals) spreads too. Extra accounts never take
+part, so a second Google identity still works side by side. Clearing one app's data (3.9) is muted, so
+it doesn't sign the others out. Turning it on pools open apps' sign-in and reloads them. Trade-off, stated
+in the setting: Google can link these apps to one person. Also fixed: Escape didn't close the menu after
+ticking one of its switches (checkboxes counted as text fields).

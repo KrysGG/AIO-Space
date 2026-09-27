@@ -464,6 +464,7 @@ export function App() {
           onClearAll={() => window.aio.clearData({ all: true })}
           onReduceMotion={(on) => edit((w) => ({ ...w, ui: { ...w.ui, reduceMotion: on } }))}
           onTwitchScript={(adScript) => edit((w) => ({ ...w, twitch: { adScript } }))}
+          onShareGoogle={(shareGoogle) => edit((w) => ({ ...w, identity: { shareGoogle } }))}
           onSleepAfter={(sleepAfterMinutes) => edit((w) => ({ ...w, performance: { ...w.performance, sleepAfterMinutes } }))}
           onClose={closeMenu}
           onClosed={refocusTile}
