@@ -3,6 +3,7 @@ import { partitionFor, type AppPermission, type PrivacySettings, type WebAppDef 
 import { noteUpgrade } from '../privacy/httpsFallback';
 import { installRequestPipeline } from '../privacy/requestPipeline';
 import type { FilterLists } from '../privacy/filterLists';
+import { BROWSER_SCRIPTLET_SITES, type ScriptletFiles } from '../privacy/scriptlets';
 import { buildShieldFilters } from '../privacy/shields';
 import { appSites } from '../privacy/sites';
 import { cleanUserAgent, googleSignInFilter } from './userAgent';
@@ -26,6 +27,7 @@ export function getAppSession(
   onBlocked: (webContentsId: number) => void,
   httpAllowed: (host: string) => boolean,
   filterLists?: FilterLists,
+  scriptlets?: ScriptletFiles,
 ): Session {
   const partition = partitionFor(def.id, profile);
   const existing = configured.get(partition);
@@ -46,6 +48,12 @@ export function getAppSession(
   const cookies = { appSites: appSites(def), topUrl: (id: number) => webContents.fromId(id)?.getURL() };
   const lists = { engine: (kind: 'ads' | 'trackers') => filterLists?.engine(kind) };
   installRequestPipeline(ses, [googleSignInFilter, ...buildShieldFilters(getPrivacy, https, cookies, lists)], onBlocked);
+
+  // Scriptlets (ROADMAP 3.6): the app's own sites, or a few popular ones for the Browser tile.
+  if (scriptlets) {
+    const sites = def.kind === 'browser' ? BROWSER_SCRIPTLET_SITES : [...(appSites(def) ?? [])];
+    ses.registerPreloadScript({ type: 'frame', filePath: scriptlets.fileFor(partition, sites) });
+  }
 
   configured.set(partition, ses);
   return ses;

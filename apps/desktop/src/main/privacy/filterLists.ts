@@ -42,6 +42,9 @@ export const FILTER_LISTS: Record<FilterListKind, { urls: string[]; cosmetic: bo
   },
 };
 
+/** uBlock Origin's scriptlet library (the code behind `##+js(...)` rules), from Ghostery's mirror. */
+export const SCRIPTLET_RESOURCES = `${GHOSTERY}/ublock-origin/resources.json`;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHECK_MS = 60 * 60 * 1000;
 
@@ -84,6 +87,8 @@ export class FilterLists {
   private readonly engines: Partial<Record<FilterListKind, FiltersEngine>> = {};
   private readonly meta: Partial<Record<FilterListKind, Meta>> = {};
   private updating: Promise<void> | null = null;
+  /** Called after new engines are in use (ROADMAP 3.6: scriptlet files are rebuilt from them). */
+  onUpdated: () => void = () => {};
   private lastError: string | null = null;
 
   constructor(
@@ -134,6 +139,15 @@ export class FilterLists {
         const { urls, cosmetic } = FILTER_LISTS[kind];
         const texts = await Promise.all(urls.map((u) => this.fetchText(u)));
         const engine = compileEngine(texts, cosmetic);
+        if (cosmetic) {
+          // Scriptlets are a bonus: without the library, blocking and hiding still update.
+          try {
+            const resources = await this.fetchText(SCRIPTLET_RESOURCES);
+            engine.updateResources(resources, `${resources.length}`);
+          } catch (err) {
+            console.warn('[filter-lists] scriptlet library unavailable:', err instanceof Error ? err.message : err);
+          }
+        }
         const meta: Meta = { engineVersion: ENGINE_VERSION, updatedAt: Date.now(), rules: countRules(texts) };
         await writeAtomic(join(this.dir, `${kind}.bin`), engine.serialize());
         await writeAtomic(join(this.dir, `${kind}.json`), JSON.stringify(meta));
@@ -141,6 +155,7 @@ export class FilterLists {
         this.meta[kind] = meta;
       }
       this.lastError = null;
+      this.onUpdated();
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : String(err);
       console.warn('[filter-lists] update failed, keeping the current lists:', this.lastError);

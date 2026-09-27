@@ -30,6 +30,7 @@ import { join } from 'node:path';
 import { IPC, TILE_GUTTER, TILE_HEADER, VIEW_INSET, VIEW_RADIUS, type ViewFrame, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
+import type { ScriptletFiles } from '../privacy/scriptlets';
 import { getDomain } from 'tldts';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
 import { getAppSession, hasUsedMedia } from '../sessions/appSession';
@@ -117,6 +118,7 @@ export class ViewManager {
     private readonly store: WorkspaceStore,
     private readonly downloads: DownloadManager,
     private readonly filterLists?: FilterLists,
+    private readonly scriptlets?: ScriptletFiles,
   ) {
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
     // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
@@ -359,6 +361,7 @@ export class ViewManager {
       // An allowed site covers its subdomains (http-only sites like neverssl.com hop between them).
       (host) => hostMatches(host, this.store.get().httpAllowedHosts) || isHttpAllowedThisRun(host),
       this.filterLists,
+      this.scriptlets,
     );
     this.downloads.attach(ses);
 
@@ -519,7 +522,7 @@ export class ViewManager {
       key = randomBytes(16).toString('hex');
       this.farbleKeys.set(partition, key);
     }
-    return { fingerprinting: privacy.fingerprinting, gpc: privacy.globalPrivacyControl, key };
+    return { fingerprinting: privacy.fingerprinting, gpc: privacy.globalPrivacyControl, ads: privacy.blockAds, key };
   }
 
   /**
@@ -534,7 +537,7 @@ export class ViewManager {
       const wc = entry.view.webContents;
       if (wc.isDestroyed()) continue;
       const want = this.preloadArgsFor(entry.appId, entry.profile);
-      if (want.fingerprinting !== entry.preloadArgs.fingerprinting || want.gpc !== entry.preloadArgs.gpc) {
+      if (want.fingerprinting !== entry.preloadArgs.fingerprinting || want.gpc !== entry.preloadArgs.gpc || want.ads !== entry.preloadArgs.ads) {
         const url = wc.getURL();
         this.sleeping.set(instanceId, { url: isWebUrl(url) ? url : this.homeOf(entry.def), appId: entry.appId });
         this.destroy(instanceId);

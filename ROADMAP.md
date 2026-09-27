@@ -462,8 +462,14 @@ Add items found while working on other steps here, with the step where they were
   Expected on YouTube: banner/sidebar ads blocked, video ads still shown (they need uBlock scriptlets,
   not run yet). The list download itself runs through Chromium (`session.fetch`), which this
   environment's TLS proxy blocks; the same code was verified with a Node fetcher.
-- (3.6) Not done yet: scriptlet injection (`+js()`, needed for YouTube video ads), cosmetic filtering in
-  subframes, redirect surrogates (uBlock resources) instead of plain blocking.
+- (3.6) Not done yet: cosmetic filtering and scriptlets in subframes, redirect surrogates (uBlock resources)
+  instead of plain blocking. Scriptlets for YouTube are done (D-041); the owner should confirm on real
+  YouTube that video ads are gone.
+- (3.6) Twitch video ads are stitched into the HLS playlists (`usher.ttvnw.net`, `*.hls.ttvnw.net`), which
+  request filters can't rewrite. Options: intercept those playlist requests with `protocol.handle` in
+  the Twitch session and drop ad segments (`#EXT-X-DATERANGE ... twitch-stitched-ad`), or request an
+  ad-free player type; both need careful testing on real Twitch. Check licences before reusing any
+  existing userscript (several are GPL).
 - (3.8) Built; the warning is verified on a system without a keyring (this environment: `basic_text`).
   Not ticked until the owner confirms it does not appear on their normal KDE setup.
 - (Store) Widevine DRM for Netflix, Spotify, Prime Video, Disney+: stock Electron has none. Options:

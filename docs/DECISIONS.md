@@ -368,3 +368,20 @@ Opened from the rail's "+" (new) or an empty tile's "Add app" (then the pick ope
 "Add any website" leads to the manual form. Entries that need Widevine DRM (Netflix, Spotify, Prime
 Video, Disney+) are marked: stock Electron can't play them (castlabs' Electron build would; Backlog).
 Submitting apps to the store needs a server and review; not started (Backlog).
+
+**D-041: Scriptlets (uBlock `##+js()` rules) through a generated session preload.**
+Owner report: YouTube video ads weren't blocked. They come inside YouTube's own player data, so
+request blocking can't catch them; uBlock's fix is scriptlets that run in the page before its own
+code (e.g. `set-constant ytInitialPlayerResponse.adPlacements undefined`, `json-prune` and
+`trusted-replace-fetch-response` on `/player`). The ad engine now loads uBlock's scriptlet library
+(`resources.json`, Ghostery's mirror; optional: a missing library doesn't fail the list update).
+Web views have no IPC and the preload can't read files, so main writes one preload per app session
+(`userData/scriptlets/*.js`, 0600) holding that app's scriptlets as literal code, one function per
+site, and registers it with `ses.registerPreloadScript`. At document start it passes the current
+site's function to `contextBridge.executeInMainWorld` (runs before page scripts, not subject to page
+CSP) only when `--aio-webapp` says Block ads is on (a 4th field; changing it replaces the view).
+Files are rewritten when the lists update. Apps get scriptlets for their own sites; the Browser tile
+for youtube.com and twitch.tv. Verified: YouTube's 29 real scriptlets (244 KB) strip `playerAds`,
+`adPlacements`, `adSlots` from a YouTube-shaped page and its `/player` fetch; with Block ads off
+they arrive intact; a test scriptlet runs before the page's first script in the app. Twitch: the
+lists have one rule; its video ads are stitched into HLS playlists (Backlog).

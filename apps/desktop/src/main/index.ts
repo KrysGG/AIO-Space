@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { DownloadManager } from './downloads/DownloadManager';
 import { registerIpc } from './ipc/handlers';
 import { FilterLists } from './privacy/filterLists';
+import { ScriptletFiles } from './privacy/scriptlets';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { handleUiScheme, registerUiScheme } from './security/uiProtocol';
 import { cleanUserAgent } from './sessions/userAgent';
@@ -50,8 +51,11 @@ app.whenReady().then(async () => {
   const win = createMainWindow();
   const downloads = new DownloadManager(win);
   const filterLists = new FilterLists(join(app.getPath('userData'), 'filters'), fetchFilterList);
-  void filterLists.start();
-  const views = new ViewManager(win, store, downloads, filterLists);
+  const scriptlets = new ScriptletFiles(join(app.getPath('userData'), 'scriptlets'), () => filterLists.engine('ads'));
+  filterLists.onUpdated = () => scriptlets.refresh();
+  // Cached lists are loaded first; the scriptlet files then get their code (sessions may exist already).
+  void filterLists.start().then(() => scriptlets.refresh());
+  const views = new ViewManager(win, store, downloads, filterLists, scriptlets);
   registerIpc(win, store, views, downloads, filterLists);
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);

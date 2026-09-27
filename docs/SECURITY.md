@@ -16,9 +16,10 @@ These are enforced by review, and several by ESLint. Do not break them.
 1. Every `BrowserWindow`/`WebContentsView`: `contextIsolation: true`, `sandbox: true`,
    `nodeIntegration: false`, `webSecurity: true`. `app.enableSandbox()` is called at startup.
 2. `<webview>` is disabled (`will-attach-webview` is prevented everywhere).
-3. Web app views get only `preload/webapp.ts` (ROADMAP 3.4): it never uses IPC and never exposes anything
-   to the page. It reads its settings from `additionalArguments` and installs fingerprinting protection
-   in the main world through a self-contained function (`preload/farble.ts`).
+3. Web app views get only `preload/webapp.ts` (ROADMAP 3.4) and their session's generated scriptlet preload
+   (3.6, D-041). Neither uses IPC or exposes anything to the page. They read settings from
+   `additionalArguments` and run code only in the page's own world: fingerprinting protection
+   (`preload/farble.ts`) and uBlock scriptlets from the ad lists.
 4. The UI window never navigates away from our bundled page; it cannot open windows.
 5. IPC handlers accept messages only from the UI window's main frame (`fromUi()`), and parse every
    payload with zod. Invalid input is dropped.
@@ -36,7 +37,8 @@ These are enforced by review, and several by ESLint. Do not break them.
 12. User-added apps are validated like IPC input: https start page, real hostnames (never `*`),
     permissions off unless granted, icons only as small raster data URLs.
 13. Filter lists are fetched only from `raw.githubusercontent.com`, in their own in-memory session with
-    no credentials; the lists only feed the blocking engine, never run as code.
+    no credentials. List rules feed the blocking engine; uBlock's scriptlet library (also from there) runs
+    only inside web pages' own world, with the page's own privileges, never in the UI or main.
 
 ## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 

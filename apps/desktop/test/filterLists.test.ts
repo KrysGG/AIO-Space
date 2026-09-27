@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { OnBeforeRequestListenerDetails } from 'electron';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '@aio/core';
-import { compileEngine, FILTER_LISTS, FilterLists } from '../src/main/privacy/filterLists';
+import { compileEngine, FILTER_LISTS, FilterLists, SCRIPTLET_RESOURCES } from '../src/main/privacy/filterLists';
+import { TEST_RESOURCES } from './fixtures';
 import { buildShieldFilters } from '../src/main/privacy/shields';
 
 const ADS = ['||ads.example^', '/banner-ad.', '@@||ads.example/allowed.js', '##.ad-slot', 'news.test##.sponsored'].join('\n');
@@ -83,10 +84,12 @@ describe('FilterLists', () => {
     const fetched: string[] = [];
     const lists = new FilterLists(dir, async (url) => {
       fetched.push(url);
+      if (url === SCRIPTLET_RESOURCES) return TEST_RESOURCES;
       return url.includes('easyprivacy') ? TRACKERS : ADS;
     });
     await lists.update();
-    expect(fetched.length).toBe(FILTER_LISTS.ads.urls.length + FILTER_LISTS.trackers.urls.length);
+    // Every list, plus uBlock's scriptlet library for the ad engine.
+    expect(fetched.length).toBe(FILTER_LISTS.ads.urls.length + FILTER_LISTS.trackers.urls.length + 1);
     expect(lists.status().lists.every((l) => l.rules > 0 && l.updatedAt !== null)).toBe(true);
 
     const offline = new FilterLists(dir, async () => {
@@ -106,5 +109,17 @@ describe('FilterLists', () => {
     await lists.update();
     expect(lists.engine('ads')).toBeDefined();
     expect(lists.status().error).toBe('HTTP 503');
+  });
+
+  it('still updates blocking when the scriptlet library is missing', async () => {
+    const dir2 = mkdtempSync(join(tmpdir(), 'aio-lists-'));
+    const lists = new FilterLists(dir2, async (url) => {
+      if (url === SCRIPTLET_RESOURCES) throw new Error('HTTP 404');
+      return url.includes('easyprivacy') ? TRACKERS : ADS;
+    });
+    await lists.update();
+    expect(lists.status().error).toBeNull();
+    expect(lists.engine('ads')).toBeDefined();
+    rmSync(dir2, { recursive: true, force: true });
   });
 });
