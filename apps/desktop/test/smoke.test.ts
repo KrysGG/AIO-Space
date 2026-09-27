@@ -173,4 +173,23 @@ describe('desktop smoke test', () => {
     await tiles().first().getByRole('button', { name: 'Close tile' }).click();
     await expect.poll(viewCount).toBe(0);
   });
+
+  it('adds apps from the app store: from the rail, and into an empty tile from its launcher', async () => {
+    await ui.getByRole('button', { name: 'Add an app' }).click();
+    const store = ui.getByRole('dialog', { name: 'App store' });
+    await store.waitFor();
+    await store.locator('.store-card', { hasText: 'Twitch' }).getByRole('button', { name: 'Add' }).click();
+    await ui.getByRole('button', { name: 'Open Twitch' }).waitFor(); // in the rail
+    await expect.poll(() => store.locator('.store-card', { hasText: 'Twitch' }).locator('button').innerText()).toBe('Open');
+    await ui.keyboard.press('Escape');
+    await store.waitFor({ state: 'detached' });
+
+    await ui.locator('.launcher-add').first().click();
+    await store.locator('.store-card', { hasText: 'Telegram' }).getByRole('button', { name: 'Add' }).click();
+    await store.waitFor({ state: 'detached' });
+    await expect.poll(() => tiles().first().getAttribute('aria-label')).toBe('Telegram');
+    await expect.poll(viewCount).toBe(1);
+    await tiles().first().getByRole('button', { name: 'Close tile' }).click();
+    await expect.poll(viewCount).toBe(0);
+  });
 });

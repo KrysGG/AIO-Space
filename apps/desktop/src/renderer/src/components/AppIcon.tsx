@@ -1,5 +1,6 @@
 import { siDiscord, siInstagram, siReddit, siX, siYoutube } from 'simple-icons';
 import type { WebAppDef } from '@aio/core';
+import { STORE_MARKS, visibleOnDark } from './BrandMarks';
 
 /**
  * Brand marks from Simple Icons (CC0 SVG paths; the logos remain their owners' trademarks), shown
@@ -15,7 +16,16 @@ const BRAND: Record<string, { path: string; color: string }> = {
   instagram: { path: siInstagram.path, color: `#${siInstagram.hex}` },
 };
 
-export function AppIcon({ app, size = 20 }: { app: Pick<WebAppDef, 'id' | 'glyph' | 'kind' | 'icon'>; size?: number }) {
+export function AppIcon({ app, size = 20 }: { app: Pick<WebAppDef, 'id' | 'glyph' | 'kind' | 'icon' | 'brand' | 'color'>; size?: number }) {
+  // App store apps: their brand mark, crisper than a favicon and there before the first load.
+  const mark = app.brand ? STORE_MARKS[app.brand] : undefined;
+  if (mark) {
+    return (
+      <svg className="app-icon" viewBox="0 0 24 24" aria-hidden style={{ width: size, height: size, fill: visibleOnDark(app.color), stroke: 'none' }}>
+        <path d={mark} />
+      </svg>
+    );
+  }
   // Custom apps: their own favicon (a data: URL checked by main's schema).
   if (app.icon) return <img className="app-icon" src={app.icon} alt="" style={{ width: size, height: size, borderRadius: 4 }} />;
   const brand = BRAND[app.id];
@@ -41,5 +51,9 @@ export function AppIcon({ app, size = 20 }: { app: Pick<WebAppDef, 'id' | 'glyph
       </svg>
     );
   }
-  return <span className="app-icon-glyph">{app.glyph}</span>;
+  return (
+    <span className="app-icon-glyph" style={app.color ? { color: visibleOnDark(app.color) } : undefined}>
+      {app.glyph}
+    </span>
+  );
 }

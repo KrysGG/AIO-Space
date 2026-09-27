@@ -10,6 +10,7 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   NOTICE_IDS,
+  STORE_APPS,
   SEARCH_ENGINES,
   type AppPermission,
   type LayoutNode,
@@ -70,6 +71,8 @@ export const CustomAppSchema: z.ZodType<WebAppDef> = z.object({
   permissions: z.array(z.enum(PERMISSIONS)).max(PERMISSIONS.length),
   glyph: z.string().min(1).max(3),
   icon: IconDataUrl.optional(),
+  brand: z.enum(STORE_APPS.map((a) => a.id) as [string, ...string[]]).optional(),
+  color: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
 });
 
 export const PrivacySchema = z.object({

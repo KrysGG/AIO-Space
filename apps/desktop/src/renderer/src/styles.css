@@ -370,7 +370,7 @@ button { font: inherit; color: inherit; }
 .rail-badge-info { background: var(--focus); color: var(--ink); }
 
 /* ---- Add app dialog --------------------------------------------------------- */
-.modal-backdrop { display: grid; place-items: center; background: rgb(0 0 0 / 0.35); }
+.modal-backdrop { display: grid; place-items: center; background: rgb(8 10 16 / 0.5); backdrop-filter: blur(8px) saturate(1.2); }
 .popover.modal { position: static; }
 .add-app { width: min(440px, calc(100vw - 32px)); display: grid; gap: 12px; }
 .add-app .popover-hint { margin: 0; }
@@ -613,6 +613,84 @@ button { font: inherit; color: inherit; }
   transition-delay: 0s !important;
 }
 :root.instant .popover, :root.instant .shortcuts { backdrop-filter: none; background: var(--rail); }
+:root.instant .modal-backdrop { backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; transition-delay: 0s !important; }
 }
+
+/* ---- App store --------------------------------------------------------------- */
+.rail-apps { overflow-y: auto; overflow-x: hidden; scrollbar-width: none; align-items: center; }
+.rail-apps::-webkit-scrollbar { display: none; }
+.rail-add { border: 1px dashed var(--line); color: var(--muted); }
+.rail-add:hover:not(:disabled) { color: var(--text); border-style: solid; }
+.rail-add svg { stroke-width: 1.8; stroke-linecap: round; }
+
+.store { width: min(880px, calc(100vw - 48px)); max-height: min(640px, calc(100vh - 48px)); display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; }
+.store-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.store-title { margin: 0 0 2px; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
+.store-head .popover-hint { margin: 0; }
+.store-search {
+  width: 220px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgb(0 0 0 / 0.25);
+  color: var(--text);
+  font: inherit;
+  user-select: text;
+}
+.store-search:focus { outline: none; border-color: var(--focus-ring); }
+.store-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.store-tab {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.store-tab:hover { color: var(--text); border-color: var(--muted); }
+.store-tab.is-active { background: var(--text); border-color: var(--text); color: var(--ink); font-weight: 600; }
+.store-grid { list-style: none; margin: 0; padding: 2px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; overflow: auto; }
+.store-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.04);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+  animation: aio-pop-in var(--dur-slow) var(--ease-out) both;
+  transition: background-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+}
+.store-card:hover { background: rgb(255 255 255 / 0.07); transform: translateY(-1px); }
+.store-mono {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 12px rgb(0 0 0 / 0.25);
+}
+.store-info { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.store-info strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-info small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-info small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.store-pill { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: rgb(243 165 116 / 0.16); color: #f3a574; font-size: 10px; font-weight: 600; vertical-align: 1px; cursor: help; }
+.store-card .btn { height: 28px; padding: 0 12px; flex: none; }
+.store-empty { grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--muted); }
+.store-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.store-foot .popover-hint { margin: 0; }
+.store-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.store-name strong { min-width: 0; }
+.store-name .store-pill { margin-left: 0; flex: none; }
+.store-mono svg { width: 22px; height: 22px; fill: #fff; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.25)); }

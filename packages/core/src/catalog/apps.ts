@@ -28,6 +28,10 @@ export interface WebAppDef {
   glyph: string;
   /** Custom apps: the site's favicon as a data: URL, fetched once through the app's own session. */
   icon?: string;
+  /** Added from the app store: the store entry's id, which picks its brand mark in the UI. */
+  brand?: string;
+  /** Brand colour (#rrggbb) for its mark or monogram. */
+  color?: string;
 }
 
 export const BUILTIN_APPS: WebAppDef[] = [

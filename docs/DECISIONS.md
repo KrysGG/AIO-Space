@@ -357,3 +357,14 @@ scaled), over a blurred stretched copy that fills revealed strips; the frosted l
 modals settle, badges pop, controls press; tiles fade in (opacity only, since their views appear at
 full size at once). (4) `workspace.ui.reduceMotion` (v13, Settings): instant transitions, no glass
 blur, and main skips page snapshots; the system reduced-motion preference also turns animations off.
+
+**D-040: App store: a curated catalog in core, installed as ordinary custom apps.**
+Owner request. `core/catalog/store.ts` lists ~26 popular web apps (Twitch, Spotify, Netflix, WhatsApp,
+Slack, Gmail, ChatGPT, Claude, ...) with the sites each may navigate and only the permissions its main
+feature needs. "Add" runs the same validation as a typed-in app (`makeCustomApp`) and stores
+`brand` (the store id) and `color`, so the UI shows the real mark from Simple Icons (19 of 26; the
+others asked Simple Icons to remove theirs and get a coloured monogram), even before a favicon loads.
+Opened from the rail's "+" (new) or an empty tile's "Add app" (then the pick opens in that tile);
+"Add any website" leads to the manual form. Entries that need Widevine DRM (Netflix, Spotify, Prime
+Video, Disney+) are marked: stock Electron can't play them (castlabs' Electron build would; Backlog).
+Submitting apps to the store needs a server and review; not started (Backlog).

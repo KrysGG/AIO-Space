@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Store] App store (rail "+" or an empty tile's Add app): ~26 popular web apps in one click with brand icons, search and categories; DRM apps marked (D-040).
 - [UX] Seamless resizing: views follow the window edge in the same tick (main places them), crisp 1:1 page stills during drags and sidebar animation; one motion system (panels, modals, badges, presses); "Reduce animations and effects" in Settings (workspace v13, D-039).
 - [4.7 fix] Smooth sidebar hide/show: pages move with their tiles (snapshots while animating), buttons fade, and the collapsed edge's handle is visible again.
 - [4.7 partial] Hide the sidebar to a thin edge (button at the bottom of the rail or Ctrl+Shift+B); click the edge to bring it back; remembered (workspace v12, D-038).

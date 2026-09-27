@@ -10,6 +10,7 @@ import {
   computeLayout,
   disallowHttpHost,
   dismissNotice,
+  appFromStore,
   setForgetOnClose,
   ensureFocus,
   findLeaf,
@@ -40,6 +41,7 @@ import {
 } from '@aio/core';
 import type { DownloadInfo, OpenInNewTile, ShortcutAction, ViewState } from '../../shared/ipc';
 import { AddAppDialog } from './components/AddAppDialog';
+import { AppStore } from './components/AppStore';
 import { DownloadsPanel } from './components/DownloadsPanel';
 import { MenuPanel } from './components/MenuPanel';
 import { ShieldsPanel } from './components/ShieldsPanel';
@@ -74,6 +76,8 @@ export function App() {
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   // Open "Add app" dialog; leafId = the empty tile it was opened from (the new app opens there).
   const [adding, setAdding] = useState<{ leafId: string | null } | null>(null);
+  /** The app store is open; `leafId` is the empty tile it was opened from (its pick opens there). */
+  const [store, setStore] = useState<{ leafId: string | null } | null>(null);
   // Tile whose Shields panel is open (ROADMAP 3.1).
   const [shieldsLeaf, setShieldsLeaf] = useState<string | null>(null);
   /** The rail is animating (D-038): views are hidden and sharp snapshots stand in for them. */
@@ -156,6 +160,7 @@ export function App() {
   const closeHelp = useCallback(() => setHelpOpen(false), []);
   const closeDownloads = useCallback(() => setDownloadsOpen(false), []);
   const closeAdding = useCallback(() => setAdding(null), []);
+  const closeStore = useCallback(() => setStore(null), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const closeShields = useCallback(() => setShieldsLeaf(null), []);
   // Runs after the popover has shown the views again, so the focused tile can take the keyboard back.
@@ -172,7 +177,7 @@ export function App() {
       if (!ws || railMoving) return;
       const flip = (): void => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const hasViews = activeSpaceHasApps(ws);
-      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null;
+      const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || adding !== null || store !== null;
       const reduceMotion = ws.ui.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       // Views already hidden (a popover is open), none to hide, or no animation wanted: just switch.
       if (!hasViews || popoverOpen || reduceMotion) return flip();
@@ -408,6 +413,7 @@ export function App() {
         activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
         menuNotice={keyringNotice}
         collapsed={ws.ui.railCollapsed}
+        onAddApp={() => setStore({ leafId: null })}
         onToggleCollapsed={() => toggleRailRef.current()}
       />
       <TileLayout
@@ -432,7 +438,7 @@ export function App() {
         shieldsUp={(appId) => resolvePrivacy(ws.privacy, ws.privacyOverrides[appId]).shields}
         onShields={setShieldsLeaf}
         onAllowHttp={(host) => edit((w) => allowHttpHost(w, host))}
-        onAddApp={(leafId) => setAdding({ leafId })}
+        onAddApp={(leafId) => setStore({ leafId })}
         onRemoveApp={removeApp}
       />
       {helpOpen && <ShortcutsHelp onClose={closeHelp} onClosed={refocusTile} />}
@@ -467,6 +473,34 @@ export function App() {
           onForget={(forget) => edit((w) => setForgetOnClose(w, shieldsApp.id, forget))}
           onClearData={(profile) => window.aio.clearData({ appId: shieldsApp.id, profile })}
           onClose={closeShields}
+          onClosed={refocusTile}
+        />
+      )}
+      {store && (
+        <AppStore
+          catalog={catalog}
+          onInstall={(entry) => {
+            const res = appFromStore(entry, catalog);
+            if (!res.ok) return res.error;
+            const leafId = store.leafId;
+            edit((w) => {
+              const withApp = { ...w, customApps: [...w.customApps, res.app] };
+              return leafId
+                ? updateActiveSpace(withApp, (s) => ({ ...s, layout: assignApp(s.layout, leafId, res.app.id), focusedLeafId: leafId }))
+                : withApp;
+            });
+            if (leafId) setStore(null); // opened from an empty tile: the app is now in it
+            return null;
+          }}
+          onOpen={(appId) => {
+            openApp(appId, store.leafId ?? focused);
+            setStore(null);
+          }}
+          onCustom={() => {
+            setAdding({ leafId: store.leafId });
+            setStore(null);
+          }}
+          onClose={closeStore}
           onClosed={refocusTile}
         />
       )}

@@ -25,10 +25,12 @@ interface Props {
   /** Rail hidden down to a thin edge (the setting lives in the workspace). */
   collapsed: boolean;
   onToggleCollapsed(): void;
+  /** Opens the app store. */
+  onAddApp(): void;
 }
 
 /** Left rail: menu, one button per app, and layout actions. Never covered by native views. */
-export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed }: Props) {
+export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, menuOpen, spaceName, showSpaceName, onHelp, helpOpen, onDownloads, downloadsOpen, activeDownloads, menuNotice, collapsed, onToggleCollapsed, onAddApp }: Props) {
   const attention = menuNotice || Object.values(unread).some(Boolean) || activeDownloads > 0;
   // One structure for both states, so the width can animate while the buttons fade out and the edge
   // fades in. `inert` keeps the hidden half out of the tab order and away from the pointer.
@@ -64,6 +66,9 @@ export function Sidebar({ catalog, unread, onOpen, onSplit, canSplit, onMenu, me
               <UnreadBadge unread={unread[app.id] ?? null} className="rail-badge" />
             </button>
           ))}
+          <button className="rail-btn rail-add" onClick={onAddApp} title="Add an app (app store)" aria-label="Add an app">
+            <svg viewBox="0 0 20 20" aria-hidden><path d="M10 4.5v11M4.5 10h11" /></svg>
+          </button>
         </div>
 
         <div className="rail-actions">

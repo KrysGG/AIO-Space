@@ -466,6 +466,11 @@ Add items found while working on other steps here, with the step where they were
   subframes, redirect surrogates (uBlock resources) instead of plain blocking.
 - (3.8) Built; the warning is verified on a system without a keyring (this environment: `basic_text`).
   Not ticked until the owner confirms it does not appear on their normal KDE setup.
+- (Store) Widevine DRM for Netflix, Spotify, Prime Video, Disney+: stock Electron has none. Options:
+  castlabs' "Electron for Content Security" (ECS) build with Widevine, which needs VMP signing for
+  production. Evaluate before 5.1 packaging.
+- (Store) "Submit an app" to the store: needs a small backend (submissions, review, signed catalog
+  updates) so the store can list and promote community apps. Owner idea; design before building.
 - (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
   test together when a second person is available (also covers 2.5's real-message check).
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a
