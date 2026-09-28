@@ -350,7 +350,7 @@ AppImage auto-update with `electron-updater` from GitHub Releases (signed releas
 users update through their package manager, so disable the updater there.
 **Done when:** An older AppImage updates itself to a newer release.
 
-### - [ ] 5.5 Release pipeline
+### - [x] 5.5 Release pipeline
 GitHub Actions on tag: build, test, package, attach to release, checksums.
 **Done when:** Tagging `v0.1.0` produces a release with AppImage, pacman package and SHA256 sums.
 
@@ -480,8 +480,9 @@ Add items found while working on other steps here, with the step where they were
   locally against a loopback server serving the same files). Releases aren't GPG-signed; consider signing
   `SHA256SUMS` once there's a key to keep. The updater cache folder is `~/.cache/@aiodesktop-updater`
   (from the npm package name `@aio/desktop`).
-- (5.5) Dry run passed on GitHub (2026-09-28, run 36360878477): tests, build, verify:release, checksums and
-  AUR files all green; its files re-checked locally.
+- (5.5) v0.1.0 released by the pipeline (2026-09-28): https://github.com/KrysGG/SpaceAIO/releases/tag/v0.1.0.
+  Downloaded files match SHA256SUMS and pass verify:release; the released PKGBUILD builds with makepkg from
+  the live URLs. To release: bump apps/desktop/package.json's version, commit, tag vX.Y.Z, push the tag.
 - (5.2) Publishing spaceaio-bin on the AUR is the owner's step (an AUR account and SSH key): copy the
   release's PKGBUILD, SRCINFO (as .SRCINFO) and packaging/aur/spaceaio.desktop into the AUR git repo.
 - (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out

@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [5.5] First release, v0.1.0, published by the tag workflow: AppImage, pacman package, tar.gz, SHA256SUMS, latest-linux.yml and AUR files; verified after download and with makepkg from the live URLs (D-060).
 - [License] All rights reserved for now (LICENSE; release builds free to use); the repository is now github.com/KrysGG/SpaceAIO (D-062).
 - [Fix] The UI no longer writes the workspace back right after loading it; on slower machines that stale save could overwrite a newer one (made CI fail intermittently since Phase 4, and could lose an import). A test scanning profile files no longer trips over files Chromium deletes mid-scan.
 - [5.4] The AppImage updates itself from GitHub Releases (Menu > Updates: automatic checks on/off, Check now, Restart to update); pacman/AUR installs never check. Quitting at logout/shutdown now runs the quit steps (installs a pending update, "forget on close") (D-061).
