@@ -11,6 +11,7 @@ import {
   ViewFocusSchema,
   ViewNavigateSchema,
   OpenExternalSchema,
+  ScreenShareChoiceSchema,
   ViewsSyncSchema,
   WorkspaceSchema,
   NoPayloadSchema,
@@ -129,6 +130,18 @@ describe('ViewFocusSchema', () => {
     expect(ViewFocusSchema.safeParse({}).success).toBe(false);
     expect(ViewFocusSchema.safeParse({ leafId: '<script>' }).success).toBe(false);
     expect(ViewFocusSchema.safeParse({ leafId: 5 }).success).toBe(false);
+  });
+});
+
+describe('ScreenShareChoiceSchema', () => {
+  it('takes a request id, a source id or null, and the audio choice (D-068)', () => {
+    const id = '0b6f4c3e-2a8d-4f1e-9c7b-5d2e8a1f3c40';
+    expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: 'screen:0:0', audio: true }).success).toBe(true);
+    expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: null, audio: false }).success).toBe(true);
+    expect(ScreenShareChoiceSchema.safeParse({ id: 'not-a-uuid', sourceId: null, audio: false }).success).toBe(false);
+    expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: 'x'.repeat(201), audio: false }).success).toBe(false);
+    expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: 5, audio: false }).success).toBe(false);
+    expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: null }).success).toBe(false);
   });
 });
 
