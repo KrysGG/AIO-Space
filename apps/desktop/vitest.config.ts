@@ -12,9 +12,9 @@ export default defineConfig({
     fileParallelism: false,
     hookTimeout: 60_000,
     // In CI, report failures with repo-relative paths so GitHub attaches them as annotations
-    // (readable through the public API, unlike the raw log).
+    // (readable through the public API, unlike the raw log). Windows paths come with forward slashes.
     reporters: workspace
-      ? ['default', ['github-actions', { onWritePath: (path: string) => path.replace(`${workspace}/`, '') }]]
+      ? ['default', ['github-actions', { onWritePath: (path: string) => path.replace(`${workspace.replaceAll('\\', '/')}/`, '') }]]
       : ['default'],
   },
 });

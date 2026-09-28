@@ -81,17 +81,23 @@ describe('ad and tracker blocking', () => {
   });
 
   it('turning "Block ads" off for the app lets ads through; trackers stay blocked', async () => {
-    await ui.locator('.shield-btn').click();
-    await ui.locator('.shield-switch', { hasText: 'Block ads' }).locator('input').uncheck();
+    // DOM events, not mouse clicks: Windows may stop painting the window (a covered window, or a CI
+    // desktop), and mouse clicks wait for paints; this test hung there on Windows CI. Each step has
+    // its own timeout, so a failure names the step.
+    await ui.locator('.shield-btn').dispatchEvent('click', undefined, { timeout: 10_000 });
+    const blockAds = ui.locator('.shield-switch', { hasText: 'Block ads' }).locator('input');
+    await blockAds.dispatchEvent('click', undefined, { timeout: 10_000 });
+    await expect.poll(() => blockAds.isChecked(), { timeout: 5_000 }).toBe(false);
     await ui.keyboard.press('Escape');
+    await expect.poll(() => ui.locator('.shields-panel').count(), { timeout: 5_000 }).toBe(0);
     // Settings are saved shortly after the change; filters read them per request from then on.
     await expect
-      .poll(() => ui.evaluate(async () => (await window.aio.getWorkspace()).privacyOverrides['browser']?.blockAds))
+      .poll(() => ui.evaluate(async () => (await window.aio.getWorkspace()).privacyOverrides['browser']?.blockAds), { timeout: 5_000 })
       .toBe(false);
     // Navigate after the script returns: a script that unloads its own page may never answer (it hung here).
     await inPage('setTimeout(() => location.reload())');
     await expect.poll(() => requested.includes('/ad-script.js'), { timeout: 20_000 }).toBe(true);
-    await expect.poll(() => visible('.ad-box')).toBe(true);
+    await expect.poll(() => visible('.ad-box'), { timeout: 10_000 }).toBe(true);
     expect(requested).not.toContain('/track.gif');
   });
 
