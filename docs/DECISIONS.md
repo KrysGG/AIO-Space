@@ -709,3 +709,21 @@ space's Browser tile, which gets focus; with none, a new Browser tile beside the
 zod-checked). Always the Browser tile, even when another app matches the site (the owner chose this
 over routing to the matching app). Sign-in popups (D-044) and the context menu's "Open link in system
 browser" are unchanged.
+
+**D-066: Spellcheck dictionaries ship with the app; none is downloaded.**
+Chromium's Hunspell spellchecker (Linux, and Windows for languages the Windows spellchecker lacks)
+downloaded dictionaries from Google's CDN (Backlog 2.4). US English (`en-US-10-1.bdic`, 452 KB, from
+Electron's `hunspell_dictionaries.zip`, with its combined LICENSE) is vendored in `vendor/hunspell`,
+packaged as an extra resource and copied to `userData/Dictionaries` at start (never over an existing
+file), where Chromium looks before downloading. Every app session's download URL is
+`aio-no-download://dictionaries/`, a scheme with no handler: other languages fail at once, with no
+connection, and get no spellcheck. Bundling all 59 dictionaries would add 112 MB; add a language here
+when someone needs it. Tested on Windows with Hunspell forced (`--disable-features=WinUseBrowserSpellChecker`).
+
+**D-067: Accounts can be renamed and removed; the first account's name is stored only once renamed.**
+`renameProfile` names any account, the first included; the first stays implicit ("Account 1") until
+renamed, then `profiles[appId]` holds an entry with id `default` carrying its name (so older workspace
+files need no migration; the schema allows that id once and rejects duplicate ids). `removeProfile`
+removes an added account (never the first): its tiles in every space go back to the first account, and
+the UI clears its data through the existing clear-data path (3.9), which deletes its folder at the next
+start. Both live in the Shields panel next to "Clear data", where the tile's account is already shown.

@@ -40,6 +40,8 @@ import {
   MAX_TILES,
   neighborTile,
   profilesOf,
+  removeProfile,
+  renameProfile,
   removeLeaf,
   removeSpace,
   resolvePrivacy,
@@ -754,6 +756,12 @@ export function App() {
           onForget={(forget) => edit((w) => setForgetOnClose(w, shieldsApp.id, forget))}
           onTwitchScript={(adScript) => edit((w) => ({ ...w, twitch: { adScript } }))}
           onClearData={(profile) => window.aio.clearData({ appId: shieldsApp.id, profile })}
+          onRenameAccount={(name) => edit((w) => renameProfile(w, shieldsApp.id, shieldsLeafNode.profile ?? 'default', name))}
+          onRemoveAccount={async () => {
+            const profile = shieldsLeafNode.profile ?? 'default';
+            edit((w) => removeProfile(w, shieldsApp.id, profile));
+            await window.aio.clearData({ appId: shieldsApp.id, profile });
+          }}
           onClose={closeShields}
           onClosed={refocusTile}
         />

@@ -1,3 +1,6 @@
+import { constants } from 'node:fs';
+import { copyFile, mkdir, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { app, session, webContents, type Session, type WebContents } from 'electron';
 import { partitionFor, type AppPermission, type PrivacySettings, type WebAppDef } from '@aio/core';
 import { noteUpgrade } from '../privacy/httpsFallback';
@@ -11,6 +14,24 @@ import { cleanUserAgent, googleSignInFilter, noPasskeyPopupFilter } from './user
 import { APP_NAME, LEGACY_NAME } from '../store/legacyProfile';
 
 const configured = new Map<string, Session>();
+
+/**
+ * Spellcheck without Google (D-066). Chromium's Hunspell spellchecker (Linux; Windows for languages
+ * Windows can't check) downloads dictionaries from Google's CDN. The app ships US English, copied to
+ * where Chromium looks first (userData/Dictionaries); any other download goes to a scheme that loads
+ * nothing, so those languages simply get no spellcheck.
+ */
+const NO_DICTIONARY_DOWNLOADS = 'aio-no-download://dictionaries/';
+
+export async function installDictionaries(): Promise<void> {
+  const from = app.isPackaged ? join(process.resourcesPath, 'hunspell') : join(app.getAppPath(), 'vendor', 'hunspell');
+  const to = join(app.getPath('userData'), 'Dictionaries');
+  await mkdir(to, { recursive: true });
+  for (const name of (await readdir(from)).filter((n) => n.endsWith('.bdic'))) {
+    // Never over a file Chromium already has (or is loading).
+    await copyFile(join(from, name), join(to, name), constants.COPYFILE_EXCL).catch(() => {});
+  }
+}
 
 /** The app's own UA token, shown to Google's sign-in pages (D-064). */
 export const SIGN_IN_TOKEN = `${APP_NAME}/${app.getVersion()}`;
@@ -41,6 +62,7 @@ export function getAppSession(
 
   const ses = session.fromPartition(partition);
   ses.setUserAgent(cleanUserAgent(ses.getUserAgent(), [APP_NAME, LEGACY_NAME]));
+  ses.setSpellCheckerDictionaryDownloadURL(NO_DICTIONARY_DOWNLOADS);
 
   const allowed = new Set<string>(def.permissions satisfies AppPermission[]);
   ses.setPermissionRequestHandler((wc, permission, callback) => {

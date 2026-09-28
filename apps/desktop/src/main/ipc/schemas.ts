@@ -161,7 +161,12 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
   profiles: z
     .record(
       z.string().regex(/^[a-z0-9-]{1,64}$/),
-      z.array(z.object({ id: ProfileId.refine((p) => p !== 'default'), name: z.string().trim().min(1).max(30) })).max(MAX_PROFILES_PER_APP - 1),
+      z
+        .array(z.object({ id: ProfileId, name: z.string().trim().min(1).max(30) }))
+        .max(MAX_PROFILES_PER_APP)
+        // 'default' only carries the first account's name once renamed; every id once.
+        .refine((list) => unique(list.map((p) => p.id)), 'duplicate account')
+        .refine((list) => list.filter((p) => p.id !== 'default').length <= MAX_PROFILES_PER_APP - 1, 'too many accounts'),
     )
     .refine((p) => Object.keys(p).length <= 100, 'too many apps with accounts'),
   httpAllowedHosts: z.array(Host).max(200).refine(unique, 'duplicate host'),

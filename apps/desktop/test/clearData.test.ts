@@ -136,6 +136,37 @@ describe('clear data and forget mode', () => {
     expect(existsSync(join(partition, CANARY))).toBe(false);
   });
 
+  it('adds, renames and removes an account: its tiles go back to the first, its data is deleted (ROADMAP 2.12)', async () => {
+    const accounts = () => ui.evaluate(async () => (await window.aio.getWorkspace()).profiles['browser'] ?? []);
+    const second = join(profile, 'Partitions', 'app-browser-p2');
+    await go('/');
+    await ui.getByRole('combobox', { name: 'Account' }).selectOption('+add');
+    await expect.poll(accounts).toEqual([{ id: 'p2', name: 'Account 2' }]);
+    await go('/login');
+    await expect.poll(state, { timeout: 20_000 }).toEqual({ cookie: 'session=abc123', token: TOKEN });
+    await app.evaluate(async ({ session }) => {
+      const ses = session.fromPartition('persist:app-browser-p2');
+      ses.flushStorageData();
+      await ses.cookies.flushStore();
+    });
+    await expect.poll(() => onDisk(second, TOKEN), { timeout: 10_000 }).toBe(true);
+    plantCanary(second);
+
+    await ui.locator('.shield-btn').click();
+    const name = ui.getByRole('textbox', { name: 'Account name' });
+    await name.fill('Work');
+    await name.press('Enter');
+    await expect.poll(accounts).toEqual([{ id: 'p2', name: 'Work' }]);
+    ui.once('dialog', (d) => void d.accept());
+    await ui.getByRole('button', { name: 'Remove account' }).click();
+
+    await expect.poll(accounts).toEqual([]);
+    await expect.poll(() => ui.getByRole('combobox', { name: 'Account' }).inputValue()).toBe('default');
+    await app.close();
+    await launch();
+    expect(existsSync(second)).toBe(false);
+  });
+
   it('"Forget when SpaceAIO closes" clears the app on quit', async () => {
     await logIn();
     plantCanary(partition);

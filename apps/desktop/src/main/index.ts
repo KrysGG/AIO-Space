@@ -12,6 +12,7 @@ import { SharedSignIn } from './sessions/sharedSignIn';
 import { installGlobalHardening, lockDownUiSession } from './security/hardening';
 import { handleUiScheme, registerUiScheme } from './security/uiProtocol';
 import { cleanUserAgent } from './sessions/userAgent';
+import { installDictionaries } from './sessions/appSession';
 import { clearPartitionNow, partitionsOfApp, wipeAtStartup } from './store/siteData';
 import { WorkspaceStore } from './store/workspaceStore';
 import { APP_NAME, LEGACY_NAME, legacyProfileInUse, migrateLegacyProfile } from './store/legacyProfile';
@@ -74,6 +75,8 @@ app.whenReady().then(async () => {
 
   const store = new WorkspaceStore(join(app.getPath('userData'), 'workspace.json'));
   await store.load();
+  // Spellcheck dictionaries ship with the app; nothing is downloaded (D-066).
+  await installDictionaries().catch((err: unknown) => console.error('[spellcheck] could not install dictionaries', err));
   // Before any app session exists: delete cleared accounts and "forget on close" apps (ROADMAP 3.9).
   await wipeAtStartup(app.getPath('userData'), store.get());
 

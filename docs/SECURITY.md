@@ -66,6 +66,9 @@ These are enforced by review, and several by ESLint. Do not break them.
     SHA-512 matches `latest-linux.yml`. No identifier is sent; electron-updater's "staging user ID" stays
     on disk (only used for staged rollouts, which we don't use). Releases aren't GPG-signed yet: HTTPS
     from GitHub plus the hash is the trust chain (Backlog).
+18. Spellcheck (D-066) never downloads dictionaries. Chromium's Hunspell spellchecker (Linux; Windows for
+    languages Windows can't check) would fetch them from Google's CDN; the app ships US English
+    (`vendor/hunspell`) and points every session's dictionary downloads at a scheme that loads nothing.
 
 ## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 

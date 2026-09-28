@@ -23,6 +23,13 @@ describe('desktop smoke test', () => {
       env: { ...process.env, AIO_USER_DATA_DIR: profile, ELECTRON_RENDERER_URL: '' },
     });
     ui = await app.firstWindow();
+    // Browser pages come from memory, not the internet, so the test doesn't depend on outside sites
+    // (it only checks which URL loads). ROADMAP Backlog 2.12.
+    await app.evaluate(({ session }) =>
+      session
+        .fromPartition('persist:app-browser-default')
+        .protocol.handle('https', () => new Response('<!doctype html><title>stub</title>', { headers: { 'content-type': 'text/html' } })),
+    );
   });
 
   afterAll(async () => {
@@ -75,8 +82,8 @@ describe('desktop smoke test', () => {
     await address.fill('example.com');
     await address.press('Enter');
     await expect
-      .poll(() => app.evaluate(({ webContents }) => webContents.getAllWebContents().some((w) => w.getURL() === 'https://example.com/')), { timeout: 15_000 })
-      .toBe(true);
+      .poll(() => app.evaluate(({ webContents }) => webContents.getAllWebContents().find((w) => w.getURL() === 'https://example.com/')?.getTitle()))
+      .toBe('stub'); // served from memory, not the real site
   });
 
   it('switching the search engine moves a search to the new engine', async () => {
@@ -84,12 +91,11 @@ describe('desktop smoke test', () => {
     const address = ui.getByRole('textbox', { name: 'Address or search' });
     await address.fill('aio space test');
     await address.press('Enter');
-    // Real sites: allow for a slow network (the default 1 s poll made this fail on busy machines).
-    await expect.poll(async () => (await urls()).some((u) => u.startsWith('https://duckduckgo.com/?q=aio')), { timeout: 15_000 }).toBe(true);
+    await expect.poll(async () => (await urls()).some((u) => u.startsWith('https://duckduckgo.com/?q=aio'))).toBe(true);
 
     await ui.getByRole('combobox', { name: 'Search engine' }).selectOption('brave');
     await expect
-      .poll(async () => (await urls()).some((u) => u.startsWith('https://search.brave.com/search?q=aio%20space%20test')), { timeout: 15_000 })
+      .poll(async () => (await urls()).some((u) => u.startsWith('https://search.brave.com/search?q=aio%20space%20test')))
       .toBe(true);
   });
 

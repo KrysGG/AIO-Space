@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assignApp, createLeaf, DEFAULT_PROFILE, listLeaves, setProfile, splitLeaf, swapApps } from '../src/layout/tree';
-import { addProfile, defaultWorkspace, MAX_PROFILES_PER_APP, migrateWorkspace, profilesOf, WORKSPACE_VERSION } from '../src/workspace/workspace';
+import { addProfile, addSpace, defaultWorkspace, MAX_PROFILES_PER_APP, migrateWorkspace, profilesOf, removeProfile, renameProfile, WORKSPACE_VERSION, type Workspace } from '../src/workspace/workspace';
 
 describe('accounts in tiles', () => {
   it('switching account starts a fresh instance; switching back to the first drops the field', () => {
@@ -40,6 +40,42 @@ describe('workspace accounts', () => {
     for (let i = 0; i < 10; i++) ws = addProfile(ws, 'discord').ws;
     expect(profilesOf(ws, 'discord')).toHaveLength(MAX_PROFILES_PER_APP);
     expect(addProfile(ws, 'discord').profileId).toBeNull();
+  });
+
+  it('renames accounts, the first one too, and keeps the first implicit while it has its default name', () => {
+    let ws = addProfile(defaultWorkspace(), 'discord').ws;
+    ws = renameProfile(ws, 'discord', 'p2', '  Work  ');
+    ws = renameProfile(ws, 'discord', 'default', 'Personal');
+    expect(profilesOf(ws, 'discord')).toEqual([{ id: 'default', name: 'Personal' }, { id: 'p2', name: 'Work' }]);
+    expect(renameProfile(ws, 'discord', 'p2', '   ')).toBe(ws); // blank: ignored
+    expect(renameProfile(ws, 'discord', 'p9', 'Nope')).toBe(ws); // unknown account
+    expect(profilesOf(renameProfile(ws, 'discord', 'p2', 'x'.repeat(50)), 'discord')[1]!.name).toHaveLength(30);
+    ws = renameProfile(ws, 'discord', 'default', 'Account 1');
+    expect(ws.profiles['discord']).toEqual([{ id: 'p2', name: 'Work' }]);
+    // Adding still counts the renamed first account once.
+    ws = renameProfile(ws, 'discord', 'default', 'Personal');
+    expect(addProfile(ws, 'discord').profileId).toBe('p3');
+  });
+
+  it('removes an added account and moves its tiles, in every space, back to the first account', () => {
+    const withTile = (w: Workspace, profile: string): Workspace => {
+      const s = w.spaces.at(-1)!;
+      const layout = setProfile(assignApp(s.layout, listLeaves(s.layout)[0]!.id, 'discord'), listLeaves(s.layout)[0]!.id, profile);
+      return { ...w, spaces: w.spaces.map((x) => (x.id === s.id ? { ...x, layout } : x)) };
+    };
+    let ws = addProfile(defaultWorkspace(), 'discord').ws;
+    ws = withTile(ws, 'p2');
+    ws = withTile(addSpace(ws), 'p2');
+    const out = removeProfile(ws, 'discord', 'p2');
+    expect(profilesOf(out, 'discord')).toEqual([{ id: 'default', name: 'Account 1' }]);
+    expect(out.profiles['discord']).toBeUndefined();
+    for (const s of out.spaces) {
+      const leaf = listLeaves(s.layout)[0]!;
+      expect(leaf.appId).toBe('discord');
+      expect(leaf.profile ?? DEFAULT_PROFILE).toBe(DEFAULT_PROFILE);
+    }
+    expect(removeProfile(ws, 'discord', 'default')).toBe(ws); // the first account can't be removed
+    expect(removeProfile(ws, 'discord', 'p7')).toBe(ws);
   });
 
   it('migrates v6 by adding an empty account list', () => {

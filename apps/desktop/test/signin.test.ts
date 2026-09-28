@@ -47,6 +47,13 @@ describe('sign-in popups and redirects stay in the app', () => {
       env: { ...process.env, AIO_USER_DATA_DIR: profile, ELECTRON_RENDERER_URL: '' },
     });
     ui = await app.firstWindow();
+    // Browser pages come from memory, not the internet, so the test doesn't depend on outside sites
+    // (it only checks which URL loads). ROADMAP Backlog 2.12.
+    await app.evaluate(({ session }) =>
+      session
+        .fromPartition('persist:app-browser-default')
+        .protocol.handle('https', () => new Response('<!doctype html><title>stub</title>', { headers: { 'content-type': 'text/html' } })),
+    );
     await ui.locator('.tile').first().waitFor();
     await app.evaluate(({ shell, webContents }) => {
       const g = globalThis as unknown as { opened: string[]; started: string[] };
@@ -98,7 +105,8 @@ describe('sign-in popups and redirects stay in the app', () => {
 
   it('keeps a full-page redirect to Google sign-in in the tile', async () => {
     const target = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test';
-    await inPage(`location.href = ${JSON.stringify(target)}`);
+    // Navigate after the script returns: a script that unloads its own page may never answer.
+    await inPage(`setTimeout(() => (location.href = ${JSON.stringify(target)}))`);
     await until(() => app.evaluate((_e, t) => (globalThis as unknown as { started: string[] }).started.includes(t as string), target));
     expect(await external()).toEqual([]);
   });
@@ -106,7 +114,7 @@ describe('sign-in popups and redirects stay in the app', () => {
   it('opens ordinary outside links in a Browser tile beside the app, not the system browser (D-065)', async () => {
     await app.evaluate(({ webContents }, [i, u]) => void webContents.fromId(i as number)!.loadURL(u as string), [viewId, page] as const);
     await until(async () => (await inPage('document.title')) === 'signin');
-    await inPage("location.href = 'https://example.com/'");
+    await inPage("setTimeout(() => (location.href = 'https://example.com/'))");
     await until(() =>
       app.evaluate(({ webContents }) => webContents.getAllWebContents().some((w) => w.getURL().startsWith('https://example.com/'))),
     );

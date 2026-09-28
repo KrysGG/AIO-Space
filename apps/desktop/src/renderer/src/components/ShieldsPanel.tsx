@@ -26,6 +26,10 @@ interface Props {
   onForget(forget: boolean): void;
   onTwitchScript(script: TwitchAdScript): void;
   onClearData(profile: string): Promise<void>;
+  /** Rename the tile's account (ROADMAP 2.12). */
+  onRenameAccount(name: string): void;
+  /** Remove the tile's account and delete its data; never offered for the first account. */
+  onRemoveAccount(): Promise<void>;
   onClose(): void;
   onClosed(): void;
 }
@@ -34,13 +38,18 @@ interface Props {
  * Shields for one app (ROADMAP 3.1), opened from the shield in its tile header. Changes are per-app
  * overrides of the defaults in the menu, and apply to that app immediately. Hides views while open.
  */
-export function ShieldsPanel({ ws, app, blocked, onSet, onReset, profile, accounts, onForget, onTwitchScript, onClearData, onClose, onClosed }: Props) {
+export function ShieldsPanel({ ws, app, blocked, onSet, onReset, profile, accounts, onForget, onTwitchScript, onClearData, onRenameAccount, onRemoveAccount, onClose, onClosed }: Props) {
   const [clearing, setClearing] = useState<'idle' | 'busy' | 'done'>('idle');
   const who = accounts > 1 ? `${app.name} (${profile.name})` : app.name;
   const clear = (): void => {
     if (!window.confirm(`Clear all data for ${who}? You’ll be logged out, and its cookies, site storage and cache are deleted.`)) return;
     setClearing('busy');
     void onClearData(profile.id).then(() => setClearing('done'));
+  };
+  const remove = (): void => {
+    if (!window.confirm(`Remove ${who}? You’ll be logged out of it, and its cookies, site storage and cache are deleted. Its tiles switch to ${app.name}'s first account.`)) return;
+    setClearing('busy');
+    void onRemoveAccount().then(onClose);
   };
   useEffect(() => {
     window.aio.setViewsHidden(true);
@@ -126,6 +135,26 @@ export function ShieldsPanel({ ws, app, blocked, onSet, onReset, profile, accoun
         </fieldset>
 
         <section className="site-data">
+          {(accounts > 1 || profile.name !== 'Account 1') && (
+            <div className="site-data-row account-row">
+              <label className="field account-name">
+                <span>Account name</span>
+                <input
+                  key={profile.id}
+                  defaultValue={profile.name}
+                  maxLength={30}
+                  aria-label="Account name"
+                  onBlur={(e) => e.target.value.trim() !== profile.name && onRenameAccount(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+              </label>
+              {profile.id !== 'default' && (
+                <button className="btn btn-danger" onClick={remove} disabled={clearing === 'busy'}>
+                  Remove account
+                </button>
+              )}
+            </div>
+          )}
           <label className="shield-switch">
             <span>
               Forget {app.name} when SpaceAIO closes

@@ -1,6 +1,6 @@
 import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
 import type { WebAppDef } from '../catalog/apps';
-import { createLeaf, DEFAULT_PROFILE, listLeaves, mapTree, newInstanceId } from '../layout/tree';
+import { createLeaf, DEFAULT_PROFILE, listLeaves, mapTree, newInstanceId, setProfile } from '../layout/tree';
 import { newId } from '../util/id';
 import type { LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
@@ -448,9 +448,44 @@ export function addSpaceFromTemplate(ws: Workspace, templateId: string): Workspa
 
 export const MAX_PROFILES_PER_APP = 8;
 
-/** Every account of an app, the implicit first one included. */
+export const MAX_PROFILE_NAME = 30;
+
+/**
+ * Every account of an app, the implicit first one included. The first account is only stored once
+ * it has been renamed (an entry with id 'default' in `profiles`).
+ */
 export function profilesOf(ws: Workspace, appId: string): AppProfile[] {
-  return [{ id: DEFAULT_PROFILE, name: 'Account 1' }, ...(ws.profiles[appId] ?? [])];
+  const stored = ws.profiles[appId] ?? [];
+  const first = stored.find((p) => p.id === DEFAULT_PROFILE) ?? { id: DEFAULT_PROFILE, name: 'Account 1' };
+  return [first, ...stored.filter((p) => p.id !== DEFAULT_PROFILE)];
+}
+
+/** Rename one of an app's accounts (the first one too). Blank names are ignored. */
+export function renameProfile(ws: Workspace, appId: string, profileId: string, name: string): Workspace {
+  const clean = name.trim().slice(0, MAX_PROFILE_NAME);
+  const all = profilesOf(ws, appId);
+  if (!clean || !all.some((p) => p.id === profileId)) return ws;
+  const renamed = all.map((p) => (p.id === profileId ? { ...p, name: clean } : p));
+  // The first account stays implicit while it has its default name.
+  const stored = renamed.filter((p) => p.id !== DEFAULT_PROFILE || p.name !== 'Account 1');
+  return { ...ws, profiles: { ...ws.profiles, [appId]: stored } };
+}
+
+/**
+ * Remove an added account (not the first). Tiles that showed it, in every space, go back to the
+ * first account. Its site data is deleted separately (main's clear-data, ROADMAP 3.9).
+ */
+export function removeProfile(ws: Workspace, appId: string, profileId: string): Workspace {
+  if (profileId === DEFAULT_PROFILE || !(ws.profiles[appId] ?? []).some((p) => p.id === profileId)) return ws;
+  const rest = (ws.profiles[appId] ?? []).filter((p) => p.id !== profileId);
+  const profiles = { ...ws.profiles };
+  if (rest.length) profiles[appId] = rest;
+  else delete profiles[appId];
+  const spaces = ws.spaces.map((s) => {
+    const leaves = listLeaves(s.layout).filter((l) => l.appId === appId && l.profile === profileId);
+    return leaves.length ? { ...s, layout: leaves.reduce((layout, l) => setProfile(layout, l.id, DEFAULT_PROFILE), s.layout) } : s;
+  });
+  return { ...ws, profiles, spaces };
 }
 
 /** Add an account ("Account N") to an app; returns its id (null at the limit). */

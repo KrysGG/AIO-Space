@@ -70,7 +70,8 @@ describe('fingerprinting protection', () => {
     expect(await inPage('Function.prototype.toString.toString()')).toBe('function toString() { [native code] }');
     expect(await inPage('Object.keys(window).filter((k) => /aio|farbl|seed/i.test(k)).length')).toBe(0);
 
-    await inPage('location.reload()');
+    // Navigate after the script returns: a script that unloads its own page may never answer.
+    await inPage('setTimeout(() => location.reload())');
     await expect.poll(() => inPage('window.fpHash'), { timeout: 20_000 }).toBe(firstRun);
   });
 

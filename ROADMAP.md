@@ -426,20 +426,12 @@ Add items found while working on other steps here, with the step where they were
 
 - (6.1) D-064 checked up to Google's password step (Gmail and X's "Continue with Google"). The owner to
   confirm a full sign-in, and X's own email/username login (untested).
-- (2.4, for Phase 3) Web views have spellcheck on, and Electron downloads the Hunspell dictionary
-  (`userData/Dictionaries/en-US-*.bdic`) from Google's CDN by default. No user data is sent, but it is
-  an outside connection the user didn't ask for. Bundle the dictionaries or set
-  `session.setSpellCheckerDictionaryDownloadURL` to a host we control; mention it in SECURITY.md.
 - (2.5) Built and tested with simulated titles (badges, tray, notification permissions), but not yet
   ticked: confirm with a real Discord message in a background tile (notification + rail/tile badge +
   tray dot). Also check the notification's app name; in dev it is likely "@aio/desktop" (see the 0.2
   userData/app-name item).
-- (2.12) Rename and remove accounts are still missing (clearing an account's data came with 3.9). The owner can
-  confirm two real Discord logins side by side when convenient (mechanism verified with Browser).
-- (2.12) The smoke test loads real sites (example.com, DuckDuckGo, Brave Search) and failed once in
-  CI without a reproducible cause (d7a6221; the rerun passed). Serve test pages from a local server
-  (or intercept with `protocol.handle` in a test-only session) so CI doesn't depend on outside sites.
-  CI failures now show up as readable annotations (89f73fd).
+- (2.12) The owner can confirm two real Discord logins side by side when convenient (mechanism verified
+  with Browser). Rename and remove accounts came with D-067.
 - (3.3) Third-party cookie blocking strips HTTP `Cookie`/`Set-Cookie` only. Cookies that scripts in a
   cross-site frame set with `document.cookie` still work. Look at Chromium's own third-party cookie
   setting (content settings / `--test-third-party-cookie-phaseout`) or partitioned cookies.
@@ -499,8 +491,6 @@ Add items found while working on other steps here, with the step where they were
   150% monitor and back (pages stay inside their tiles); hover the maximize button (Snap Layouts appear);
   switch theme (the window buttons follow); get a message in a background app (toast with "SpaceAIO" and
   the taskbar badge); quit, uninstall (Settings > Apps), reinstall (logins kept).
-- (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
-  (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
 - (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.
   Consider the static AppImage runtime once electron-builder supports it.
 - (4.5) Extensions: no Chrome tab model, so "which tab am I on" gets nothing (per-site popup switches,

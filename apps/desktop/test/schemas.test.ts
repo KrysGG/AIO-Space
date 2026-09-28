@@ -244,10 +244,13 @@ describe('accounts', () => {
     expect(PlacementsSchema.safeParse([placement]).success).toBe(true);
     for (const profile of ['', 'P2', 'p100', '../x', 'default2']) expect(PlacementsSchema.safeParse([{ ...placement, profile }]).success).toBe(false);
   });
-  it('the workspace names extra accounts per app, never redefining the first', () => {
+  it('the workspace names accounts per app: extra ones, and the first once renamed (never twice)', () => {
     const ws = defaultWorkspace();
     expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'p2', name: 'Work' }] } }).success).toBe(true);
-    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'default', name: 'Hijack' }] } }).success).toBe(false);
+    // The first account's name, once renamed; but never twice, and no duplicate ids.
+    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'default', name: 'Personal' }] } }).success).toBe(true);
+    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'default', name: 'A' }, { id: 'default', name: 'B' }] } }).success).toBe(false);
+    expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'p2', name: 'A' }, { id: 'p2', name: 'B' }] } }).success).toBe(false);
     expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: [{ id: 'p2', name: '' }] } }).success).toBe(false);
     const many = Array.from({ length: 8 }, (_, i) => ({ id: `p${i + 2}`, name: `A${i}` }));
     expect(WorkspaceSchema.safeParse({ ...ws, profiles: { discord: many } }).success).toBe(false);

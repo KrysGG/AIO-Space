@@ -554,6 +554,8 @@ button { font: inherit; color: inherit; }
 .site-data { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .site-data-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .site-data-row small { color: var(--muted); font-size: 11px; }
+.site-data-row .account-name { flex: 1 1 160px; }
+.account-row { align-items: flex-end; }
 .btn-danger { border-color: color-mix(in srgb, var(--danger) 50%, transparent); color: var(--danger-text); }
 .btn-danger:hover:not(:disabled) { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .btn:disabled { opacity: 0.6; cursor: default; }

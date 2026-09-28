@@ -12,6 +12,11 @@ files:
   - out/**
   - package.json
 asar: true
+# Spellcheck dictionaries, installed into the profile at start so none is downloaded (D-066).
+extraResources:
+  - from: vendor/hunspell
+    to: hunspell
+    filter: ['*.bdic', 'LICENSE']
 # Electron fuses (ROADMAP 3.7, docs/SECURITY.md).
 afterPack: scripts/afterPack.cjs
 linux:

@@ -88,7 +88,8 @@ describe('ad and tracker blocking', () => {
     await expect
       .poll(() => ui.evaluate(async () => (await window.aio.getWorkspace()).privacyOverrides['browser']?.blockAds))
       .toBe(false);
-    await inPage('location.reload()');
+    // Navigate after the script returns: a script that unloads its own page may never answer (it hung here).
+    await inPage('setTimeout(() => location.reload())');
     await expect.poll(() => requested.includes('/ad-script.js'), { timeout: 20_000 }).toBe(true);
     await expect.poll(() => visible('.ad-box')).toBe(true);
     expect(requested).not.toContain('/track.gif');
