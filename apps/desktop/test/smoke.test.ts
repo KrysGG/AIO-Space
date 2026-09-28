@@ -30,6 +30,19 @@ describe('desktop smoke test', () => {
     rmSync(profile, { recursive: true, force: true });
   });
 
+  it('never writes back the workspace it just loaded (a newer save must not be overwritten)', async () => {
+    await tiles().first().waitFor();
+    // Right after start, within the UI's 300 ms save delay: a save from elsewhere (as tests and imports do).
+    await ui.evaluate(async () => {
+      const ws = await window.aio.getWorkspace();
+      await window.aio.saveWorkspace({ ...ws, zoom: { 'race-check': 1.5 } });
+    });
+    await new Promise((r) => setTimeout(r, 1000));
+    expect((await ui.evaluate(() => window.aio.getWorkspace())).zoom).toEqual({ 'race-check': 1.5 });
+    await ui.evaluate(async () => window.aio.saveWorkspace({ ...(await window.aio.getWorkspace()), zoom: {} }));
+    await ui.reload();
+  });
+
   it('opens with one empty tile showing the launcher', async () => {
     await expect.poll(() => tiles().count()).toBe(1);
     for (const name of ['Discord', 'YouTube', 'Twitch', 'Reddit', 'X', 'Instagram', 'Browser']) {

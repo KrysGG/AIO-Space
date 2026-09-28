@@ -28,8 +28,13 @@ function onDisk(dir: string, needle: string): boolean {
   if (!existsSync(dir)) return false;
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
-    const st = statSync(path);
-    if (st.isDirectory() ? onDisk(path, needle) : st.size < 50_000_000 && readFileSync(path).includes(needle)) return true;
+    try {
+      const st = statSync(path);
+      if (st.isDirectory() ? onDisk(path, needle) : st.size < 50_000_000 && readFileSync(path).includes(needle)) return true;
+    } catch (err) {
+      // Chromium deletes temporary files (SQLite journals) while we scan: a file that's gone holds nothing.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    }
   }
   return false;
 }

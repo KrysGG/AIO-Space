@@ -238,6 +238,8 @@ export function App() {
     void window.aio.getStorageStatus().then((s) => setWeakKeyring(s.weak));
   }, []);
   const saveTimer = useRef<number | undefined>(undefined);
+  /** The workspace as loaded from main: saving it back unchanged is pointless, and could overwrite a newer one. */
+  const loadedWs = useRef<Workspace | null>(null);
   // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
   const openInNewTileRef = useRef<(request: OpenInNewTile) => void>(() => {});
@@ -246,6 +248,7 @@ export function App() {
   useEffect(() => {
     Promise.all([window.aio.getWorkspace(), window.aio.getCatalog()])
       .then(([w, c]) => {
+        loadedWs.current = w;
         setWs(w);
         setBuiltins(c);
       })
@@ -297,7 +300,7 @@ export function App() {
 
   // Debounced persistence of every workspace change.
   useEffect(() => {
-    if (!ws) return;
+    if (!ws || ws === loadedWs.current) return;
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       // Browser set to "forget when SpaceAIO closes": its tabs' pages are never written to disk.
