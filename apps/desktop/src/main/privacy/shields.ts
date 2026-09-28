@@ -65,6 +65,13 @@ const NO_LIST_OPTIONS: ListOptions = { engine: () => undefined };
  * app's own sites. Page loads themselves are first-party. Unknown top page: not treated as third
  * party (fail open, rather than log the user out of the app).
  */
+/**
+ * Google's sign-in sets its cookies across its own domains: google.com, its country domains
+ * (google.com.pr, google.co.uk) and youtube.com. Among them, none is third-party to another (D-064).
+ */
+const GOOGLE_PARTY = /^(google\.(com|[a-z]{2}|com?\.[a-z]{2})|youtube\.com)$/;
+const party = (site: string): string => (GOOGLE_PARTY.test(site) ? 'google.com' : site);
+
 function isThirdParty(
   d: { url: string; resourceType: string; webContentsId?: number },
   cookies: CookieOptions,
@@ -73,8 +80,8 @@ function isThirdParty(
   const top = cookies.topUrl(d.webContentsId);
   const reqSite = siteOfUrl(d.url);
   const topSite = top ? siteOfUrl(top) : null;
-  if (!reqSite || !topSite || reqSite === topSite) return false;
-  return !cookies.appSites?.has(reqSite);
+  if (!reqSite || !topSite || party(reqSite) === party(topSite)) return false;
+  return !cookies.appSites?.has(reqSite) && !cookies.appSites?.has(party(reqSite));
 }
 
 function withoutHeader<T extends string | string[]>(headers: Record<string, T>, name: string): Record<string, T> {

@@ -44,13 +44,12 @@ describe('Google sign-in UA', () => {
 const res = (url: string, resourceType = 'mainFrame'): OnHeadersReceivedListenerDetails =>
   ({ url, resourceType }) as unknown as OnHeadersReceivedListenerDetails;
 
-describe('no passkey popup on sign-in pages (D-064)', () => {
-  it('turns off passkey requests on sign-in providers’ pages only, keeping their own policy', () => {
+describe('no passkey popup (D-064)', () => {
+  it('turns off passkey requests on every page and frame, keeping the site’s own policy', () => {
     const out = noPasskeyPopupFilter.onHeadersReceived!(res('https://accounts.google.com/'), { 'permissions-policy': ['ch-ua-arch=*'] });
     expect(out['permissions-policy']).toEqual(['ch-ua-arch=*, publickey-credentials-get=()']);
-    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://login.live.com/'), {})['Permissions-Policy']).toEqual(['publickey-credentials-get=()']);
+    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://www.reddit.com/login', 'subFrame'), {})['Permissions-Policy']).toEqual(['publickey-credentials-get=()']);
     const other = { a: ['1'] };
-    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://github.com/'), other)).toBe(other);
-    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://accounts.google.com/x.js', 'script'), other)).toBe(other);
+    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://www.reddit.com/x.js', 'script'), other)).toBe(other);
   });
 });

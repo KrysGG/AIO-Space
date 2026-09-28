@@ -1,6 +1,5 @@
 import type { WebContents } from 'electron';
 import type { RequestFilter } from '../privacy/requestPipeline';
-import { isSignInHost } from '../../shared/webapp';
 
 /** Remove Electron and app-name tokens from a UA string, leaving a normal Chrome UA. */
 export function cleanUserAgent(ua: string, appNames: string | string[]): string {
@@ -58,23 +57,15 @@ export function googleSignInFilter(token: string): RequestFilter {
 }
 
 /**
- * Windows: Electron hands the automatic ("conditional") passkey request that sign-in pages make on load
- * to Windows Hello's modal "Choose a passkey" dialog; Chrome shows it quietly in autofill instead.
- * Turning the feature off for these pages by header stops it without a page script (D-046, D-064).
- * Passkey sign-in on them is lost; passwords and the other second steps still work.
+ * Windows: Electron hands the automatic ("conditional") passkey request that login pages make on load
+ * (Google, Reddit, ...) to Windows Hello's modal "Choose a passkey" dialog; Chrome shows it quietly in
+ * autofill instead. Turning the feature off for every page by header stops it without a page script
+ * (D-046, D-064). No passkey logins in the app on Windows; passwords and other second steps still work.
  */
-// ponytail: sign-in providers only; another site using automatic passkeys would still pop the dialog.
 export const noPasskeyPopupFilter: RequestFilter = {
   name: 'no-passkey-popup',
   onHeadersReceived(details, headers) {
     if (details.resourceType !== 'mainFrame' && details.resourceType !== 'subFrame') return headers;
-    let host: string;
-    try {
-      host = new URL(details.url).hostname;
-    } catch {
-      return headers;
-    }
-    if (!isSignInHost(host)) return headers;
     const key = Object.keys(headers).find((k) => k.toLowerCase() === 'permissions-policy') ?? 'Permissions-Policy';
     return { ...headers, [key]: [[...(headers[key] ?? []), 'publickey-credentials-get=()'].join(', ')] };
   },

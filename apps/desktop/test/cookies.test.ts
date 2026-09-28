@@ -23,7 +23,7 @@ describe('siteOf / appSites', () => {
 
 describe('third-party-cookies filter', () => {
   let settings: PrivacySettings = { ...DEFAULT_PRIVACY };
-  const tops: Record<number, string> = { 1: 'https://www.reddit.com/r/linux', 2: 'https://example.com/', 3: 'https://discord.com/app' };
+  const tops: Record<number, string> = { 1: 'https://www.reddit.com/r/linux', 2: 'https://example.com/', 3: 'https://discord.com/app', 4: 'https://accounts.google.com/v3/signin/identifier' };
   const make = (appId: string) =>
     buildShieldFilters(() => settings, undefined, { appSites: appSites(getApp(appId)!), topUrl: (id) => tops[id] }).find((f) => f.name === 'third-party-cookies')!;
   const send = (url: string, webContentsId: number, resourceType = 'script') =>
@@ -49,6 +49,18 @@ describe('third-party-cookies filter', () => {
     expect(make('discord').onBeforeSendHeaders!(send('https://cdn.discordapp.com/x', 3), cookieHdr)).toBe(cookieHdr);
     expect(make('reddit').onHeadersReceived!(recv('https://accounts.google.com/gsi/iframe', 1), setCookieHdr)).toBe(setCookieHdr);
     expect(make('reddit').onBeforeSendHeaders!(send('https://ads.doubleclick.net/x', 1), cookieHdr)).toEqual({ Accept: '*/*' });
+  });
+
+  it("keeps cookies across Google's own domains during sign-in: country domains and YouTube (D-064)", () => {
+    const f = make('browser');
+    expect(f.onHeadersReceived!(recv('https://accounts.youtube.com/accounts/CheckConnection', 4), setCookieHdr)).toBe(setCookieHdr);
+    expect(f.onHeadersReceived!(recv('https://accounts.google.com.pr/accounts/SetSID', 4), setCookieHdr)).toBe(setCookieHdr);
+    expect(f.onBeforeSendHeaders!(send('https://accounts.google.co.uk/x', 4), cookieHdr)).toBe(cookieHdr);
+    expect(make('reddit').onBeforeSendHeaders!(send('https://accounts.google.com.pr/x', 1), cookieHdr)).toBe(cookieHdr);
+    // Look-alikes and Google's other services are still third-party.
+    expect(f.onBeforeSendHeaders!(send('https://google.com.evil.example/x', 4), cookieHdr)).toEqual({ Accept: '*/*' });
+    expect(f.onBeforeSendHeaders!(send('https://ads.doubleclick.net/x', 4), cookieHdr)).toEqual({ Accept: '*/*' });
+    expect(f.onBeforeSendHeaders!(send('https://accounts.google.com/x', 2), cookieHdr)).toEqual({ Accept: '*/*' });
   });
 
   it('fails open when the top page is unknown, and respects the setting', () => {

@@ -691,8 +691,12 @@ the raw Electron UA, or `SpaceAIO/0.1.1` alone. Google checks browsers that clai
 or Firefox, and Electron fails that check; one that names itself (like Edge's `Edg/`) isn't held to
 it. So `accounts.google.com` gets the normal UA plus `SpaceAIO/<version>` (page and requests, same
 mechanism as D-012); every other page keeps the clean Chrome UA. Headers only: D-046 still holds. The
-passkey dialog is Google's automatic ("conditional") passkey request, which Chrome shows in autofill and
-Electron on Windows hands to the modal dialog, with any UA and no switch to turn it off; on Windows,
-sign-in providers' pages (`SIGN_IN_HOSTS`) get `Permissions-Policy: publickey-credentials-get=()`.
-Trade-off: no passkey sign-in on those pages (passwords and the other second steps work). If Google
-starts rejecting the token too, revisit here first.
+passkey dialog is the automatic ("conditional") passkey request login pages make on load (Google,
+Reddit, ...), which Chrome shows in autofill and Electron on Windows hands to the modal dialog, with any
+UA and no switch to turn it off; on Windows, every page and frame gets
+`Permissions-Policy: publickey-credentials-get=()`. Trade-off: no passkey logins in the app on Windows
+(passwords, "Sign in with Google/Apple" and other second steps work). Third-party cookie blocking
+(3.3) treats Google's own domains (google.com, its country domains like google.com.pr, youtube.com)
+as one site: Google's sign-in sets its cookies across them (accounts.youtube.com CheckConnection, the
+country-domain hop), and stripping them broke "Sign in with Google" consent with a 400 (seen with
+Reddit). If Google starts rejecting the token too, revisit here first.
