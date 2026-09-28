@@ -68,9 +68,11 @@ jobs:
         run: |
           $setup = (Get-ChildItem spaceaio-*-setup.exe | Select-Object -First 1).FullName
           Start-Process $setup -ArgumentList '/S' -Wait
-          $dir = "$env:LOCALAPPDATA\Programs\SpaceAIO"
-          $exe = "$dir\SpaceAIO.exe"
-          if (-not (Test-Path $exe)) { throw "Not installed at $exe" }
+          $found = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Filter SpaceAIO.exe -Recurse -Depth 1 -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $found) { throw "SpaceAIO.exe not found under $env:LOCALAPPDATA\Programs after installing" }
+          $exe = $found.FullName
+          $dir = $found.DirectoryName
+          Write-Host "Installed to $dir"
           if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\SpaceAIO.lnk")) { throw 'No Start menu shortcut' }
           $profileDir = Join-Path $env:RUNNER_TEMP 'spaceaio-profile'
           $env:AIO_USER_DATA_DIR = $profileDir

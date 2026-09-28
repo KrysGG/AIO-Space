@@ -1,5 +1,9 @@
 appId: com.spaceaio.app
 productName: SpaceAIO
+# The packaged app's package name (the workspace package stays @aio/desktop): electron-builder names the
+# Windows install folder and the updater's cache folder after it (D-063).
+extraMetadata:
+  name: spaceaio
 copyright: Copyright (c) 2026 Christian Giraudo. All rights reserved.
 directories:
   output: release
