@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   clipboard,
   Menu,
+  screen,
   shell,
   WebContentsView,
   type BrowserWindowConstructorOptions,
@@ -151,6 +152,10 @@ export class ViewManager {
     for (const event of ['maximize', 'unmaximize', 'restore', 'enter-full-screen', 'leave-full-screen'] as const) {
       this.win.on(event as 'maximize', () => this.settleAfterResize());
     }
+    // Mixed-DPI setups (ROADMAP 6.1): moving the window onto a monitor with another scale (100% -> 150%)
+    // rescales it without always sending 'resize'; so does changing a monitor's scale. Same settle step.
+    this.win.on('moved', () => this.settleAfterResize());
+    screen.on('display-metrics-changed', () => this.settleAfterResize());
   }
 
   private settleTimer: NodeJS.Timeout | undefined;

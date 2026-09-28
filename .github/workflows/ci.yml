@@ -4,13 +4,19 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: {} # run on any branch by hand (e.g. before merging platform work)
 
 permissions:
   contents: read
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Linux is the main platform; Windows since ROADMAP 6.5 (the Electron tests run on its desktop).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json
@@ -21,7 +27,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       # Ubuntu 24.04 blocks the unprivileged user namespaces Electron's sandbox needs.
-      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      # The desktop smoke test launches Electron, which needs a display.
-      - run: xvfb-run -a pnpm test
+      - if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # The desktop smoke test launches Electron, which needs a display (Windows runners have one).
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test
+      - if: runner.os == 'Windows'
+        run: pnpm test
       - run: pnpm lint

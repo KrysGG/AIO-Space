@@ -47,3 +47,23 @@ describe('isRiskyToOpen', () => {
     }
   });
 });
+
+describe('Windows file rules (ROADMAP 6.1)', () => {
+  it('makes names Windows can store as given, so the saved file is the one checked', () => {
+    expect(safeFilename('a<b>c:d"e|f?g*h.txt')).toBe('a_b_c_d_e_f_g_h.txt');
+    expect(safeFilename('setup.exe.')).toBe('setup.exe'); // Windows would drop the dot anyway: the check must see .exe
+    expect(isRiskyToOpen(safeFilename('setup.exe. . '))).toBe(true);
+    for (const reserved of ['CON', 'nul.txt', 'com1.log', 'LPT9', 'aux.tar.gz']) expect(safeFilename(reserved)).toBe(`_${reserved}`);
+    expect(safeFilename('console.log')).toBe('console.log');
+    const long = safeFilename('x'.repeat(300) + '.exe');
+    expect(long.length).toBe(200);
+    expect(isRiskyToOpen(long)).toBe(true); // shortened, extension kept
+  });
+
+  it('never offers to open what Windows would run or mount', () => {
+    for (const f of ['a.lnk', 'b.URL', 'c.hta', 'd.reg', 'e.msix', 'f.appinstaller', 'g.iso', 'h.vhdx', 'i.ps1', 'j.settingcontent-ms', 'k.msc', 'l.cpl']) {
+      expect(isRiskyToOpen(f), f).toBe(true);
+    }
+    for (const f of ['a.pdf', 'b.png', 'c.zip', 'd.txt', 'e.mp4']) expect(isRiskyToOpen(f), f).toBe(false);
+  });
+});
