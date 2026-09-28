@@ -480,8 +480,9 @@ Add items found while working on other steps here, with the step where they were
   locally against a loopback server serving the same files). Releases aren't GPG-signed; consider signing
   `SHA256SUMS` once there's a key to keep. The updater cache folder is `~/.cache/@aiodesktop-updater`
   (from the npm package name `@aio/desktop`).
-- (5.5) The first real run of the release workflow needs the owner: a dry run from the Actions tab, then
-  tagging v0.1.0 (a public release: decide the license first, see 5.2).
+- (5.5) Dry run passed on GitHub (2026-09-28, run 36360878477): tests, build, verify:release, checksums and
+  AUR files all green; its files re-checked locally. Left: tagging v0.1.0, which publishes a public release
+  (decide the license first, see 5.2).
 - (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
   (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
 - (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.

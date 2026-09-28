@@ -59,6 +59,7 @@ jobs:
         with:
           name: spaceaio-${{ steps.version.outputs.version }}
           retention-days: 7
+          include-hidden-files: true # aur/.SRCINFO
           path: |
             apps/desktop/release/spaceaio-*
             apps/desktop/release/latest-linux.yml

@@ -4,7 +4,7 @@
 const { execFileSync } = require('node:child_process');
 const { existsSync, mkdtempSync, readdirSync, rmSync, statSync } = require('node:fs');
 const { tmpdir } = require('node:os');
-const { join } = require('node:path');
+const { join, resolve } = require('node:path');
 const { FuseState, FuseV1Options, getCurrentFuseWire } = require('@electron/fuses');
 const { EXPECTED_FUSES } = require('./fuses.cjs');
 
@@ -16,7 +16,7 @@ function unpack(file) {
   const out = mkdtempSync(join(tmpdir(), 'spaceaio-verify-'));
   if (file.endsWith('.AppImage')) {
     // Extracting runs the AppImage's own runtime, but needs no FUSE.
-    execFileSync(join(process.cwd(), dir, file), ['--appimage-extract'], { cwd: out, stdio: 'ignore' });
+    execFileSync(resolve(dir, file), ['--appimage-extract'], { cwd: out, stdio: 'ignore' });
   } else if (file.endsWith('.pacman')) {
     execFileSync('tar', ['-xJf', join(dir, file), '-C', out]);
   } else {
