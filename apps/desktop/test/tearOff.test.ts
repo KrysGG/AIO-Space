@@ -30,12 +30,14 @@ describe('tearing tiles off into their own windows', () => {
       if (Date.now() > end) throw new Error('no main window');
     }
     await ui.locator('.tile').first().waitFor();
-    await app.evaluate(({ session }) => {
+    await app.evaluate(({ session, webContents }) => {
       for (const id of ['twitch', 'reddit']) {
         session
           .fromPartition(`persist:app-${id}-default`)
           .protocol.handle('https', () => new Response(`<!doctype html><title>${id}</title>`, { headers: { 'content-type': 'text/html' } }));
       }
+      // A torn-off window restored at start may already be loading the real site: load the stand-in.
+      for (const wc of webContents.getAllWebContents()) if (!wc.getURL().startsWith('aio://')) wc.reload();
     });
   };
 
