@@ -219,6 +219,38 @@ Before hiding views for a drag, capture each with `webContents.capturePage()` an
 in the placeholder so the layout doesn't flash empty.
 **Done when:** Dragging dividers looks continuous.
 
+### - [ ] 2.14 Memory growth and freezes (owner report, 2026-09-28, v0.1.2 on Windows 11)
+With only YouTube and X open, Task Manager showed SpaceAIO at ~4 GB and the app froze completely after
+opening tabs and resizing. Measure before fixing: a test script that opens and closes Browser tabs, splits
+and closes tiles, and resizes the window in a loop while sampling `app.getAppMetrics()` (per process:
+main, UI, each view) and the UI's JS heap. Find what grows: views or webContents not closed (tabs, tabs of
+other spaces, sleeping apps, sign-in popups), listeners added per view or per tab, snapshot images kept in
+UI state (2.13), filter or scriptlet data duplicated per session, per-view preload work, the main thread
+busy during resize (a freeze with a responsive CPU points there). Fix the causes; keep the script as a test.
+**Done when:** 200 open/close/resize cycles leave memory within 10% of where it settled, the UI never
+stops responding, and YouTube + X stay under ~1.5 GB total after an hour of normal use on Windows.
+
+### - [ ] 2.15 Drag a tile out of the window into its own window
+Dragging a tile's header outside the SpaceAIO window opens that app (same page, same account, no reload
+if possible) in a new SpaceAIO window, with the sidebar hidden there by default. Dragging it back onto
+the main window's tiles drops it in like any tile drag. (Owner's words: "open a new app tab"; read here as
+a separate window, like tearing off a browser tab. Confirm with the owner before building.)
+**Done when:** A playing YouTube tile can be torn off into its own window and back without reloading.
+
+### - [ ] 2.16 Drag a sidebar app onto the tiles to open it there
+The sidebar's drag-to-reorder also works across into the tile area: while dragging an app icon over a
+tile, show the same drop targets as tile dragging. Near an edge: split that tile in that direction and
+open the app in the new half. Centre of an empty tile: open it there. Centre of a tile with an app:
+open it there instead (the old app closes, as when picking another app from the launcher).
+**Done when:** An app dragged from the sidebar opens exactly where the drop target showed.
+
+### - [ ] 2.17 Settings in sections, most important first
+The menu has grown one setting at a time. Group it into titled sections ordered by how often people need
+them, e.g.: Spaces and layout; Apps and accounts; Privacy (Shields defaults); Appearance (theme, motion);
+Performance (sleep); Browser (search engine); Updates; Customize (CSS, plugins, extensions); Data (import,
+export, clear all); About. Collapsible sections or a short search if it's still long. Owner to confirm the order.
+**Done when:** Every setting sits in a titled section in that order, and nothing was lost (smoke test).
+
 ---
 
 ## Phase 3: Shields and security (Brave-level privacy)
