@@ -358,18 +358,20 @@ GitHub Actions on tag: build, test, package, attach to release, checksums.
 
 ## Phase 6: Windows
 
-### - [ ] 6.1 Run on Windows
+### - [x] 6.1 Run on Windows
 Fix path and platform assumptions; skip Linux-only switches. Test mixed-DPI multi-monitor setups:
 move the window between a 100% and 150% monitor and confirm views stay aligned.
-(Built, D-063: the whole test suite passes on Windows in CI. Left: the mixed-DPI check on a real Windows 11.)
-### - [ ] 6.2 Windows look and feel
+(Built, D-063: the whole test suite passes on Windows in CI. Checked on Windows 11: moving between a 125% and a
+150% monitor keeps views aligned; tests pass without admin/Developer Mode, where symlinks can't be made.)
+### - [x] 6.2 Windows look and feel
 `titleBarOverlay` or custom title bar, Snap Layouts support, Mica/acrylic optional.
-(Built: title strip + titleBarOverlay in theme colours, checked by screenshot in CI. Left: Snap Layouts
-flyout on hovering maximize, on Windows 11. Mica skipped: the UI is opaque, so it would never show.)
+(Built: title strip + titleBarOverlay in theme colours, checked by screenshot in CI. Snap Layouts flyout
+shows on hovering maximize, checked on Windows 11. Mica skipped: the UI is opaque, so it would never show.)
 ### - [ ] 6.3 Notifications
 Set `app.setAppUserModelId`; verify toast notifications and taskbar badge counts.
-(Built: AppUserModelId = appId; unread count as a taskbar overlay badge. Left: see a toast and the badge on
-Windows 11.)
+(Built: AppUserModelId = appId; unread count as a taskbar overlay badge. The installed Start menu shortcut
+carries AUMID com.spaceaio.app (checked). Left: see a toast and the badge on Windows 11; the test machine had
+toasts switched off system-wide.)
 ### - [ ] 6.4 Installer and signing
 NSIS installer; code signing (a certificate or a cloud signing service) to avoid SmartScreen warnings.
 (Built: per-user NSIS installer, installed, started and uninstalled on every release build in CI;
@@ -422,6 +424,8 @@ Share settings model with desktop.
 
 Add items found while working on other steps here, with the step where they were found.
 
+- (6.1) D-064 checked up to Google's password step (Gmail and X's "Continue with Google"). The owner to
+  confirm a full sign-in, and X's own email/username login (untested).
 - (0.1) `pnpm install` warns that `esbuild` and `electron-winstaller` build scripts were ignored:
   pnpm 10.0 reads `onlyBuiltDependencies` from `package.json` only, so the list in
   `pnpm-workspace.yaml` has no effect. Pick one place. Electron 44 no longer needs to be listed.

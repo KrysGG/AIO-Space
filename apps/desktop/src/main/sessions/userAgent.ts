@@ -1,5 +1,6 @@
 import type { WebContents } from 'electron';
 import type { RequestFilter } from '../privacy/requestPipeline';
+import { isSignInHost } from '../../shared/webapp';
 
 /** Remove Electron and app-name tokens from a UA string, leaving a normal Chrome UA. */
 export function cleanUserAgent(ua: string, appNames: string | string[]): string {
@@ -15,8 +16,9 @@ export function cleanUserAgent(ua: string, appNames: string | string[]): string 
 
 /**
  * Google refuses sign-in from browsers it detects as embedded ("This browser or app may not be
- * secure"), and a clean Chrome UA is not enough. Its sign-in pages accept Firefox, so those pages
- * get a Firefox UA (see DECISIONS D-012).
+ * secure"). It checks browsers that claim to be exactly Chrome or Firefox, and ours fails that check
+ * whether it claims either; a UA that names its app after the Chrome part (as Edge adds "Edg/") is let
+ * through. So Google's sign-in pages see the normal UA plus the app's token (D-064, replacing D-012).
  */
 const GOOGLE_SIGN_IN_HOSTS = ['accounts.google.com'];
 
@@ -28,38 +30,52 @@ export function isGoogleSignIn(url: string): boolean {
   }
 }
 
-/** Firefox's major version tracks Chrome's (Chrome 127 shipped next to Firefox 128), so derive it to stay current. */
-export function firefoxUserAgent(chromeVersion: string, platform: NodeJS.Platform): string {
-  const major = Number.parseInt(chromeVersion, 10) + 1;
-  const os =
-    platform === 'win32' ? 'Windows NT 10.0; Win64; x64' : platform === 'darwin' ? 'Macintosh; Intel Mac OS X 10.15' : 'X11; Linux x86_64';
-  return `Mozilla/5.0 (${os}; rv:${major}.0) Gecko/20100101 Firefox/${major}.0`;
+/** The UA with the app's token (e.g. "SpaceAIO/0.1.1") at the end, once. */
+export function withAppToken(ua: string, token: string): string {
+  return ua.endsWith(` ${token}`) ? ua : `${ua} ${token}`;
 }
 
-export const SIGN_IN_USER_AGENT = firefoxUserAgent(process.versions.chrome, process.platform);
-
 /** Page-side half of the Google sign-in fix: switch the UA while the main frame is on a sign-in page. */
-export function followSignInUserAgent(wc: WebContents): void {
+export function followSignInUserAgent(wc: WebContents, token: string): void {
   const normal = wc.getUserAgent();
   wc.on('did-start-navigation', (details) => {
     if (!details.isMainFrame) return;
-    const want = isGoogleSignIn(details.url) ? SIGN_IN_USER_AGENT : normal;
+    const want = isGoogleSignIn(details.url) ? withAppToken(normal, token) : normal;
     if (wc.getUserAgent() !== want) wc.setUserAgent(want);
   });
 }
 
-/** Request-side half of the Google sign-in fix: Firefox UA and no Chromium client hints. */
-export const googleSignInFilter: RequestFilter = {
-  name: 'google-sign-in-ua',
-  onBeforeSendHeaders(details, headers) {
-    if (!isGoogleSignIn(details.url)) return headers;
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(headers)) {
-      const key = k.toLowerCase();
-      if (key === 'user-agent' || key.startsWith('sec-ch-ua')) continue;
-      out[k] = v;
+/** Request-side half of the Google sign-in fix: the same UA on every request to the sign-in pages. */
+export function googleSignInFilter(token: string): RequestFilter {
+  return {
+    name: 'google-sign-in-ua',
+    onBeforeSendHeaders(details, headers) {
+      if (!isGoogleSignIn(details.url)) return headers;
+      const key = Object.keys(headers).find((k) => k.toLowerCase() === 'user-agent') ?? 'User-Agent';
+      return headers[key] ? { ...headers, [key]: withAppToken(headers[key], token) } : headers;
+    },
+  };
+}
+
+/**
+ * Windows: Electron hands the automatic ("conditional") passkey request that sign-in pages make on load
+ * to Windows Hello's modal "Choose a passkey" dialog; Chrome shows it quietly in autofill instead.
+ * Turning the feature off for these pages by header stops it without a page script (D-046, D-064).
+ * Passkey sign-in on them is lost; passwords and the other second steps still work.
+ */
+// ponytail: sign-in providers only; another site using automatic passkeys would still pop the dialog.
+export const noPasskeyPopupFilter: RequestFilter = {
+  name: 'no-passkey-popup',
+  onHeadersReceived(details, headers) {
+    if (details.resourceType !== 'mainFrame' && details.resourceType !== 'subFrame') return headers;
+    let host: string;
+    try {
+      host = new URL(details.url).hostname;
+    } catch {
+      return headers;
     }
-    out['User-Agent'] = SIGN_IN_USER_AGENT;
-    return out;
+    if (!isSignInHost(host)) return headers;
+    const key = Object.keys(headers).find((k) => k.toLowerCase() === 'permissions-policy') ?? 'Permissions-Policy';
+    return { ...headers, [key]: [[...(headers[key] ?? []), 'publickey-credentials-get=()'].join(', ')] };
   },
 };

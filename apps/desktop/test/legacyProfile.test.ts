@@ -47,7 +47,8 @@ describe('moving the profile after the rename to SpaceAIO (D-058)', () => {
     expect(migrateLegacyProfile(a, userData)).toBeNull();
   });
 
-  it('waits while the old app is running on the profile, not for stale locks', () => {
+  // Linux only: Windows Chromium locks with a file, not a symlink, and 0.1.0 never shipped there.
+  it.skipIf(process.platform === 'win32')('waits while the old app is running on the profile, not for stale locks', () => {
     const { appData: a, legacy, userData } = appData();
     mkdirSync(legacy, { recursive: true });
     symlinkSync(`myhost-${process.pid}`, join(legacy, 'SingletonLock'));

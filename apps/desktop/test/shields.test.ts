@@ -114,15 +114,15 @@ describe('google-sign-in-ua', () => {
     Accept: 'text/html',
   };
 
-  it('sends a Firefox UA without client hints to accounts.google.com', () => {
-    const out = googleSignInFilter.onBeforeSendHeaders!(hdr('https://accounts.google.com/signin'), { ...chromeHeaders });
-    expect(out['User-Agent']).toMatch(/Firefox\//);
-    expect(Object.keys(out).filter((k) => k.toLowerCase().startsWith('sec-ch-ua'))).toEqual([]);
-    expect(out['Accept']).toBe('text/html');
+  it('adds the app token to the UA on accounts.google.com, keeping the other headers (D-064)', () => {
+    const f = googleSignInFilter('SpaceAIO/0.1.1');
+    const out = f.onBeforeSendHeaders!(hdr('https://accounts.google.com/signin'), { ...chromeHeaders });
+    expect(out).toEqual({ ...chromeHeaders, 'User-Agent': `${chromeHeaders['User-Agent']} SpaceAIO/0.1.1` });
+    expect(f.onBeforeSendHeaders!(hdr('https://accounts.google.com/signin'), out)).toEqual(out);
   });
 
   it('leaves every other host untouched', () => {
-    const out = googleSignInFilter.onBeforeSendHeaders!(hdr('https://www.youtube.com/'), { ...chromeHeaders });
+    const out = googleSignInFilter('SpaceAIO/0.1.1').onBeforeSendHeaders!(hdr('https://www.youtube.com/'), { ...chromeHeaders });
     expect(out).toEqual(chromeHeaders);
   });
 });

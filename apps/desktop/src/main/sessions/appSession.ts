@@ -1,4 +1,4 @@
-import { session, webContents, type Session, type WebContents } from 'electron';
+import { app, session, webContents, type Session, type WebContents } from 'electron';
 import { partitionFor, type AppPermission, type PrivacySettings, type WebAppDef } from '@aio/core';
 import { noteUpgrade } from '../privacy/httpsFallback';
 import { installRequestPipeline } from '../privacy/requestPipeline';
@@ -7,10 +7,13 @@ import { BROWSER_SCRIPTLET_SITES, type ScriptletFiles } from '../privacy/scriptl
 import type { SharedSignIn } from './sharedSignIn';
 import { buildShieldFilters } from '../privacy/shields';
 import { appSites } from '../privacy/sites';
-import { cleanUserAgent, googleSignInFilter } from './userAgent';
+import { cleanUserAgent, googleSignInFilter, noPasskeyPopupFilter } from './userAgent';
 import { APP_NAME, LEGACY_NAME } from '../store/legacyProfile';
 
 const configured = new Map<string, Session>();
+
+/** The app's own UA token, shown to Google's sign-in pages (D-064). */
+export const SIGN_IN_TOKEN = `${APP_NAME}/${app.getVersion()}`;
 
 /** Pages that were given the camera/microphone or screen sharing (e.g. a Discord call): never slept. */
 const mediaUsers = new WeakSet<WebContents>();
@@ -50,7 +53,8 @@ export function getAppSession(
   const https = { httpAllowed, onUpgrade: noteUpgrade };
   const cookies = { appSites: appSites(def), topUrl: (id: number) => webContents.fromId(id)?.getURL() };
   const lists = { engine: (kind: 'ads' | 'trackers') => filterLists?.engine(kind) };
-  installRequestPipeline(ses, [googleSignInFilter, ...buildShieldFilters(getPrivacy, https, cookies, lists)], onBlocked);
+  const signInFilters = [googleSignInFilter(SIGN_IN_TOKEN), ...(process.platform === 'win32' ? [noPasskeyPopupFilter] : [])];
+  installRequestPipeline(ses, [...signInFilters, ...buildShieldFilters(getPrivacy, https, cookies, lists)], onBlocked);
 
   // Scriptlets (ROADMAP 3.6): the app's own sites, or a few popular ones for the Browser tile.
   if (scriptlets) {

@@ -82,14 +82,19 @@ describe('PluginStore (ROADMAP 4.4)', () => {
     const outside = join(temp(), 'secret.js');
     writeFileSync(outside, 'secret');
     const linked = pluginFolder({ scripts: ['link.js'], styles: [] }, {});
-    symlinkSync(outside, join(linked, 'link.js'));
+    let canLink = true;
+    try {
+      symlinkSync(outside, join(linked, 'link.js'));
+    } catch {
+      canLink = false; // Windows without Developer Mode or admin can't make symlinks
+    }
     const cases: Array<[string, RegExp]> = [
       [temp(), /manifest\.json/],
       [pluginFolder({ id: '../escape' }), /id/],
       [pluginFolder({ scripts: ['../secret.js'] }), /scripts/],
       [pluginFolder({ scripts: ['sub/a.js'] }), /scripts/],
       [pluginFolder({ scripts: ['missing.js'] }), /missing\.js/],
-      [linked, /link\.js/],
+      ...(canLink ? [[linked, /link\.js/] as [string, RegExp]] : []),
       [pluginFolder({ permissions: ['storage'] }), /permissions/],
       [pluginFolder({ apps: [] }), /apps/],
       [pluginFolder({ scripts: [], styles: [] }), /script or style/],

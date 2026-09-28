@@ -57,7 +57,7 @@ bounds match tile bodies and screenshots show no gaps. Chromium logs
 Vulkan (for WebGPU). Vulkan is `disabled_off` and GPU compositing, rasterization, WebGL and WebGPU
 stay enabled, so it is harmless. Don't switch to X11 or add GPU flags to silence it.
 
-**D-012: Firefox User-Agent on Google sign-in pages.**
+**D-012: Firefox User-Agent on Google sign-in pages.** (Replaced by D-064.)
 Google blocks sign-in from browsers it detects as embedded ("This browser or app may not be
 secure"), even with a clean Chrome UA. For `accounts.google.com` only, requests get a Firefox UA
 with `Sec-CH-UA*` client hints removed (`google-sign-in-ua` filter in `appSession.ts`), and tiles and
@@ -681,3 +681,18 @@ types added to "never open" (shortcuts, HTA, registry, MSIX, disk images...), an
 Windows (no `<>:"|?*`, no reserved device names, no trailing dots/spaces, which Windows drops, so "a.exe." is
 saved and checked as a.exe). Views are re-placed on window moves and display-scale changes.
 
+**D-064: Google sign-in sees the app's name in the UA; no automatic passkey dialog on Windows.**
+Owner report (Windows 11): Google said "this browser or app may not be secure" at every sign-in (also
+X's "Continue with Google"), and its sign-in page opened Windows Hello's "Choose a passkey" dialog by
+itself. Tested by entering a real account's email and pressing Next in fresh sessions: a plain Chrome UA
+and D-012's Firefox UA are both rejected (with or without Chrome-like `Sec-CH-UA` headers, which
+Electron doesn't send), while any UA with an extra token passes: Chrome's UA plus `SpaceAIO/0.1.1`,
+the raw Electron UA, or `SpaceAIO/0.1.1` alone. Google checks browsers that claim to be exactly Chrome
+or Firefox, and Electron fails that check; one that names itself (like Edge's `Edg/`) isn't held to
+it. So `accounts.google.com` gets the normal UA plus `SpaceAIO/<version>` (page and requests, same
+mechanism as D-012); every other page keeps the clean Chrome UA. Headers only: D-046 still holds. The
+passkey dialog is Google's automatic ("conditional") passkey request, which Chrome shows in autofill and
+Electron on Windows hands to the modal dialog, with any UA and no switch to turn it off; on Windows,
+sign-in providers' pages (`SIGN_IN_HOSTS`) get `Permissions-Policy: publickey-credentials-get=()`.
+Trade-off: no passkey sign-in on those pages (passwords and the other second steps work). If Google
+starts rejecting the token too, revisit here first.

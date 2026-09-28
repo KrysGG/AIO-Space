@@ -37,7 +37,7 @@ import type { PluginStore } from '../plugins/pluginStore';
 import type { ExtensionHost } from '../extensions/extensionHost';
 import { getDomain } from 'tldts';
 import { allowHttpThisRun, forgetPage, isFallbackError, isHttpAllowedThisRun, upgradedFrom } from '../privacy/httpsFallback';
-import { getAppSession, hasUsedMedia } from '../sessions/appSession';
+import { getAppSession, hasUsedMedia, SIGN_IN_TOKEN } from '../sessions/appSession';
 import { fetchFavicon } from './favicon';
 import { followSignInUserAgent } from '../sessions/userAgent';
 import { forwardShortcuts } from '../shortcuts';
@@ -447,11 +447,11 @@ export class ViewManager {
       if (loaded && !wc.isDestroyed()) wc.reload();
     });
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
-    followSignInUserAgent(wc);
+    followSignInUserAgent(wc, SIGN_IN_TOKEN);
     forwardShortcuts(wc, (action) => {
       if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
     });
-    wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents));
+    wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents, SIGN_IN_TOKEN));
     const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs, media: NO_MEDIA, audible: false, plugins: this.pluginsKey(appId) };
     this.guardNavigation(def, view);
     this.wireState(entry, instanceId);

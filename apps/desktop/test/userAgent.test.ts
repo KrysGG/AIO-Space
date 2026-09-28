@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cleanUserAgent, firefoxUserAgent, isGoogleSignIn } from '../src/main/sessions/userAgent';
+import type { OnHeadersReceivedListenerDetails } from 'electron';
+import { cleanUserAgent, isGoogleSignIn, noPasskeyPopupFilter, withAppToken } from '../src/main/sessions/userAgent';
 
 const ELECTRON_UA =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) SpaceAIO/0.1.0 Chrome/152.0.7977.130 Electron/44.4.5 Safari/537.36';
@@ -33,11 +34,23 @@ describe('Google sign-in UA', () => {
     expect(isGoogleSignIn('not a url')).toBe(false);
   });
 
-  it('builds a Firefox UA one major ahead of Chrome for each platform', () => {
-    expect(firefoxUserAgent('152.0.7977.130', 'linux')).toBe(
-      'Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0',
-    );
-    expect(firefoxUserAgent('152.0.1', 'win32')).toContain('(Windows NT 10.0; Win64; x64; rv:153.0)');
-    expect(firefoxUserAgent('152.0.1', 'darwin')).toContain('(Macintosh; Intel Mac OS X 10.15; rv:153.0)');
+  it('adds the app token once (D-064)', () => {
+    const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.7977.130 Safari/537.36';
+    expect(withAppToken(ua, 'SpaceAIO/0.1.1')).toBe(`${ua} SpaceAIO/0.1.1`);
+    expect(withAppToken(withAppToken(ua, 'SpaceAIO/0.1.1'), 'SpaceAIO/0.1.1')).toBe(`${ua} SpaceAIO/0.1.1`);
+  });
+});
+
+const res = (url: string, resourceType = 'mainFrame'): OnHeadersReceivedListenerDetails =>
+  ({ url, resourceType }) as unknown as OnHeadersReceivedListenerDetails;
+
+describe('no passkey popup on sign-in pages (D-064)', () => {
+  it('turns off passkey requests on sign-in providers’ pages only, keeping their own policy', () => {
+    const out = noPasskeyPopupFilter.onHeadersReceived!(res('https://accounts.google.com/'), { 'permissions-policy': ['ch-ua-arch=*'] });
+    expect(out['permissions-policy']).toEqual(['ch-ua-arch=*, publickey-credentials-get=()']);
+    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://login.live.com/'), {})['Permissions-Policy']).toEqual(['publickey-credentials-get=()']);
+    const other = { a: ['1'] };
+    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://github.com/'), other)).toBe(other);
+    expect(noPasskeyPopupFilter.onHeadersReceived!(res('https://accounts.google.com/x.js', 'script'), other)).toBe(other);
   });
 });
