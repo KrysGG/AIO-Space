@@ -147,3 +147,15 @@ describe('hostMatches', () => {
     expect(hostMatches('anything.org', ['*'])).toBe(true);
   });
 });
+
+describe('splitLeaf before (ROADMAP 2.16)', () => {
+  it('puts the new tile first (left or top) when asked, keeping the old leaf and its app', () => {
+    const root = createLeaf('youtube');
+    const after = splitLeaf(root, root.id, 'row', 'discord');
+    const before = splitLeaf(root, root.id, 'column', 'discord', true);
+    expect(listLeaves(after.root).map((l) => l.appId)).toEqual(['youtube', 'discord']);
+    expect(listLeaves(before.root).map((l) => l.appId)).toEqual(['discord', 'youtube']);
+    expect(listLeaves(before.root).map((l) => l.id)).toEqual([before.newLeafId, root.id]);
+    expect(before.root.type === 'split' && before.root.direction).toBe('column');
+  });
+});

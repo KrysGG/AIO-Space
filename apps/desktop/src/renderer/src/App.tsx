@@ -82,7 +82,7 @@ import { ShieldsPanel } from './components/ShieldsPanel';
 import { SharePicker } from './components/SharePicker';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
-import { TileLayout } from './components/TileLayout';
+import { TileLayout, type DropZone } from './components/TileLayout';
 import { applyTheme, useSystemDark } from './theme';
 
 const SAVE_DELAY_MS = 300;
@@ -513,6 +513,24 @@ export function App() {
     edit((w) => updateActiveSpace(w, (s) => ({ ...s, layout: assignApp(s.layout, leafId, appId), focusedLeafId: leafId })));
   };
 
+  /** A sidebar app dropped on a tile (ROADMAP 2.16): beside it on that side, or in it after asking. */
+  const dropApp = (leafId: string, appId: string, zone: DropZone): void => {
+    const leaf = findLeaf(space.layout, leafId);
+    if (!leaf) return;
+    if (zone === 'center') {
+      const name = (id: string): string => catalog.find((a) => a.id === id)?.name ?? id;
+      if (leaf.appId === appId) return;
+      if (leaf.appId && !window.confirm(`Replace ${name(leaf.appId)} with ${name(appId)}?`)) return;
+      return openApp(appId, leafId);
+    }
+    edit((w) =>
+      updateActiveSpace(w, (s) => {
+        const r = splitLeaf(s.layout, leafId, zone === 'left' || zone === 'right' ? 'row' : 'column', appId, zone === 'left' || zone === 'top');
+        return { ...s, layout: r.root, focusedLeafId: r.newLeafId ?? s.focusedLeafId };
+      }),
+    );
+  };
+
   const split = (leafId: string, dir: SplitDirection): void =>
     edit((w) =>
       updateActiveSpace(w, (s) => {
@@ -667,6 +685,7 @@ export function App() {
         onClose={close}
         onClear={clear}
         onSwap={swap}
+        onDropApp={dropApp}
         accountsOf={(appId) => profilesOf(ws, appId)}
         onAccount={setAccount}
         shieldsUp={(appId) => resolvePrivacy(ws.privacy, ws.privacyOverrides[appId]).shields}

@@ -46,12 +46,16 @@ export function mapTree(node: LayoutNode, fn: (n: LayoutNode) => LayoutNode): La
   return fn({ ...node, first: mapTree(node.first, fn), second: mapTree(node.second, fn) });
 }
 
-/** Split a tile in two. The existing tile stays `first`; the new tile becomes `second`. */
+/**
+ * Split a tile in two. The existing tile stays `first` and the new tile becomes `second`, or the
+ * other way round with `before` (the new tile on the left or top).
+ */
 export function splitLeaf(
   root: LayoutNode,
   leafId: string,
   direction: SplitDirection,
   newAppId: string | null = null,
+  before = false,
 ): { root: LayoutNode; newLeafId: string | null } {
   let newLeafId: string | null = null;
   const next = mapTree(root, (n) => {
@@ -63,8 +67,8 @@ export function splitLeaf(
       id: newId('split'),
       direction,
       ratio: 0.5,
-      first: n,
-      second: created,
+      first: before ? created : n,
+      second: before ? n : created,
     };
     return split;
   });

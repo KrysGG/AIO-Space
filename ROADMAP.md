@@ -243,7 +243,7 @@ if possible) in a new SpaceAIO window, with the sidebar hidden there by default.
 the main window's tiles drops it in like any tile drag. Like dragging a tab out of a browser (owner confirmed).
 **Done when:** A playing YouTube tile can be torn off into its own window and back without reloading.
 
-### - [ ] 2.16 Drag a sidebar app onto the tiles to open it there
+### - [x] 2.16 Drag a sidebar app onto the tiles to open it there
 The sidebar's drag-to-reorder also works across into the tile area: while dragging an app icon over a
 tile, show where it will land. Leaning towards a side (left, right, top, bottom): split that tile on that
 side and open the app there, e.g. leaning right puts it to the right of the hovered tile. Middle of an
@@ -251,6 +251,8 @@ empty tile: open it there. Middle of a tile with an app: ask "Replace <app> with
 only on yes (owner's spec).
 **Done when:** An app dragged from the sidebar opens on the side the drop target showed, and replacing
 a tile always asks first.
+(Within 30% of an edge counts as leaning; at the tile limit only the middle is offered. Tested with
+dispatched drag events in `test/dropApp.test.ts`; a real mouse drag is the owner's check.)
 
 ### - [ ] 2.17 Settings in sections, most important first
 The menu has grown one setting at a time. Group it into titled sections ordered by how often people need

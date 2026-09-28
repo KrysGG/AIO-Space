@@ -5,8 +5,8 @@ import { UnreadBadge } from './UnreadBadge';
 import { MediaDot, mergeMedia } from './MediaIndicators';
 import type { MediaInUse } from '../../../shared/webapp';
 
-/** Drag data type for sidebar apps (ROADMAP 4.7). */
-const DRAG_TYPE = 'application/x-aio-rail-app';
+/** Drag data type for sidebar apps: reordered in the sidebar (ROADMAP 4.7), dropped onto tiles (2.16). */
+export const RAIL_APP_DRAG = 'application/x-aio-rail-app';
 
 interface Props {
   /** The sidebar's apps in display order (pinned first). */
@@ -56,11 +56,13 @@ export function Sidebar({ catalog, pinned, onReorder, unread, media, onOpen, onS
       aria-label={`Open ${app.name}`}
       draggable
       onDragStart={(e) => {
-        e.dataTransfer.setData(DRAG_TYPE, app.id);
+        e.dataTransfer.setData(RAIL_APP_DRAG, app.id);
         e.dataTransfer.effectAllowed = 'move';
+        // It may be dropped onto a tile: the pages would swallow the drag, so hide them (snapshots show).
+        window.aio.setViewsHidden(true);
       }}
       onDragOver={(e) => {
-        if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+        if (!e.dataTransfer.types.includes(RAIL_APP_DRAG)) return;
         e.preventDefault();
         const r = e.currentTarget.getBoundingClientRect();
         const after = e.clientY > r.top + r.height / 2;
@@ -69,11 +71,14 @@ export function Sidebar({ catalog, pinned, onReorder, unread, media, onOpen, onS
       onDragLeave={() => setDrop((d) => (d?.id === app.id ? null : d))}
       onDrop={(e) => {
         e.preventDefault();
-        const dragged = e.dataTransfer.getData(DRAG_TYPE);
+        const dragged = e.dataTransfer.getData(RAIL_APP_DRAG);
         if (dragged && drop) onReorder(dragged, app.id, drop.after);
         setDrop(null);
       }}
-      onDragEnd={() => setDrop(null)}
+      onDragEnd={() => {
+        setDrop(null);
+        window.aio.setViewsHidden(false);
+      }}
       onClick={() => onOpen(app.id)}
       onContextMenu={(e) => {
         e.preventDefault();

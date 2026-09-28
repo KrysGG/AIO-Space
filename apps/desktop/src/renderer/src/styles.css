@@ -915,3 +915,12 @@ button { font: inherit; color: inherit; }
 .share-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .share-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .share-audio { margin-right: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+
+/* ---- Sidebar app dropped on a tile (ROADMAP 2.16) ---------------------------- */
+/* Readable on any page, light or dark: a grey wash with a dark and a white edge. */
+.app-drop { position: absolute; z-index: 5; pointer-events: none; border: 2px solid rgb(0 0 0 / 0.6); border-radius: var(--radius-ctl); background: rgb(128 128 140 / 0.4); box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.9); }
+.app-drop.is-center { inset: 0; }
+.app-drop.is-left { inset: 0 50% 0 0; }
+.app-drop.is-right { inset: 0 0 0 50%; }
+.app-drop.is-top { inset: 0 0 50% 0; }
+.app-drop.is-bottom { inset: 50% 0 0 0; }

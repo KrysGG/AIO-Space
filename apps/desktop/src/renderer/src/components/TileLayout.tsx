@@ -23,6 +23,7 @@ import { UnreadBadge } from './UnreadBadge';
 import { Launcher } from './Launcher';
 import { TileMedia } from './MediaIndicators';
 import { TabStrip } from './TabStrip';
+import { RAIL_APP_DRAG } from './Sidebar';
 
 const GUTTER = TILE_GUTTER;
 const HEADER = TILE_HEADER;
@@ -52,6 +53,8 @@ interface Props {
   onClear(leafId: string): void;
   /** A tile header was dragged onto another tile. */
   onSwap(fromLeafId: string, toLeafId: string): void;
+  /** A sidebar app was dropped on a tile: beside it on that side, or in it ('center'). */
+  onDropApp(leafId: string, appId: string, zone: DropZone): void;
   /** Accounts of an app (ROADMAP 2.12), the first one included. */
   accountsOf(appId: string): AppProfile[];
   /** Pick an account for a tile, or '+add' to create one. */
@@ -78,6 +81,17 @@ interface Props {
   canAddTile: boolean;
 }
 
+/** Where a sidebar app dropped on a tile lands (ROADMAP 2.16). */
+export type DropZone = 'left' | 'right' | 'top' | 'bottom' | 'center';
+
+/** The side the pointer leans to (within 30% of an edge), else the middle; always the middle when full. */
+function dropZone(e: { clientX: number; clientY: number }, r: DOMRect, canSplit: boolean): DropZone {
+  const x = (e.clientX - r.left) / r.width;
+  const y = (e.clientY - r.top) / r.height;
+  const [side, distance] = ([['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]] as const).reduce((a, b) => (b[1] < a[1] ? b : a));
+  return canSplit && distance < 0.3 ? side : 'center';
+}
+
 /** Pointer travel before a header press becomes a tile drag (so clicks still work). */
 const DRAG_THRESHOLD = 6;
 
@@ -97,6 +111,13 @@ export function TileLayout(props: Props) {
   // The live drag for the pointer listeners; `tileDrag` is its rendered copy.
   const tileDragRef = useRef<TileDrag | null>(null);
   const tileDragFrom = tileDrag?.from ?? null;
+  const [appDrop, setAppDrop] = useState<{ leafId: string; zone: DropZone } | null>(null);
+  // The drag can end anywhere (dropped outside, Escape): clear the target then.
+  useEffect(() => {
+    const clear = (): void => setAppDrop(null);
+    window.addEventListener('dragend', clear);
+    return () => window.removeEventListener('dragend', clear);
+  }, []);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -258,6 +279,23 @@ export function TileLayout(props: Props) {
               .join(' ')}
             style={{ left: t.rect.x, top: t.rect.y, width: t.rect.width, height: t.rect.height }}
             onPointerDown={() => props.onFocus(t.leafId)}
+            onDragOver={(e) => {
+              if (!e.dataTransfer.types.includes(RAIL_APP_DRAG)) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              const zone = dropZone(e, e.currentTarget.getBoundingClientRect(), props.canAddTile);
+              if (appDrop?.leafId !== t.leafId || appDrop.zone !== zone) setAppDrop({ leafId: t.leafId, zone });
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setAppDrop((d) => (d?.leafId === t.leafId ? null : d));
+            }}
+            onDrop={(e) => {
+              const appId = e.dataTransfer.getData(RAIL_APP_DRAG);
+              if (!appId || appDrop?.leafId !== t.leafId) return;
+              e.preventDefault();
+              setAppDrop(null);
+              props.onDropApp(t.leafId, appId, appDrop.zone);
+            }}
             aria-label={appName(t.appId)}
           >
             <header
@@ -426,6 +464,7 @@ export function TileLayout(props: Props) {
                 </div>
               )}
             </div>
+            {appDrop?.leafId === t.leafId && <div className={`app-drop is-${appDrop.zone}`} aria-hidden />}
           </section>
         );
       })}
