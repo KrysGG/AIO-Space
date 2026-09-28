@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Release] v0.1.1: first Windows installer (unsigned), Windows download rules and title strip, the fix for the stale workspace save, SIGTERM quit steps.
 - [6.5] CI and the release pipeline run on Windows too: full test suite, Windows installer built, checked (fuses), installed, started and uninstalled on every release build (D-063).
 - [6.1-6.4 built] Windows: own title strip with Windows' controls and Snap Layouts in theme colours, notification id and taskbar unread badge, per-user NSIS installer (unsigned for now) with updates, Windows download rules (never open shortcuts, scripts, installers or disk images; Windows-safe file names), views re-placed on DPI changes. Waiting for a Windows 11 check (Backlog).
 - [5.5] First release, v0.1.0, published by the tag workflow: AppImage, pacman package, tar.gz, SHA256SUMS, latest-linux.yml and AUR files; verified after download and with makepkg from the live URLs (D-060).
