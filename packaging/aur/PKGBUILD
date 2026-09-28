@@ -3,7 +3,7 @@
 # After a release: bump pkgver, reset pkgrel=1, run `updpkgsums` and `makepkg --printsrcinfo > .SRCINFO`.
 pkgname=spaceaio-bin
 _pkgname=spaceaio
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='All-in-one tiled workspace for web apps, each with its own login, with ad and tracker blocking'
 arch=('x86_64')
@@ -20,7 +20,7 @@ source=("$_pkgname-$pkgver-x64.tar.gz::$url/releases/download/v$pkgver/$_pkgname
         "$_pkgname-$pkgver.svg::https://raw.githubusercontent.com/KrysGG/SpaceAIO/v$pkgver/apps/desktop/build/icon.svg"
         "$_pkgname.desktop"
         "LICENSE-$pkgver::https://raw.githubusercontent.com/KrysGG/SpaceAIO/v$pkgver/LICENSE")
-sha256sums=('1fac3571a5b94c69eb9d2a634556a1303dbb9ad28384595f5339f1b1b1d1366f'
+sha256sums=('21f2ae3be427ccc6b65a00f3c01a2652d8a5821830979873b847595d047622c2'
             '2a3ac779b5708864800f94374a8fba9b95e240101fef9b400bd27b0195ea48a4'
             '3cecf22887c739c25445a4c140f733c044d359da290db974e266af94985033f1'
             '80ed6b91f29ccac008d4a00c922f3932d552d69d92be4422eddb7f5fb2b26465')
