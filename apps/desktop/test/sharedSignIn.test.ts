@@ -100,6 +100,30 @@ describe('shared Google sign-in in the app', () => {
     expect(await has({ part: TW, name: 'SID' })).toBe(true);
   });
 
+  it('Google replacing its cookies (it rotates them) keeps every app signed in', async () => {
+    const value = (part: string) =>
+      app.evaluate(async ({ session }, p) => (await session.fromPartition(p as string).cookies.get({ name: 'SIDCC' }))[0]?.value ?? null, part);
+    // One after another, as a page's responses rotate it; each change is an "old removed" + "new added" pair.
+    await app.evaluate(async ({ session }, p) => {
+      const ses = session.fromPartition(p as string);
+      for (let i = 1; i <= 20; i++) {
+        await ses.cookies.set({ url: 'https://accounts.google.com/', name: 'SIDCC', value: `v${i}`, domain: '.google.com', expirationDate: Date.now() / 1000 + 3600 });
+      }
+    }, TW);
+    await new Promise((r) => setTimeout(r, 1500)); // let the copies settle
+    expect(await value(TW)).toBe('v20'); // never signed out by an echo
+    expect(await value('persist:app-discord-default')).toBe('v20');
+  });
+
+  it('Google expiring a cookie (how it signs out) still reaches every app', async () => {
+    await setIn(TW, 'LSID');
+    await waitFor(() => has({ part: 'persist:app-discord-default', name: 'LSID' }), true);
+    await app.evaluate(async ({ session }, p) => {
+      await session.fromPartition(p as string).cookies.set({ url: 'https://accounts.google.com/', name: 'LSID', value: 'gone', domain: '.google.com', expirationDate: 1 });
+    }, TW);
+    await waitFor(() => has({ part: 'persist:app-discord-default', name: 'LSID' }), false);
+  });
+
   it('signing out in one app signs them all out', async () => {
     await app.evaluate(async ({ session }, p) => session.fromPartition(p as string).cookies.remove('https://google.com/', 'SID'), TW);
     await waitFor(() => has({ part: 'persist:app-discord-default', name: 'SID' }), false);

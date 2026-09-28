@@ -757,3 +757,13 @@ leans to (the same rule as 2.16, `dropSide` in core; the middle of an app counts
   drag-out, the UI saves any pending change so main edits the latest copy, and a newer workspace
   always cancels a pending save (a stale one would otherwise overwrite main's edit).
 - Any SpaceAIO window's UI page is a trusted IPC sender (`fromUi` checks the set of windows).
+
+**D-070: Shared Google sign-in never echoes its own copies; copies are applied in order.**
+Owner report (0.1.3): Gmail signed in, then went straight back to the sign-in page, with "Share Google
+sign-in between apps" (D-045) on. Reproduced in `sharedSignIn.test.ts`: Google rotates login cookies
+(SIDCC, PSIDTS...), and each replacement is an "old removed" + "new added" pair. The sync spread both,
+concurrently, and every copy written into another app fired that app's own change event, which spread
+its (by then older) value back: the app where the sign-in happened ended up with a stale cookie, so
+Google ended the session. Now a copy's own change event is recognised and not spread again, copies
+into each session are written one at a time in order, and the "old removed" half of a replacement
+(cause `overwrite`) is ignored. An expired overwrite (Google signing out) still spreads.

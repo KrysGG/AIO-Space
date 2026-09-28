@@ -36,6 +36,9 @@ export function sharesSignIn(partition: string): boolean {
   return partition.startsWith('persist:app-') && partition.endsWith('-default');
 }
 
+/** A cookie's identity (domain, path, name) and, for a change we expect, its value. */
+const markOf = (c: Cookie, removed: boolean): string => `${c.domain ?? ''}|${c.path ?? '/'}|${c.name}|${removed ? '' : c.value}`;
+
 /** Same cookie (name, domain, path)? */
 function sameKey(a: Cookie, b: Cookie): boolean {
   return a.name === b.name && (a.domain ?? '') === (b.domain ?? '') && (a.path ?? '/') === (b.path ?? '/');
@@ -60,6 +63,10 @@ function setDetails(c: Cookie): CookiesSetDetails {
 export class SharedSignIn {
   private readonly sessions = new Map<string, Session>();
   private hubSession: Session | undefined;
+  /** Copies being written into a session: their own change events must not be spread again. */
+  private readonly expected = new WeakMap<Session, Set<string>>();
+  /** Copies into a session are written one at a time, in the order they changed. */
+  private readonly queues = new WeakMap<Session, Promise<void>>();
 
   constructor(private readonly enabled: () => boolean) {}
 
@@ -72,8 +79,13 @@ export class SharedSignIn {
   attach(partition: string, ses: Session): void {
     if (!sharesSignIn(partition) || this.sessions.has(partition)) return;
     this.sessions.set(partition, ses);
-    ses.cookies.on('changed', (_e, cookie, _cause, removed) => {
+    ses.cookies.on('changed', (_e, cookie, cause, removed) => {
       if (!this.enabled() || muted.has(ses) || !isGoogleAccountCookie(cookie)) return;
+      // A replaced cookie reports its old value as removed, then the new one: only the new one matters.
+      // (An expired overwrite is Google signing out: that one spreads.)
+      if (removed && cause === 'overwrite') return;
+      // Our own copy arriving: sending it on would echo an older value back over a newer one.
+      if (this.expected.get(ses)?.delete(markOf(cookie, removed))) return;
       void this.spread(ses, cookie, removed);
     });
     if (this.enabled()) void this.copyAll(this.hub, ses);
@@ -91,19 +103,31 @@ export class SharedSignIn {
     await Promise.all(targets.map((to) => this.apply(to, cookie, removed)));
   }
 
-  /** Idempotent, so the copies' own change events stop here instead of bouncing back. */
-  private async apply(to: Session, cookie: Cookie, removed: boolean): Promise<void> {
-    try {
-      const existing = (await to.cookies.get({ name: cookie.name })).find((c) => sameKey(c, cookie));
-      if (removed) {
-        if (existing) await to.cookies.remove(setDetails(cookie).url, cookie.name);
-        return;
+  /** Write one change into a session, after the ones before it; skipped when it already matches. */
+  private apply(to: Session, cookie: Cookie, removed: boolean): Promise<void> {
+    const run = async (): Promise<void> => {
+      const mark = markOf(cookie, removed);
+      try {
+        const existing = (await to.cookies.get({ name: cookie.name })).find((c) => sameKey(c, cookie));
+        if (removed ? !existing : existing && existing.value === cookie.value && existing.expirationDate === cookie.expirationDate) return;
+        this.expect(to, mark);
+        if (removed) await to.cookies.remove(setDetails(cookie).url, cookie.name);
+        else await to.cookies.set(setDetails(cookie));
+      } catch (err) {
+        this.expected.get(to)?.delete(mark);
+        console.warn('[shared-sign-in] could not copy a cookie:', err instanceof Error ? err.message : err);
       }
-      if (existing && existing.value === cookie.value && existing.expirationDate === cookie.expirationDate) return;
-      await to.cookies.set(setDetails(cookie));
-    } catch (err) {
-      console.warn('[shared-sign-in] could not copy a cookie:', err instanceof Error ? err.message : err);
-    }
+    };
+    const next = (this.queues.get(to) ?? Promise.resolve()).then(run);
+    this.queues.set(to, next);
+    return next;
+  }
+
+  // ponytail: a mark whose change event never comes stays in the set; bounded by Google's few dozen cookies.
+  private expect(to: Session, mark: string): void {
+    let set = this.expected.get(to);
+    if (!set) this.expected.set(to, (set = new Set()));
+    set.add(mark);
   }
 
   private async copyAll(from: Session, to: Session): Promise<void> {
