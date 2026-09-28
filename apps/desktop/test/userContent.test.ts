@@ -99,6 +99,11 @@ describe('user content in app pages', () => {
             ?.id ?? 0,
       ),
     );
+    // editWorkspace starts from main's saved copy: wait until the UI's (delayed) save has the app in
+    // it, or the first edit would save the tile empty again and the page would close (seen on Linux CI).
+    await until(() =>
+      ui.evaluate(async (id) => JSON.stringify((await window.aio.getWorkspace()).spaces).includes(`"appId":"${id}"`), APP),
+    );
     await load('/');
   }, 60_000);
 
