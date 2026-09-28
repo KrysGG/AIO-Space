@@ -426,9 +426,6 @@ Add items found while working on other steps here, with the step where they were
 
 - (6.1) D-064 checked up to Google's password step (Gmail and X's "Continue with Google"). The owner to
   confirm a full sign-in, and X's own email/username login (untested).
-- (0.1) `pnpm install` warns that `esbuild` and `electron-winstaller` build scripts were ignored:
-  pnpm 10.0 reads `onlyBuiltDependencies` from `package.json` only, so the list in
-  `pnpm-workspace.yaml` has no effect. Pick one place. Electron 44 no longer needs to be listed.
 - (2.4, for Phase 3) Web views have spellcheck on, and Electron downloads the Hunspell dictionary
   (`userData/Dictionaries/en-US-*.bdic`) from Google's CDN by default. No user data is sent, but it is
   an outside connection the user didn't ask for. Bundle the dictionaries or set
