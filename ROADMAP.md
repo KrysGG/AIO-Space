@@ -237,11 +237,14 @@ profile: the single-instance lock was checked both ways). `test/memory.test.ts` 
 with 43 leftover pages when views aren't closed). Left: the owner's hour of normal use with one
 instance, and whether the freeze comes back.)
 
-### - [ ] 2.15 Drag a tile out of the window into its own window
+### - [x] 2.15 Drag a tile out of the window into its own window
 Dragging a tile's header outside the SpaceAIO window opens that app (same page, same account, no reload
 if possible) in a new SpaceAIO window, with the sidebar hidden there by default. Dragging it back onto
 the main window's tiles drops it in like any tile drag. Like dragging a tab out of a browser (owner confirmed).
 **Done when:** A playing YouTube tile can be torn off into its own window and back without reloading.
+(D-069. Tested in `test/tearOff.test.ts`: same page before and after (process id and document start
+time), docking on the side leaned to, reopening after a restart, closing a torn-off window closes its
+tiles; and once with a real mouse drag on Windows 11. Owner: try it with a playing YouTube video.)
 
 ### - [x] 2.16 Drag a sidebar app onto the tiles to open it there
 The sidebar's drag-to-reorder also works across into the tile area: while dragging an app icon over a

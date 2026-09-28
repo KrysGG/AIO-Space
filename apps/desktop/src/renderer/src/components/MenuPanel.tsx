@@ -143,6 +143,8 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
     setRenaming(null);
   };
 
+  // Spaces in their own windows (ROADMAP 2.15) aren't listed: each window has its one space.
+  const mainSpaces = ws.spaces.filter((s) => !s.window).length;
   const remove = (id: string, name: string): void => {
     const space = ws.spaces.find((s) => s.id === id);
     const apps = space ? listLeaves(space.layout).filter((l) => l.appId).length : 0;
@@ -171,7 +173,7 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
           <h2 className="popover-title">Spaces</h2>
           <p className="popover-hint">Each space has its own tiles. Apps in other spaces keep running, so switching is instant.</p>
           <ul className="space-list">
-            {ws.spaces.map((s) => {
+            {ws.spaces.filter((s) => !s.window).map((s) => {
               const active = s.id === ws.activeSpaceId;
               const count = listLeaves(s.layout).filter((l) => l.appId).length;
               return (
@@ -224,9 +226,9 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
                   </button>
                   <button
                     className="icon-btn"
-                    title={ws.spaces.length > 1 ? 'Delete space' : 'You need at least one space'}
+                    title={mainSpaces > 1 ? 'Delete space' : 'You need at least one space'}
                     aria-label={`Delete ${s.name}`}
-                    disabled={ws.spaces.length <= 1}
+                    disabled={mainSpaces <= 1}
                     onClick={() => remove(s.id, s.name)}
                   >
                     <svg viewBox="0 0 20 20" aria-hidden>

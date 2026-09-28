@@ -32,7 +32,8 @@ export class ScreenShare {
   private readonly sessions = new WeakSet<Session>();
   private pending: { id: string; request: Pending } | undefined;
 
-  constructor(private readonly win: BrowserWindow) {}
+  /** @param window The window to show the picker in: the one in use when the page asks. */
+  constructor(private readonly window: () => BrowserWindow) {}
 
   attach(ses: Session, appName: string): void {
     if (this.sessions.has(ses)) return;
@@ -43,7 +44,8 @@ export class ScreenShare {
           const found = await desktopCapturer
             .getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } })
             .catch(() => []);
-          if (!found.length || this.win.isDestroyed()) return deny(answer);
+          const win = this.window();
+          if (!found.length || win.isDestroyed()) return deny(answer);
           if (WAYLAND && found.length === 1) return answer({ video: found[0]! }); // chosen in the portal already
           // One picker at a time: a newer request replaces an unanswered one.
           if (this.pending) deny(this.pending.request.answer);
@@ -61,7 +63,7 @@ export class ScreenShare {
               thumbnail: s.thumbnail.isEmpty() ? '' : s.thumbnail.toDataURL(),
             })),
           };
-          this.win.webContents.send(IPC.screenSharePick, show);
+          win.webContents.send(IPC.screenSharePick, show);
         })();
       },
       { useSystemPicker: true },

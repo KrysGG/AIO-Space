@@ -72,6 +72,9 @@ These are enforced by review, and several by ESLint. Do not break them.
 19. Screen sharing (D-068) only for apps with `display-capture`, which is separate from `media` (camera and
     microphone). Only the user's pick in the UI's picker is shared, and main accepts only a source it offered
     for that very request; cancelling, closing or a newer request refuses the page.
+20. Torn-off windows (D-069) load the same UI page with the same hardened settings; IPC trusts the top
+    frame of any SpaceAIO window's UI page, and nothing else. A space's saved window position is
+    zod-checked like the rest of the workspace.
 
 ## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 

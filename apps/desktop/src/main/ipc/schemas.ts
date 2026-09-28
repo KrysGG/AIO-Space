@@ -142,6 +142,15 @@ export const WorkspaceSchema: z.ZodType<Workspace> = z.object({
         name: z.string().min(1).max(40),
         layout: SpaceLayout,
         focusedLeafId: Id.nullable(),
+        // Shown in its own window (ROADMAP 2.15): where, in screen coordinates.
+        window: z
+          .object({
+            x: z.number().int().min(-100_000).max(100_000),
+            y: z.number().int().min(-100_000).max(100_000),
+            width: z.number().int().min(100).max(20_000),
+            height: z.number().int().min(100).max(20_000),
+          })
+          .optional(),
       }),
     )
     .min(1)
@@ -246,6 +255,13 @@ export const ViewFocusSchema = z.object({ leafId: Id.nullable() });
 export const ViewNavigateSchema = z.object({
   leafId: Id,
   url: z.string().max(8192).refine(isWebUrl, 'only http(s) URLs'),
+});
+
+/** A tile dragged out of its window, let go at a screen point (ROADMAP 2.15). */
+export const TileDragOutSchema = z.object({
+  leafId: Id,
+  x: z.number().int().min(-100_000).max(100_000),
+  y: z.number().int().min(-100_000).max(100_000),
 });
 
 /** A link for the system browser. Only http(s) URLs. */

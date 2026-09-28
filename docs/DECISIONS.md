@@ -739,3 +739,21 @@ handler as `media` with no media types; that is now checked against `display-cap
 microphone requests list `video`/`audio` and still need `media`), so neither permission implies the
 other. Electron has no "deny" answer: an empty one refuses the page (AbortError) and then throws, so
 refusals go through `deny()`, which catches it.
+
+**D-069: Torn-off windows: one ViewManager, a host per window; tiles move through the workspace.**
+Dragging a tile's header out of the window (ROADMAP 2.15) opens it in its own window, like a browser
+tab; dragging it onto another SpaceAIO window docks it beside the tile under the pointer, on the side it
+leans to (the same rule as 2.16, `dropSide` in core; the middle of an app counts as its right).
+- A torn-off window shows one space whose `window` bounds are saved (`Space.window`), so it reopens at
+  the next start; its UI loads with `?space=<id>` and starts with the sidebar hidden. The main window's
+  space list leaves such spaces out. Closing a torn-off window closes its tiles, like a browser window;
+  quitting keeps it. Closing the main window quits.
+- `ViewManager` keeps every view and a `Host` per window (placements, hidden state, timers). A view is
+  in one host; when another window's UI places it, it moves there (`removeChildView`/`addChildView`),
+  page and all. Everything a view reports (state, focus, shortcuts, menus, links, popups) goes to its
+  current host. A closing window's views wait hidden in the main window until its next sync.
+- Main does the moves (`detachLeaf`, `dockLeaf`), saves, and pushes the workspace to every window
+  (`workspace:changed`); a UI takes a pushed workspace without saving it back. Before reporting a
+  drag-out, the UI saves any pending change so main edits the latest copy, and a newer workspace
+  always cancels a pending save (a stale one would otherwise overwrite main's edit).
+- Any SpaceAIO window's UI page is a trusted IPC sender (`fromUi` checks the set of windows).

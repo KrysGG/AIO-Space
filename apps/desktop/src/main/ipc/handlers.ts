@@ -12,6 +12,7 @@ import type { FilterLists } from '../privacy/filterLists';
 import { storageStatus } from '../security/keyring';
 import { allAppPartitions, clearPartitions } from '../store/siteData';
 import type { ViewManager } from '../views/ViewManager';
+import type { Windows } from '../windows';
 import {
   ClearDataSchema,
   DownloadActionSchema,
@@ -26,6 +27,7 @@ import {
   ViewFocusSchema,
   ViewNavigateSchema,
   OpenExternalSchema,
+  TileDragOutSchema,
   ScreenShareChoiceSchema,
   WorkspaceSchema,
 } from './schemas';
@@ -34,18 +36,18 @@ export function registerIpc(
   win: BrowserWindow,
   store: WorkspaceStore,
   views: ViewManager,
+  windows: Windows,
   downloads: DownloadManager,
   filterLists: FilterLists,
   plugins: PluginStore,
   extensions: ExtensionStore,
   updates: Updates,
 ): void {
-  /** Only the UI window's top frame may talk to main. Web app views have no preload anyway. */
+  /** Only a SpaceAIO window's UI page (top frame) may talk to main. Web app views have no preload anyway. */
   const fromUi = (e: IpcMainEvent | IpcMainInvokeEvent): boolean =>
-    !win.isDestroyed() &&
-    e.sender.id === win.webContents.id &&
-    e.senderFrame !== null &&
-    e.senderFrame === e.sender.mainFrame;
+    views.hostOf(e.sender) !== undefined && e.senderFrame !== null && e.senderFrame === e.sender.mainFrame;
+  /** The window a request came from, for its dialogs (ROADMAP 2.15). */
+  const winOf = (e: IpcMainEvent | IpcMainInvokeEvent): BrowserWindow => views.hostOf(e.sender)?.win ?? win;
 
   const guard = (e: IpcMainInvokeEvent): void => {
     if (!fromUi(e)) throw new Error('IPC rejected: untrusted sender');
@@ -60,6 +62,7 @@ export function registerIpc(
     guard(e);
     const ws = WorkspaceSchema.parse(raw);
     await store.save(ws);
+    windows.changed(ws, e.sender); // the other windows get it too (ROADMAP 2.15)
     clearHttpAllowedThisRun(); // the saved list is authoritative again (removals take effect)
     views.refresh(); // a custom app added just now can get its view
     views.applyPrivacy(); // WebRTC policy changes need a reload
@@ -76,12 +79,12 @@ export function registerIpc(
   ipcMain.on(IPC.viewsSync, (e, raw: unknown) => {
     if (!fromUi(e)) return;
     const parsed = ViewsSyncSchema.safeParse(raw);
-    if (parsed.success) views.sync(parsed.data.placements, parsed.data.keep, parsed.data.frame);
+    if (parsed.success) views.sync(e.sender, parsed.data.placements, parsed.data.keep, parsed.data.frame);
   });
 
   ipcMain.on(IPC.viewsSetHidden, (e, raw: unknown) => {
     if (!fromUi(e) || typeof raw !== 'boolean') return;
-    views.setHidden(raw);
+    views.setHidden(e.sender, raw);
   });
 
   ipcMain.on(IPC.viewCommand, (e, raw: unknown) => {
@@ -93,13 +96,19 @@ export function registerIpc(
   ipcMain.on(IPC.viewFocus, (e, raw: unknown) => {
     if (!fromUi(e)) return;
     const parsed = ViewFocusSchema.safeParse(raw);
-    if (parsed.success) views.focus(parsed.data.leafId);
+    if (parsed.success) views.focus(e.sender, parsed.data.leafId);
   });
 
   ipcMain.on(IPC.viewNavigate, (e, raw: unknown) => {
     if (!fromUi(e)) return;
     const parsed = ViewNavigateSchema.safeParse(raw);
     if (parsed.success) views.navigate(parsed.data.leafId, parsed.data.url);
+  });
+
+  ipcMain.on(IPC.tileDragOut, (e, raw: unknown) => {
+    if (!fromUi(e)) return;
+    const parsed = TileDragOutSchema.safeParse(raw);
+    if (parsed.success) void windows.dragOut(e.sender, parsed.data.leafId, { x: parsed.data.x, y: parsed.data.y });
   });
 
   ipcMain.on(IPC.linkOpenExternal, (e, raw: unknown) => {
@@ -152,7 +161,7 @@ export function registerIpc(
   ipcMain.handle(IPC.workspaceExport, async (e, raw: unknown): Promise<WorkspaceFileResult> => {
     guard(e);
     NoPayloadSchema.parse(raw);
-    const pick = await dialog.showSaveDialog(win, {
+    const pick = await dialog.showSaveDialog(winOf(e), {
       title: 'Export workspace',
       defaultPath: `aio-space-workspace-${new Date().toISOString().slice(0, 10)}.json`,
       filters: [{ name: 'SpaceAIO workspace', extensions: ['json'] }],
@@ -164,7 +173,7 @@ export function registerIpc(
   ipcMain.handle(IPC.workspaceImport, async (e, raw: unknown) => {
     guard(e);
     NoPayloadSchema.parse(raw);
-    const pick = await dialog.showOpenDialog(win, {
+    const pick = await dialog.showOpenDialog(winOf(e), {
       title: 'Import workspace',
       properties: ['openFile'],
       filters: [{ name: 'SpaceAIO workspace', extensions: ['json'] }],
@@ -184,7 +193,7 @@ export function registerIpc(
   ipcMain.handle(IPC.pluginsInstall, async (e, raw: unknown): Promise<PluginInstallResult> => {
     guard(e);
     NoPayloadSchema.parse(raw);
-    const pick = await dialog.showOpenDialog(win, { title: 'Install a plugin: pick its folder', properties: ['openDirectory'] });
+    const pick = await dialog.showOpenDialog(winOf(e), { title: 'Install a plugin: pick its folder', properties: ['openDirectory'] });
     const folder = pick.filePaths[0];
     if (pick.canceled || !folder) return { ok: false, cancelled: true };
     try {
@@ -205,7 +214,7 @@ export function registerIpc(
   ipcMain.on(IPC.windowTitleBar, (e, raw: unknown) => {
     if (!fromUi(e) || process.platform !== 'win32') return;
     const parsed = TitleBarColorsSchema.safeParse(raw);
-    if (parsed.success) win.setTitleBarOverlay(parsed.data);
+    if (parsed.success) winOf(e).setTitleBarOverlay(parsed.data);
   });
 
   ipcMain.handle(IPC.updatesStatus, (e, raw: unknown) => {
@@ -248,7 +257,7 @@ export function registerIpc(
   ipcMain.handle(IPC.extensionsInstallFolder, async (e, raw: unknown): Promise<ExtensionInstallResult> => {
     guard(e);
     NoPayloadSchema.parse(raw);
-    const pick = await dialog.showOpenDialog(win, { title: 'Install an unpacked extension: pick its folder', properties: ['openDirectory'] });
+    const pick = await dialog.showOpenDialog(winOf(e), { title: 'Install an unpacked extension: pick its folder', properties: ['openDirectory'] });
     const folder = pick.filePaths[0];
     if (pick.canceled || !folder) return { ok: false, cancelled: true };
     return installed(() => extensions.installFromFolder(folder));

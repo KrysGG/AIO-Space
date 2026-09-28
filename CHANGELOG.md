@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [2.15] Drag a tile out of the window to open it in its own window (sidebar hidden), like a browser tab; drag it onto a SpaceAIO window to dock it back on the side you lean to. Pages don't reload; torn-off windows reopen after a restart (D-069). Also fixed: a pending save could overwrite a workspace the window had just received.
 - [2.17] The menu is in titled sections, most used first: Spaces, Apps and accounts, Privacy, Appearance, Performance, Browser, Updates, Customize, Your data.
 - [2.16] Drag an app from the sidebar onto a tile: it opens on the side you lean to (a highlight shows where), or in the tile after asking "Replace X with Y?".
 - [2.14] Memory profiled on a 5120x1440 screen with YouTube + X: no leak (the reported 4 GB was two instances); a memory test now guards open/close/resize cycles in CI.

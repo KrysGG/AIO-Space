@@ -8,6 +8,9 @@ import type { FocusDirection, LayoutNode, Rect, SplitDirection, WebAppDef, Works
 export const IPC = {
   workspaceGet: 'workspace:get',
   workspaceSave: 'workspace:save',
+  /** main -> UI: another window (or main) saved the workspace (ROADMAP 2.15). */
+  workspaceChanged: 'workspace:changed',
+  tileDragOut: 'tile:drag-out',
   catalogGet: 'catalog:get',
   viewsSync: 'views:sync',
   viewsSetHidden: 'views:set-hidden',
@@ -253,6 +256,10 @@ export interface AioApi {
   navigate(leafId: string, url: string): void;
   /** Hand an http(s) link to the system browser (when the UI has no room for a Browser tile). */
   openExternal(url: string): void;
+  /** The workspace was saved elsewhere (another window, or main): the UI takes it as is. */
+  onWorkspaceChanged(cb: (ws: Workspace) => void): () => void;
+  /** A tile's header was dragged out of the window and let go at this screen point (ROADMAP 2.15). */
+  dragTileOut(leafId: string, x: number, y: number): void;
   /** A page wants to share the screen: show the picker. Returns an unsubscribe function. */
   onScreenSharePick(cb: (request: ScreenShareRequest) => void): () => void;
   /** The picker's answer; `sourceId` null cancels. */

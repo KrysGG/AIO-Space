@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  activeSpace,
+  activeSpace as mainActiveSpace,
   addProfile,
   allowHttpHost,
   addSpace,
@@ -55,7 +55,7 @@ import {
   swapApps,
   switchSpace,
   unreadFromTitle,
-  updateActiveSpace,
+  updateSpace,
   urlAfterEngineSwitch,
   type PrivacySettings,
   type SearchEngineId,
@@ -95,6 +95,10 @@ const RAIL_ANIMATION_MS = 220;
 const SNAPSHOT_WAIT_MS = 250;
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+/** A torn-off window shows this one space (ROADMAP 2.15); the main window shows the active space. */
+const WINDOW_SPACE = new URLSearchParams(location.search).get('space');
+const activeSpace = (ws: Workspace): Space => (WINDOW_SPACE ? ws.spaces.find((s) => s.id === WINDOW_SPACE) : undefined) ?? mainActiveSpace(ws);
+const updateActiveSpace = (ws: Workspace, fn: (s: Space) => Space): Workspace => updateSpace(ws, activeSpace(ws).id, fn);
 const activeSpaceHasApps = (ws: Workspace): boolean => listLeaves(activeSpace(ws).layout).some((l) => l.appId !== null);
 /** Longest tab title kept in the workspace (the schema's limit). */
 const MAX_TAB_TITLE = 300;
@@ -247,6 +251,8 @@ export function App() {
   const saveTimer = useRef<number | undefined>(undefined);
   /** The workspace as loaded from main: saving it back unchanged is pointless, and could overwrite a newer one. */
   const loadedWs = useRef<Workspace | null>(null);
+  // A torn-off window's sidebar: hidden at first, its own (ROADMAP 2.15).
+  const [tornRailCollapsed, setTornRailCollapsed] = useState(true);
   // Latest handlers and focused tile; the IPC listeners and callbacks are created once.
   const shortcutRef = useRef<(action: ShortcutAction) => void>(() => {});
   const openInNewTileRef = useRef<(request: OpenInNewTile) => void>(() => {});
@@ -274,6 +280,12 @@ export function App() {
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
     const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
     const offShare = window.aio.onScreenSharePick(setShareRequest);
+    // Saved elsewhere (another window, or main moving a tile between windows): take it as is, and
+    // don't save it back (ROADMAP 2.15).
+    const offWorkspace = window.aio.onWorkspaceChanged((w) => {
+      loadedWs.current = w;
+      setWs(w);
+    });
     const offDownloads = window.aio.onDownloads(setDownloads);
     const offSnapshots = window.aio.onViewSnapshots((shots) => {
       setSnapshots(shots);
@@ -304,19 +316,36 @@ export function App() {
       offShortcut();
       offNewTile();
       offShare();
+      offWorkspace();
     };
+  }, []);
+
+  const persist = useCallback((w: Workspace): void => {
+    // Browser set to "forget when SpaceAIO closes": its tabs' pages are never written to disk.
+    const saved = w.forgetOnClose.includes('browser') ? mapLayouts(w, forgetTabPages) : w;
+    window.aio.saveWorkspace(saved).catch((e: unknown) => setError(`Couldn't save layout: ${String(e)}`));
   }, []);
 
   // Debounced persistence of every workspace change.
   useEffect(() => {
-    if (!ws || ws === loadedWs.current) return;
+    // Any newer workspace replaces a pending save, also one not to save (loaded, or pushed by main:
+    // the old pending one would overwrite it, ROADMAP 2.15).
     window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => {
-      // Browser set to "forget when SpaceAIO closes": its tabs' pages are never written to disk.
-      const saved = ws.forgetOnClose.includes('browser') ? mapLayouts(ws, forgetTabPages) : ws;
-      window.aio.saveWorkspace(saved).catch((e: unknown) => setError(`Couldn't save layout: ${String(e)}`));
-    }, SAVE_DELAY_MS);
-  }, [ws]);
+    if (!ws || ws === loadedWs.current) return;
+    saveTimer.current = window.setTimeout(() => persist(ws), SAVE_DELAY_MS);
+  }, [ws, persist]);
+  const latestWs = useRef(ws);
+  useLayoutEffect(() => {
+    latestWs.current = ws;
+  });
+  /** Save a pending change now, before asking main to edit the workspace (it would otherwise land after). */
+  const flushSave = (): void => {
+    window.clearTimeout(saveTimer.current);
+    const w = latestWs.current;
+    if (!w || w === loadedWs.current) return;
+    loadedWs.current = w;
+    persist(w);
+  };
 
   const edit = useCallback((fn: (w: Workspace) => Workspace) => {
     setWs((prev) => (prev ? fn(prev) : prev));
@@ -342,7 +371,8 @@ export function App() {
   useLayoutEffect(() => {
     toggleRailRef.current = () => {
       if (!ws || railMoving) return;
-      const flip = (): void => edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
+      const flip = (): void =>
+        WINDOW_SPACE ? setTornRailCollapsed((c) => !c) : edit((w) => ({ ...w, ui: { ...w.ui, railCollapsed: !w.ui.railCollapsed } }));
       const hasViews = activeSpaceHasApps(ws);
       const popoverOpen = menuOpen || helpOpen || downloadsOpen || shieldsLeaf !== null || extensionsLeaf !== null || adding !== null || store !== null || railMenu !== null || tabMenu !== null;
       const reduceMotion = ws.ui.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -469,6 +499,8 @@ export function App() {
 
   if (error) return <div className="fatal">{error}</div>;
   if (!ws) return <div className="boot" />;
+  // A torn-off window whose space is gone is closing: show nothing (and so place no views).
+  if (WINDOW_SPACE && !ws.spaces.some((s) => s.id === WINDOW_SPACE)) return <div className="boot" />;
 
   const space = activeSpace(ws);
   const keyringNotice = weakKeyring && !ws.dismissedNotices.includes('weak-keyring');
@@ -640,7 +672,7 @@ export function App() {
       {window.aio.platform === 'win32' && (
         <div className="titlebar">
           <span className="titlebar-name">SpaceAIO</span>
-          {ws.spaces.length > 1 && <span className="titlebar-space">{space.name}</span>}
+          {(WINDOW_SPACE || ws.spaces.filter((s) => !s.window).length > 1) && <span className="titlebar-space">{space.name}</span>}
         </div>
       )}
     <div className={`shell${railMoving ? ' is-rail-moving' : ''}`}>
@@ -656,14 +688,14 @@ export function App() {
         onMenu={() => setMenuOpen(!menuOpen)}
         menuOpen={menuOpen}
         spaceName={space.name}
-        showSpaceName={ws.spaces.length > 1}
+        showSpaceName={!WINDOW_SPACE && ws.spaces.filter((s) => !s.window).length > 1}
         onHelp={() => setHelpOpen(!helpOpen)}
         helpOpen={helpOpen}
         onDownloads={() => setDownloadsOpen(!downloadsOpen)}
         downloadsOpen={downloadsOpen}
         activeDownloads={downloads.filter((d) => d.state === 'progressing').length}
         menuNotice={keyringNotice || updateStatus.state === 'ready'}
-        collapsed={ws.ui.railCollapsed}
+        collapsed={WINDOW_SPACE ? tornRailCollapsed : ws.ui.railCollapsed}
         onAddApp={() => setStore({ leafId: null })}
         onAppMenu={(appId, at) => setRailMenu({ appId, at })}
         onToggleCollapsed={() => toggleRailRef.current()}
@@ -686,6 +718,10 @@ export function App() {
         onClear={clear}
         onSwap={swap}
         onDropApp={dropApp}
+        onDragOut={(leafId, x, y) => {
+          flushSave(); // main moves the tile in the workspace: it must start from this window's latest
+          window.aio.dragTileOut(leafId, x, y);
+        }}
         accountsOf={(appId) => profilesOf(ws, appId)}
         onAccount={setAccount}
         shieldsUp={(appId) => resolvePrivacy(ws.privacy, ws.privacyOverrides[appId]).shields}

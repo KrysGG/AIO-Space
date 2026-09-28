@@ -68,7 +68,28 @@ const WHEEL_ZOOM_MS = 150;
 /** Longest wait for a page snapshot before hiding views (a slow page shows the plain placeholder). */
 const SNAPSHOT_TIMEOUT_MS = 150;
 
+/**
+ * One SpaceAIO window (ROADMAP 2.15): the main window, or a torn-off one showing a single space. Its
+ * UI page tells us where its views go; views move between windows without reloading.
+ */
+interface Host {
+  win: BrowserWindow;
+  /** The space a torn-off window shows; null for the main window (its active space). */
+  spaceId: string | null;
+  placements: ViewPlacement[];
+  /** Instances of this UI's other spaces: hidden but kept running (ROADMAP 2.8). */
+  keep: string[];
+  /** The UI's layout and tile-area margins, for placing views on window resize without waiting for it. */
+  frame: ViewFrame | undefined;
+  hidden: boolean;
+  hideGeneration: number;
+  settleTimer?: NodeJS.Timeout;
+  uiRepaintTimer?: NodeJS.Timeout;
+}
+
 interface Entry {
+  /** The window the view is in now. */
+  host: Host;
   /** The tile the view currently sits in. Changes when tiles are swapped; the view doesn't. */
   leafId: string;
   /** Account of the app (ROADMAP 2.12); a different account needs a different session, so a new view. */
@@ -110,14 +131,11 @@ export class ViewManager {
   readonly screenShare: ScreenShare;
   /** Keyed by instance id. */
   private readonly views = new Map<string, Entry>();
-  private hidden = false;
+  /** Every SpaceAIO window by its UI page's id; `main` is the first. */
+  private readonly hosts = new Map<number, Host>();
+  private readonly main: Host;
   /** Start URL / focus requested for a Browser tile before its view exists (new tiles from links). */
   private readonly pendingUrl = new Map<string, string>();
-  private lastPlacements: ViewPlacement[] = [];
-  /** The UI's layout and tile-area margins, for placing views on window resize without waiting for it. */
-  private lastFrame: ViewFrame | undefined;
-  private hideGeneration = 0;
-  private lastKeep: string[] = [];
   /** Slept apps (ROADMAP 2.9): the page they were on, to reload when their space is shown again. */
   private readonly sleeping = new Map<string, { url: string; appId: string }>();
   private pendingFocus: string | null = null;
@@ -129,7 +147,7 @@ export class ViewManager {
   onUnreadChange: (unread: Unread) => void = () => {};
 
   constructor(
-    private readonly win: BrowserWindow,
+    win: BrowserWindow,
     private readonly store: WorkspaceStore,
     private readonly downloads: DownloadManager,
     private readonly filterLists?: FilterLists,
@@ -138,46 +156,87 @@ export class ViewManager {
     private readonly plugins?: PluginStore,
     private readonly extensions?: ExtensionHost,
   ) {
-    this.screenShare = new ScreenShare(win);
+    this.main = this.addWindow(win, null);
+    // The picker shows in the window in use: the page that asks is in it, and the user just clicked.
+    this.screenShare = new ScreenShare(() => this.focusedHost().win);
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
+    // Mixed-DPI setups (ROADMAP 6.1): changing a monitor's scale rescales windows without always sending 'resize'.
+    screen.on('display-metrics-changed', () => {
+      for (const host of this.hosts.values()) this.settleAfterResize(host);
+    });
+  }
+
+  /** Track a SpaceAIO window; its UI page then syncs its own views (ROADMAP 2.15). */
+  addWindow(win: BrowserWindow, spaceId: string | null): Host {
+    const host: Host = { win, spaceId, placements: [], keep: [], frame: undefined, hidden: false, hideGeneration: 0 };
+    const id = win.webContents.id;
+    this.hosts.set(id, host);
     // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
     // dragged over ours and away again (a compositor damage-tracking quirk, not our layout code).
     // Regaining focus is the reliable moment to force a clean repaint of what's on screen.
-    this.win.on('focus', () => this.invalidateVisible());
+    win.on('focus', () => this.invalidateVisible(host));
     // Move views with the window edge as it resizes: main knows the layout, so no round trip to the UI
     // (whose own update arrives a few frames later and then matches).
-    this.win.on('resize', () => {
-      if (this.lastFrame) this.sync(this.lastPlacements, this.lastKeep);
-      this.settleAfterResize();
+    win.on('resize', () => {
+      if (host.frame) this.syncHost(host, host.placements, host.keep);
+      this.settleAfterResize(host);
     });
     // Maximize/restore/fullscreen can land in one jump; on Wayland the first resize event may arrive
     // before the window's new size is committed, leaving stale or torn frames (seen maximizing on a
     // 5120x1440 screen). Once the window has settled: place everything again and force a repaint.
     for (const event of ['maximize', 'unmaximize', 'restore', 'enter-full-screen', 'leave-full-screen'] as const) {
-      this.win.on(event as 'maximize', () => this.settleAfterResize());
+      win.on(event as 'maximize', () => this.settleAfterResize(host));
     }
     // Mixed-DPI setups (ROADMAP 6.1): moving the window onto a monitor with another scale (100% -> 150%)
-    // rescales it without always sending 'resize'; so does changing a monitor's scale. Same settle step.
-    this.win.on('moved', () => this.settleAfterResize());
-    screen.on('display-metrics-changed', () => this.settleAfterResize());
+    // rescales it without always sending 'resize'. Same settle step.
+    win.on('moved', () => this.settleAfterResize(host));
+    // Its views go to the main window, hidden, until a window places them again (or the UI closes them).
+    win.on('close', () => this.orphan(host));
+    win.on('closed', () => this.hosts.delete(id));
+    return host;
   }
 
-  private settleTimer: NodeJS.Timeout | undefined;
+  /** The SpaceAIO window whose UI page this is; undefined for anything else (IPC trust check). */
+  hostOf(sender: WebContents): Host | undefined {
+    return this.hosts.get(sender.id);
+  }
+
+  /** Every SpaceAIO window, the main one first. */
+  windows(): Host[] {
+    return [...this.hosts.values()];
+  }
+
+  private focusedHost(): Host {
+    return this.windows().find((h) => !h.win.isDestroyed() && h.win.isFocused()) ?? this.main;
+  }
+
+  /** A closing torn-off window's views wait, hidden, in the main window: its next layout keeps or closes them. */
+  private orphan(host: Host): void {
+    if (host === this.main) return;
+    for (const entry of this.views.values()) {
+      if (entry.host !== host) continue;
+      host.win.contentView.removeChildView(entry.view);
+      entry.view.setVisible(false);
+      entry.hiddenSince ??= Date.now();
+      entry.host = this.main;
+      if (!this.main.win.isDestroyed()) this.main.win.contentView.addChildView(entry.view);
+    }
+  }
 
   /** After the last resize event (150 ms of quiet): re-place views and repaint them and the UI. */
-  private settleAfterResize(): void {
-    clearTimeout(this.settleTimer);
-    this.settleTimer = setTimeout(() => {
-      if (this.win.isDestroyed()) return;
-      if (this.lastFrame) this.sync(this.lastPlacements, this.lastKeep);
-      this.invalidateVisible();
-      this.win.webContents.invalidate();
+  private settleAfterResize(host: Host): void {
+    clearTimeout(host.settleTimer);
+    host.settleTimer = setTimeout(() => {
+      if (host.win.isDestroyed()) return;
+      if (host.frame) this.syncHost(host, host.placements, host.keep);
+      this.invalidateVisible(host);
+      host.win.webContents.invalidate();
     }, 150);
   }
 
   /** View bounds per tile for the current window size, from the UI's layout and margins. */
-  private boundsFromFrame(frame: ViewFrame): Map<string, Rect> {
-    const { width, height } = this.win.getContentBounds();
+  private boundsFromFrame(host: Host, frame: ViewFrame): Map<string, Rect> {
+    const { width, height } = host.win.getContentBounds();
     const { left, top, right, bottom } = frame.insets;
     const area = { x: 0, y: 0, width: Math.max(0, width - left - right), height: Math.max(0, height - top - bottom) };
     const out = new Map<string, Rect>();
@@ -188,25 +247,23 @@ export class ViewManager {
     return out;
   }
 
-  private uiRepaintTimer: NodeJS.Timeout | undefined;
-
   /**
    * Repaint the whole UI page shortly after a page's state changed (D-049). On Wayland, parts of the
    * UI next to a view (a tile's header and address bar) were sometimes left blank until something
    * inside them changed: only the redrawn bits came back (seen on a 5120x1440 screen). A full
    * repaint once things go quiet brings the rest back; it redraws, it doesn't re-render React.
    */
-  private repaintUiSoon(): void {
-    clearTimeout(this.uiRepaintTimer);
-    this.uiRepaintTimer = setTimeout(() => {
-      if (!this.win.isDestroyed()) this.win.webContents.invalidate();
+  private repaintUiSoon(host: Host): void {
+    clearTimeout(host.uiRepaintTimer);
+    host.uiRepaintTimer = setTimeout(() => {
+      if (!host.win.isDestroyed()) host.win.webContents.invalidate();
     }, 250);
   }
 
   /** Force every currently-visible view to repaint (see the focus handler above). */
-  private invalidateVisible(): void {
+  private invalidateVisible(host: Host): void {
     for (const entry of this.views.values()) {
-      if (!entry.view.getVisible() || entry.view.webContents.isDestroyed()) continue;
+      if (entry.host !== host || !entry.view.getVisible() || entry.view.webContents.isDestroyed()) continue;
       entry.view.webContents.invalidate();
     }
   }
@@ -216,15 +273,26 @@ export class ViewManager {
    * `keep`, which belong to other spaces (ROADMAP 2.8); destroy everything else. Views for `keep`
    * apps that aren't running yet are only created once their space is shown.
    */
-  sync(placements: ViewPlacement[], keep: string[] = this.lastKeep, frame: ViewFrame | undefined = this.lastFrame): void {
-    this.lastPlacements = placements;
-    this.lastKeep = keep;
-    this.lastFrame = frame;
+  sync(sender: WebContents, placements: ViewPlacement[], keep: string[], frame?: ViewFrame): void {
+    const host = this.hostOf(sender);
+    if (host) this.syncHost(host, placements, keep, frame);
+  }
+
+  /**
+   * One window's views. Views another window shows are left alone, unless this window now places
+   * them: then they move here, page and all (a tile dragged between windows, ROADMAP 2.15).
+   */
+  private syncHost(host: Host, placements: ViewPlacement[], keep: string[] = host.keep, frame: ViewFrame | undefined = host.frame): void {
+    host.placements = placements;
+    host.keep = keep;
+    host.frame = frame;
+    if (host.win.isDestroyed()) return;
     // Positions for the window as it is now (the UI measured it a moment ago, possibly smaller or larger).
-    const current = frame ? this.boundsFromFrame(frame) : undefined;
+    const current = frame ? this.boundsFromFrame(host, frame) : undefined;
     const shown = new Set(placements.map((p) => p.instanceId));
     const kept = new Set(keep);
     for (const [instanceId, entry] of [...this.views]) {
+      if (entry.host !== host && !shown.has(instanceId)) continue;
       if (shown.has(instanceId)) {
         entry.hiddenSince = undefined;
         continue;
@@ -243,12 +311,21 @@ export class ViewManager {
         this.destroy(p.instanceId);
         entry = undefined;
       }
-      entry ??= this.create(p.leafId, p.instanceId, p.appId, p.profile, this.wake(p.instanceId, p.appId), p.url);
+      if (entry && entry.host !== host) this.move(entry, host);
+      entry ??= this.create(host, p.leafId, p.instanceId, p.appId, p.profile, this.wake(p.instanceId, p.appId), p.url);
       if (!entry) continue;
       entry.leafId = p.leafId;
       entry.view.setBounds(current?.get(p.leafId) ?? p.bounds);
-      entry.view.setVisible(!this.hidden && !entry.httpsFailed);
+      entry.view.setVisible(!host.hidden && !entry.httpsFailed);
     }
+  }
+
+  /** Move a view into another window; the page keeps running (no reload). */
+  private move(entry: Entry, to: Host): void {
+    if (!entry.host.win.isDestroyed()) entry.host.win.contentView.removeChildView(entry.view);
+    entry.host = to;
+    to.win.contentView.addChildView(entry.view);
+    entry.emit?.(); // the new window's UI learns its title, loading state and so on
   }
 
   /**
@@ -256,12 +333,12 @@ export class ViewManager {
    * custom app added a moment ago may have been placed before main knew about it.
    */
   refresh(): void {
-    this.sync(this.lastPlacements);
+    for (const host of this.hosts.values()) this.syncHost(host, host.placements);
   }
 
   /** The view on screen in a tile (a Browser tile's other tabs share its leaf id but stay hidden). */
   private byLeaf(leafId: string): Entry | undefined {
-    const placed = this.lastPlacements.find((p) => p.leafId === leafId);
+    const placed = this.windows().flatMap((h) => h.placements).find((p) => p.leafId === leafId);
     if (placed) return this.views.get(placed.instanceId);
     for (const entry of this.views.values()) if (entry.leafId === leafId && entry.hiddenSince === undefined) return entry;
     return undefined;
@@ -272,41 +349,43 @@ export class ViewManager {
    * the snapshots go to the UI, which shows them in the tiles so the layout doesn't flash empty
    * (ROADMAP 2.13). A show that arrives while snapshots are being taken cancels the pending hide.
    */
-  setHidden(hidden: boolean): void {
-    const generation = ++this.hideGeneration;
+  setHidden(sender: WebContents, hidden: boolean): void {
+    const host = this.hostOf(sender);
+    if (!host) return;
+    const generation = ++host.hideGeneration;
     if (!hidden) {
-      this.hidden = false;
-      this.applyVisibility();
-      if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewsSnapshots, {}); // views are back on top
+      host.hidden = false;
+      this.applyVisibility(host);
+      if (!host.win.isDestroyed()) host.win.webContents.send(IPC.viewsSnapshots, {}); // views are back on top
       return;
     }
     // "Reduce animations and effects": no snapshots (they cost a capture and encode per page).
-    const shots = this.store.get().ui.reduceMotion ? this.sendNoSnapshots() : this.snapshot();
+    const shots = this.store.get().ui.reduceMotion ? this.sendNoSnapshots(host) : this.snapshot(host);
     void shots.then(() => {
-      if (generation !== this.hideGeneration) return; // shown again meanwhile
-      this.hidden = true;
-      this.applyVisibility();
+      if (generation !== host.hideGeneration) return; // shown again meanwhile
+      host.hidden = true;
+      this.applyVisibility(host);
     });
   }
 
-  private applyVisibility(): void {
-    const shown = new Set(this.lastPlacements.map((p) => p.instanceId));
+  private applyVisibility(host: Host): void {
+    const shown = new Set(host.placements.map((p) => p.instanceId));
     for (const [instanceId, { view, httpsFailed }] of this.views) {
       if (!shown.has(instanceId)) continue; // other spaces' views stay hidden
-      view.setVisible(!this.hidden && !httpsFailed);
+      view.setVisible(!host.hidden && !httpsFailed);
       // A static page may not paint for seconds after being shown again; until it does, the Wayland
       // compositor can show its old frame in the wrong place (torn strips after a divider drag).
-      if (!this.hidden) view.webContents.invalidate();
+      if (!host.hidden) view.webContents.invalidate();
     }
   }
 
-  private async sendNoSnapshots(): Promise<void> {
-    if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewsSnapshots, {});
+  private async sendNoSnapshots(host: Host): Promise<void> {
+    if (!host.win.isDestroyed()) host.win.webContents.send(IPC.viewsSnapshots, {});
   }
 
   /** JPEG snapshots of the visible views, keyed by instance id; a slow page is simply skipped. */
-  private async snapshot(): Promise<void> {
-    const shown = new Set(this.lastPlacements.map((p) => p.instanceId));
+  private async snapshot(host: Host): Promise<void> {
+    const shown = new Set(host.placements.map((p) => p.instanceId));
     const shots: Record<string, string> = {};
     await Promise.all(
       [...this.views]
@@ -319,18 +398,19 @@ export class ViewManager {
           shots[id] = `data:image/jpeg;base64,${image.resize({ width: Math.max(1, width) }).toJPEG(72).toString('base64')}`;
         }),
     );
-    if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewsSnapshots, shots);
+    if (!host.win.isDestroyed()) host.win.webContents.send(IPC.viewsSnapshots, shots);
   }
 
   /** Keyboard focus to a tile's view; the UI page when the tile is empty or `leafId` is null. */
-  focus(leafId: string | null): void {
-    if (this.win.isDestroyed()) return;
-    // Only views on screen (active space) can take focus.
-    const entry = leafId && this.lastPlacements.some((p) => p.leafId === leafId) ? this.byLeaf(leafId) : undefined;
+  focus(sender: WebContents, leafId: string | null): void {
+    const host = this.hostOf(sender);
+    if (!host || host.win.isDestroyed()) return;
+    // Only views on screen (this window's space) can take focus.
+    const entry = leafId && host.placements.some((p) => p.leafId === leafId) ? this.byLeaf(leafId) : undefined;
     // A tile whose view is about to be created (pending URL) gets focus once it exists.
     this.pendingFocus = !entry && leafId && this.pendingUrl.has(leafId) ? leafId : null;
-    if (entry && !this.hidden) entry.view.webContents.focus();
-    else this.win.webContents.focus();
+    if (entry && !host.hidden) entry.view.webContents.focus();
+    else host.win.webContents.focus();
   }
 
   /** Address bar and new tiles from links. Browser tiles only, http(s) only (also checked by the schema). */
@@ -362,22 +442,22 @@ export class ViewManager {
     else if (cmd === 'forward' && nav.canGoForward()) nav.goForward();
     else if (cmd === 'reload') wc.reload();
     else if (cmd === 'home') void wc.loadURL(this.homeOf(entry.def));
-    else if (cmd === 'zoom-in') this.setZoom(entry.appId, nextZoom(wc.getZoomFactor(), 'in'));
-    else if (cmd === 'zoom-out') this.setZoom(entry.appId, nextZoom(wc.getZoomFactor(), 'out'));
-    else if (cmd === 'zoom-reset') this.setZoom(entry.appId, 1);
+    else if (cmd === 'zoom-in') this.setZoom(entry, nextZoom(wc.getZoomFactor(), 'in'));
+    else if (cmd === 'zoom-out') this.setZoom(entry, nextZoom(wc.getZoomFactor(), 'out'));
+    else if (cmd === 'zoom-reset') this.setZoom(entry, 1);
   }
 
   /**
    * Zoom is per app (ROADMAP 2.10): every view of the app gets the factor and reports it, and the UI
    * saves it in workspace.zoom, which is applied again whenever a page of that app loads.
    */
-  private setZoom(appId: string, factor: number): void {
+  private setZoom(from: Entry, factor: number): void {
     for (const entry of this.views.values()) {
-      if (entry.appId !== appId || entry.view.webContents.isDestroyed()) continue;
+      if (entry.appId !== from.appId || entry.view.webContents.isDestroyed()) continue;
       entry.view.webContents.setZoomFactor(factor);
       entry.emit?.();
     }
-    if (!this.win.isDestroyed()) this.win.webContents.send(IPC.appZoom, appId, factor);
+    if (!from.host.win.isDestroyed()) from.host.win.webContents.send(IPC.appZoom, from.appId, factor);
   }
 
   /** The Browser tile starts on the chosen search engine; other apps on their own start page. */
@@ -412,7 +492,7 @@ export class ViewManager {
     }
   }
 
-  private create(leafId: string, instanceId: string, appId: string, profile: string, wakeUrl?: string, tabUrl?: string): Entry | undefined {
+  private create(host: Host, leafId: string, instanceId: string, appId: string, profile: string, wakeUrl?: string, tabUrl?: string): Entry | undefined {
     const def = getApp(appId, this.store.catalog());
     if (!def) return undefined;
     const ses = getAppSession(
@@ -453,12 +533,13 @@ export class ViewManager {
     });
     wc.setWebRTCIPHandlingPolicy(this.store.privacyFor(appId).webrtcPolicy);
     followSignInUserAgent(wc, SIGN_IN_TOKEN);
-    forwardShortcuts(wc, (action) => {
-      if (!this.win.isDestroyed()) this.win.webContents.send(IPC.shortcut, action);
-    });
     wc.on('did-create-window', (child) => followSignInUserAgent(child.webContents, SIGN_IN_TOKEN));
-    const entry: Entry = { leafId, profile, appId, def, view, blocked: 0, preloadArgs, media: NO_MEDIA, audible: false, plugins: this.pluginsKey(appId) };
-    this.guardNavigation(def, view);
+    const entry: Entry = { host, leafId, profile, appId, def, view, blocked: 0, preloadArgs, media: NO_MEDIA, audible: false, plugins: this.pluginsKey(appId) };
+    // Shortcuts, state and menus go to the window the view is in now (it can move, ROADMAP 2.15).
+    forwardShortcuts(wc, (action) => {
+      if (!entry.host.win.isDestroyed()) entry.host.win.webContents.send(IPC.shortcut, action);
+    });
+    this.guardNavigation(entry);
     this.wireState(entry, instanceId);
     wc.on('context-menu', (_e, params) => this.showContextMenu(entry, params));
     // Ctrl + mouse wheel inside the page; Electron leaves zooming to us. One step per 150 ms: a notch
@@ -468,7 +549,7 @@ export class ViewManager {
       const now = Date.now();
       if (now - lastWheelZoom < WHEEL_ZOOM_MS) return;
       lastWheelZoom = now;
-      this.setZoom(appId, nextZoom(wc.getZoomFactor(), direction));
+      this.setZoom(entry, nextZoom(wc.getZoomFactor(), direction));
     });
     // The saved zoom, re-applied on each page load (Chromium may reset it when the page navigates).
     wc.on('did-navigate', () => {
@@ -483,9 +564,9 @@ export class ViewManager {
       void this.hideAds(appId, wc, true);
     });
     wc.on('did-finish-load', () => void this.hideAds(appId, wc, false));
-    if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(def, wc);
+    if (def.id.startsWith('custom-') && !def.icon) this.fetchIconOnce(entry);
 
-    this.win.contentView.addChildView(view);
+    host.win.contentView.addChildView(view);
     // Browser tiles: a link's address sent before the view existed, else the tab's saved page (D-049).
     const startUrl = def.kind === 'browser' ? (this.pendingUrl.get(leafId) ?? tabUrl) : undefined;
     this.pendingUrl.delete(leafId);
@@ -623,17 +704,19 @@ export class ViewManager {
   }
 
   /** A custom app's icon: its own favicon, fetched once through its own session (ROADMAP 2.7/4.2). */
-  private fetchIconOnce(def: WebAppDef, wc: WebContents): void {
+  private fetchIconOnce(entry: Entry): void {
+    const wc = entry.view.webContents;
     wc.once('page-favicon-updated', (_e, favicons) => {
       void fetchFavicon(wc.session, favicons).then((icon) => {
-        if (icon && !this.win.isDestroyed()) this.win.webContents.send(IPC.appIcon, def.id, icon);
+        if (icon && !entry.host.win.isDestroyed()) entry.host.win.webContents.send(IPC.appIcon, entry.def.id, icon);
       });
     });
   }
 
   /** Right-click menu (ROADMAP 2.4). Opened from a real right-click, so the native popup is allowed. */
   private showContextMenu(entry: Entry, params: ContextMenuParams): void {
-    if (this.win.isDestroyed()) return;
+    const win = entry.host.win;
+    if (win.isDestroyed()) return;
     const wc = entry.view.webContents;
     const nav = wc.navigationHistory;
     const engine = SEARCH_ENGINES[this.store.get().browser.searchEngine];
@@ -645,17 +728,17 @@ export class ViewManager {
       reload: () => wc.reload(),
       copyText: (text) => clipboard.writeText(text),
       openInNewTile: (url) => {
-        if (!isWebUrl(url) || this.win.isDestroyed()) return;
+        if (!isWebUrl(url) || win.isDestroyed()) return;
         const request: OpenInNewTile = { fromLeafId: entry.leafId, url, background: false };
-        this.win.webContents.send(IPC.openInNewTile, request);
+        win.webContents.send(IPC.openInNewTile, request);
       },
       // Browser pages only (D-049): a new tab in the same tile, opened behind the current one.
       ...(entry.def.kind === 'browser'
         ? {
             openInNewTab: (url: string) => {
-              if (!isWebUrl(url) || this.win.isDestroyed()) return;
+              if (!isWebUrl(url) || win.isDestroyed()) return;
               const request: OpenInNewTile = { fromLeafId: entry.leafId, url, background: true, tab: true };
-              this.win.webContents.send(IPC.openInNewTile, request);
+              win.webContents.send(IPC.openInNewTile, request);
             },
           }
         : {}),
@@ -668,7 +751,7 @@ export class ViewManager {
       search: { name: engine.name, url: engine.searchUrl },
       inspect: app.isPackaged ? undefined : (x, y) => wc.inspectElement(x, y),
     });
-    Menu.buildFromTemplate(template).popup({ window: this.win });
+    Menu.buildFromTemplate(template).popup({ window: win });
   }
 
   /** A request from this page was blocked: count it, and tell the UI at most every 250 ms. */
@@ -759,7 +842,7 @@ export class ViewManager {
       wc.setWebRTCIPHandlingPolicy(policy);
       wc.reload();
     }
-    if (replaced) this.sync(this.lastPlacements, this.lastKeep);
+    if (replaced) this.refresh();
   }
 
   /** After an app's data was cleared (ROADMAP 3.9): its open views start over at the app's home page. */
@@ -777,11 +860,6 @@ export class ViewManager {
     }
   }
 
-  private leafOf(wc: WebContents): string | undefined {
-    for (const entry of this.views.values()) if (entry.view.webContents === wc) return entry.leafId;
-    return undefined;
-  }
-
   /** Recount unread from every view's title; notify only when the total changes. */
   private updateUnread(): void {
     const total = sumUnread([...this.views.values()].map((e) => unreadFromTitle(e.view.webContents.getTitle())));
@@ -795,21 +873,21 @@ export class ViewManager {
     const entry = this.views.get(instanceId);
     if (!entry) return;
     this.views.delete(instanceId);
-    if (!this.win.isDestroyed()) this.win.contentView.removeChildView(entry.view);
+    if (!entry.host.win.isDestroyed()) entry.host.win.contentView.removeChildView(entry.view);
     if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
     this.updateUnread();
   }
 
   /** Keep each app inside its own sites (sign-in pages included, D-044); other links open in a Browser tile. */
-  private guardNavigation(def: WebAppDef, view: WebContentsView): void {
-    const wc = view.webContents;
+  private guardNavigation(entry: Entry): void {
+    const { def } = entry;
+    const wc = entry.view.webContents;
     const openOutside = (url: string): void => {
       if (!isWebUrl(url)) return;
-      const leafId = this.leafOf(wc);
       // The UI puts it in the space's Browser tile, or a new one beside this app (D-065).
-      if (leafId && !this.win.isDestroyed()) {
-        const request: OpenInNewTile = { fromLeafId: leafId, url, background: false, external: true };
-        this.win.webContents.send(IPC.openInNewTile, request);
+      if (!entry.host.win.isDestroyed()) {
+        const request: OpenInNewTile = { fromLeafId: entry.leafId, url, background: false, external: true };
+        entry.host.win.webContents.send(IPC.openInNewTile, request);
       } else void shell.openExternal(url);
     };
 
@@ -820,28 +898,28 @@ export class ViewManager {
       if (decision === 'external') openOutside(e.url);
     });
 
-    // Sign-in popups. Child inherits this app's session; hardening applies to it too.
-    const popup = {
-      action: 'allow',
-      overrideBrowserWindowOptions: {
-        parent: this.win,
-        width: 520,
-        height: 720,
-        autoHideMenuBar: true,
-        webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
-      } satisfies BrowserWindowConstructorOptions,
-    } as const;
+    // Sign-in popups, over the window the app is in. Child inherits this app's session; hardening applies to it too.
+    const popup = () =>
+      ({
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          parent: entry.host.win,
+          width: 520,
+          height: 720,
+          autoHideMenuBar: true,
+          webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
+        } satisfies BrowserWindowConstructorOptions,
+      }) as const;
 
     wc.setWindowOpenHandler(({ url, disposition }) => {
       switch (windowDecision(def, url, disposition)) {
         case 'popup':
-          return popup;
+          return popup();
         case 'new-tile': {
-          const leafId = this.leafOf(wc);
-          if (leafId && !this.win.isDestroyed()) {
+          if (!entry.host.win.isDestroyed()) {
             // Browser links asking for a new tab become tabs of the same tile (D-049).
-            const request: OpenInNewTile = { fromLeafId: leafId, url, background: disposition === 'background-tab', tab: def.kind === 'browser' };
-            this.win.webContents.send(IPC.openInNewTile, request);
+            const request: OpenInNewTile = { fromLeafId: entry.leafId, url, background: disposition === 'background-tab', tab: def.kind === 'browser' };
+            entry.host.win.webContents.send(IPC.openInNewTile, request);
           } else void wc.loadURL(url);
           return { action: 'deny' };
         }
@@ -868,7 +946,8 @@ export class ViewManager {
   private wireState(entry: Entry, instanceId: string): void {
     const wc = entry.view.webContents;
     const emit = (crashed = false): void => {
-      if (this.win.isDestroyed() || wc.isDestroyed()) return;
+      const win = entry.host.win;
+      if (win.isDestroyed() || wc.isDestroyed()) return;
       const state: ViewState = {
         instanceId,
         leafId: entry.leafId,
@@ -885,8 +964,8 @@ export class ViewManager {
         audible: entry.audible,
         ...(entry.httpsFailed ? { httpsFailed: entry.httpsFailed } : {}),
       };
-      this.win.webContents.send(IPC.viewState, state);
-      this.repaintUiSoon();
+      win.webContents.send(IPC.viewState, state);
+      this.repaintUiSoon(entry.host);
     };
     entry.emit = () => emit();
     wc.on('did-start-loading', () => emit());
@@ -898,13 +977,13 @@ export class ViewManager {
       const http = upgradedFrom(wc.id, url);
       if (!http) return;
       entry.httpsFailed = { host: new URL(http).hostname, url: http, error: description };
-      this.applyVisibility();
+      this.applyVisibility(entry.host);
       emit();
     });
     wc.on('did-start-navigation', (d) => {
       if (!d.isMainFrame || d.isSameDocument || !entry.httpsFailed) return;
       entry.httpsFailed = undefined;
-      this.applyVisibility();
+      this.applyVisibility(entry.host);
       emit();
     });
     const wcId = wc.id;
@@ -943,7 +1022,7 @@ export class ViewManager {
     wc.on('render-process-gone', () => emit(true));
     wc.on('focus', () => {
       // entry.leafId, read now: the view may have moved tiles since it was created.
-      if (!this.win.isDestroyed()) this.win.webContents.send(IPC.viewFocused, entry.leafId);
+      if (!entry.host.win.isDestroyed()) entry.host.win.webContents.send(IPC.viewFocused, entry.leafId);
     });
   }
 }

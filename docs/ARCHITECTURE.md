@@ -35,6 +35,11 @@
    coordinates.
 4. `ViewManager.sync()` creates missing views, destroys removed ones, and calls `setBounds`.
 
+Several windows (ROADMAP 2.15, D-069): each SpaceAIO window loads the same UI page and syncs its
+own views; a torn-off window's page has `?space=<id>` and shows that one space. A view another
+window places moves there without reloading. Main edits the workspace for tear-off and docking and
+pushes every save to all windows (`workspace:changed`); UIs take a pushed workspace as is.
+
 Coordinates are CSS pixels in the renderer, which equal Electron DIPs at zoom 1. Do not zoom the
 UI page; zoom individual views instead (ROADMAP 2.10).
 
@@ -77,7 +82,8 @@ apps/desktop/src/
   shared/ipc.ts            channel names + types (the UI↔main contract)
   preload/index.ts         exposes window.aio
   main/index.ts            startup, Linux/Wayland flags, UA cleanup
-  main/window.ts           the UI BrowserWindow
+  main/window.ts           a UI BrowserWindow (the main one, or a torn-off one)
+  main/windows.ts          torn-off windows: open, restore, tear off and dock tiles
   main/views/ViewManager.ts  native views: create/move/destroy, navigation guard, state events
   main/sessions/appSession.ts  per-app session setup (UA, permissions, pipeline)
   main/sessions/userAgent.ts   UA cleanup

@@ -11,6 +11,7 @@ import {
   ViewFocusSchema,
   ViewNavigateSchema,
   OpenExternalSchema,
+  TileDragOutSchema,
   ScreenShareChoiceSchema,
   ViewsSyncSchema,
   WorkspaceSchema,
@@ -142,6 +143,23 @@ describe('ScreenShareChoiceSchema', () => {
     expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: 'x'.repeat(201), audio: false }).success).toBe(false);
     expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: 5, audio: false }).success).toBe(false);
     expect(ScreenShareChoiceSchema.safeParse({ id, sourceId: null }).success).toBe(false);
+  });
+});
+
+describe('torn-off windows (ROADMAP 2.15)', () => {
+  it('takes a dragged-out tile and a screen point', () => {
+    expect(TileDragOutSchema.safeParse({ leafId: 'leaf_1', x: -1200, y: 300 }).success).toBe(true);
+    expect(TileDragOutSchema.safeParse({ leafId: 'leaf_1', x: 1.5, y: 300 }).success).toBe(false);
+    expect(TileDragOutSchema.safeParse({ leafId: '../x', x: 0, y: 0 }).success).toBe(false);
+    expect(TileDragOutSchema.safeParse({ leafId: 'leaf_1', x: 1e9, y: 0 }).success).toBe(false);
+  });
+
+  it("saves a space's window position, within screen bounds", () => {
+    const ws = defaultWorkspace();
+    const withWindow = (window: unknown) => ({ ...ws, spaces: [{ ...ws.spaces[0]!, window }] });
+    expect(WorkspaceSchema.safeParse(withWindow({ x: -1920, y: 0, width: 900, height: 650 })).success).toBe(true);
+    expect(WorkspaceSchema.safeParse(withWindow({ x: 0, y: 0, width: 5, height: 650 })).success).toBe(false);
+    expect(WorkspaceSchema.safeParse(withWindow({ x: 0, y: 0, width: 900 })).success).toBe(false);
   });
 });
 

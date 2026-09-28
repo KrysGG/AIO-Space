@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   computeLayout,
+  dropSide,
+  type DockSide,
   findLeaf,
   ratioFromPointer,
   tabsOf,
@@ -53,6 +55,8 @@ interface Props {
   onClear(leafId: string): void;
   /** A tile header was dragged onto another tile. */
   onSwap(fromLeafId: string, toLeafId: string): void;
+  /** A tile header was dragged out of the window and let go at this screen point (ROADMAP 2.15). */
+  onDragOut(leafId: string, screenX: number, screenY: number): void;
   /** A sidebar app was dropped on a tile: beside it on that side, or in it ('center'). */
   onDropApp(leafId: string, appId: string, zone: DropZone): void;
   /** Accounts of an app (ROADMAP 2.12), the first one included. */
@@ -82,15 +86,7 @@ interface Props {
 }
 
 /** Where a sidebar app dropped on a tile lands (ROADMAP 2.16). */
-export type DropZone = 'left' | 'right' | 'top' | 'bottom' | 'center';
-
-/** The side the pointer leans to (within 30% of an edge), else the middle; always the middle when full. */
-function dropZone(e: { clientX: number; clientY: number }, r: DOMRect, canSplit: boolean): DropZone {
-  const x = (e.clientX - r.left) / r.width;
-  const y = (e.clientY - r.top) / r.height;
-  const [side, distance] = ([['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]] as const).reduce((a, b) => (b[1] < a[1] ? b : a));
-  return canSplit && distance < 0.3 ? side : 'center';
-}
+export type DropZone = DockSide;
 
 /** Pointer travel before a header press becomes a tile drag (so clicks still work). */
 const DRAG_THRESHOLD = 6;
@@ -205,8 +201,10 @@ export function TileLayout(props: Props) {
 
   // Latest onSwap for the tile-drag listeners (same reason as onResizeRef).
   const onSwapRef = useRef(props.onSwap);
+  const onDragOutRef = useRef(props.onDragOut);
   useLayoutEffect(() => {
     onSwapRef.current = props.onSwap;
+    onDragOutRef.current = props.onDragOut;
   });
 
   // Tile drag: press a header, move past the threshold, drop on another tile to swap their apps.
@@ -235,8 +233,11 @@ export function TileLayout(props: Props) {
     const drop = (e: PointerEvent): void => {
       const d = tileDragRef.current;
       if (d?.active) {
-        const target = tileAt(e);
-        if (target && target !== d.from) onSwapRef.current(d.from, target);
+        // Let go outside the window: into its own window, or onto another SpaceAIO window (ROADMAP 2.15).
+        const outside = e.clientX < 0 || e.clientY < 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight;
+        const target = outside ? null : tileAt(e);
+        if (outside) onDragOutRef.current(d.from, e.screenX, e.screenY);
+        else if (target && target !== d.from) onSwapRef.current(d.from, target);
       }
       update(null);
     };
@@ -283,7 +284,7 @@ export function TileLayout(props: Props) {
               if (!e.dataTransfer.types.includes(RAIL_APP_DRAG)) return;
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
-              const zone = dropZone(e, e.currentTarget.getBoundingClientRect(), props.canAddTile);
+              const zone = dropSide({ x: e.clientX, y: e.clientY }, e.currentTarget.getBoundingClientRect(), props.canAddTile);
               if (appDrop?.leafId !== t.leafId || appDrop.zone !== zone) setAppDrop({ leafId: t.leafId, zone });
             }}
             onDragLeave={(e) => {

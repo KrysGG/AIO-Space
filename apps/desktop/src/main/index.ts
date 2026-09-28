@@ -19,6 +19,7 @@ import { APP_NAME, LEGACY_NAME, legacyProfileInUse, migrateLegacyProfile } from 
 import { createTray } from './tray';
 import { ViewManager } from './views/ViewManager';
 import { createMainWindow } from './window';
+import { Windows } from './windows';
 import { Updates } from './updates';
 import { IPC } from '../shared/ipc';
 
@@ -110,7 +111,12 @@ app.whenReady().then(async () => {
     () => store.get().updates.auto,
     (status) => !win.isDestroyed() && win.webContents.send(IPC.updatesState, status),
   );
-  registerIpc(win, store, views, downloads, filterLists, plugins, extensionStore, updates);
+  const windows = new Windows(store, views);
+  registerIpc(win, store, views, windows, downloads, filterLists, plugins, extensionStore, updates);
+  // Torn-off windows open when SpaceAIO last quit come back (ROADMAP 2.15). Closing the main window
+  // quits, even with torn-off windows open (they're kept for the next start).
+  windows.restore();
+  win.on('closed', () => app.quit());
   updates.start();
   const tray = createTray(win);
   views.onUnreadChange = (unread) => tray.setUnread(unread);

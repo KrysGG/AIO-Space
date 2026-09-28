@@ -4,6 +4,7 @@
  * Never expose ipcRenderer itself or any generic "send anything" function.
  */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { Workspace } from '@aio/core';
 import {
   IPC,
   type AioApi,
@@ -27,6 +28,12 @@ const api: AioApi = {
   focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
   navigate: (leafId, url) => ipcRenderer.send(IPC.viewNavigate, { leafId, url }),
   openExternal: (url) => ipcRenderer.send(IPC.linkOpenExternal, { url }),
+  onWorkspaceChanged: (cb) => {
+    const listener = (_e: IpcRendererEvent, ws: Workspace): void => cb(ws);
+    ipcRenderer.on(IPC.workspaceChanged, listener);
+    return () => ipcRenderer.removeListener(IPC.workspaceChanged, listener);
+  },
+  dragTileOut: (leafId, x, y) => ipcRenderer.send(IPC.tileDragOut, { leafId, x: Math.round(x), y: Math.round(y) }),
   onScreenSharePick: (cb) => {
     const listener = (_e: IpcRendererEvent, request: ScreenShareRequest): void => cb(request);
     ipcRenderer.on(IPC.screenSharePick, listener);

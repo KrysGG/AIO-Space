@@ -1,8 +1,8 @@
 import { DEFAULT_SEARCH_ENGINE, type SearchEngineId } from '../browser/address';
 import type { WebAppDef } from '../catalog/apps';
-import { createLeaf, DEFAULT_PROFILE, listLeaves, mapTree, newInstanceId, setProfile } from '../layout/tree';
+import { createLeaf, DEFAULT_PROFILE, findLeaf, listLeaves, mapTree, newInstanceId, placeLeaf, removeLeaf, setProfile } from '../layout/tree';
 import { newId } from '../util/id';
-import type { LayoutNode } from '../layout/types';
+import { MAX_TILES, type LayoutNode } from '../layout/types';
 import { DEFAULT_PRIVACY, type PrivacySettings } from '../privacy/settings';
 import { SYSTEM_THEME, type Theme } from '../ui/themes';
 
@@ -17,6 +17,15 @@ export interface Space {
   name: string;
   layout: LayoutNode;
   focusedLeafId: string | null;
+  /** Shown in its own window at these screen bounds (a torn-off tile, ROADMAP 2.15); else in the main window. */
+  window?: WindowBounds;
+}
+
+export interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface BrowserSettings {
@@ -271,8 +280,11 @@ export function activeSpace(ws: Workspace): Space {
 }
 
 export function updateActiveSpace(ws: Workspace, fn: (s: Space) => Space): Workspace {
-  const id = activeSpace(ws).id;
-  return { ...ws, spaces: ws.spaces.map((s) => (s.id === id ? fn(s) : s)) };
+  return updateSpace(ws, activeSpace(ws).id, fn);
+}
+
+export function updateSpace(ws: Workspace, spaceId: string, fn: (s: Space) => Space): Workspace {
+  return { ...ws, spaces: ws.spaces.map((s) => (s.id === spaceId ? fn(s) : s)) };
 }
 
 /** Keep focus valid after layout edits. */
@@ -511,4 +523,45 @@ export function allowHttpHost(ws: Workspace, host: string): Workspace {
 
 export function disallowHttpHost(ws: Workspace, host: string): Workspace {
   return { ...ws, httpAllowedHosts: ws.httpAllowedHosts.filter((h) => h !== host) };
+}
+
+/* ---- Tiles in their own windows (ROADMAP 2.15) --------------------------------------------- */
+
+export type DockSide = 'left' | 'right' | 'top' | 'bottom' | 'center';
+
+const isEmptySpace = (s: Space): boolean => listLeaves(s.layout).every((l) => !l.appId);
+
+/** A space without the tile; a window's space left with no app goes away with its window. */
+function without(space: Space, leafId: string): Space[] {
+  const rest = ensureFocus({ ...space, layout: removeLeaf(space.layout, leafId) });
+  return rest.window && isEmptySpace(rest) ? [] : [rest];
+}
+
+/**
+ * Tear a tile off into a new space shown in its own window at `bounds`; the tile keeps its app, page
+ * and account (same instance). Returns the new space's id, or null (no app there, or MAX_SPACES).
+ */
+export function detachLeaf(ws: Workspace, fromSpaceId: string, leafId: string, name: string, bounds: WindowBounds): { ws: Workspace; spaceId: string | null } {
+  const from = ws.spaces.find((s) => s.id === fromSpaceId);
+  const leaf = from && findLeaf(from.layout, leafId);
+  if (!from || !leaf?.appId || ws.spaces.length >= MAX_SPACES) return { ws, spaceId: null };
+  const space: Space = { id: newId('space'), name, layout: leaf, focusedLeafId: leaf.id, window: bounds };
+  const spaces = ws.spaces.flatMap((s) => (s.id === fromSpaceId ? without(s, leafId) : [s]));
+  return { ws: { ...ws, spaces: [...spaces, space] }, spaceId: space.id };
+}
+
+/**
+ * Move a tile from one space into another, beside `targetLeafId` on `side` (the middle of an app
+ * counts as its right; an empty target tile is replaced). No-op at MAX_TILES.
+ */
+export function dockLeaf(ws: Workspace, fromSpaceId: string, leafId: string, toSpaceId: string, targetLeafId: string, side: DockSide): Workspace {
+  const from = ws.spaces.find((s) => s.id === fromSpaceId);
+  const to = ws.spaces.find((s) => s.id === toSpaceId);
+  const leaf = from && findLeaf(from.layout, leafId);
+  if (!from || !to || from.id === to.id || !leaf?.appId || !findLeaf(to.layout, targetLeafId)) return ws;
+  if (listLeaves(to.layout).length >= MAX_TILES) return ws;
+  const at = side === 'center' ? 'right' : side;
+  const layout = placeLeaf(to.layout, targetLeafId, leaf, at === 'left' || at === 'right' ? 'row' : 'column', at === 'left' || at === 'top');
+  const spaces = ws.spaces.flatMap((s) => (s.id === to.id ? [{ ...to, layout, focusedLeafId: leaf.id }] : s.id === from.id ? without(s, leafId) : [s]));
+  return { ...ws, spaces };
 }

@@ -76,6 +76,29 @@ export function splitLeaf(
 }
 
 /**
+ * Where something dropped on a tile lands (ROADMAP 2.15/2.16): the side the point leans to (within
+ * 30% of an edge), else the middle; always the middle when no tile can be added.
+ */
+export function dropSide(point: { x: number; y: number }, rect: Rect, canSplit: boolean): 'left' | 'right' | 'top' | 'bottom' | 'center' {
+  const x = (point.x - rect.x) / rect.width;
+  const y = (point.y - rect.y) / rect.height;
+  const [side, distance] = ([['left', x], ['right', 1 - x], ['top', y], ['bottom', 1 - y]] as const).reduce((a, b) => (b[1] < a[1] ? b : a));
+  return canSplit && distance < 0.3 ? side : 'center';
+}
+
+/**
+ * Put an existing tile (same app, page and account) beside another: `before` puts it on the left or
+ * top. An empty target tile is simply replaced (ROADMAP 2.15).
+ */
+export function placeLeaf(root: LayoutNode, targetId: string, leaf: LeafNode, direction: SplitDirection, before: boolean): LayoutNode {
+  return mapTree(root, (n) => {
+    if (n.type !== 'leaf' || n.id !== targetId) return n;
+    if (n.appId === null) return leaf;
+    return { type: 'split', id: newId('split'), direction, ratio: 0.5, first: before ? leaf : n, second: before ? n : leaf };
+  });
+}
+
+/**
  * Remove a tile; its sibling takes over the parent's space.
  * Removing the last tile leaves one empty tile (the layout is never empty).
  */
