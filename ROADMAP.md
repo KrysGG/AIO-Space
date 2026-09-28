@@ -233,16 +233,17 @@ stops responding, and YouTube + X stay under ~1.5 GB total after an hour of norm
 ### - [ ] 2.15 Drag a tile out of the window into its own window
 Dragging a tile's header outside the SpaceAIO window opens that app (same page, same account, no reload
 if possible) in a new SpaceAIO window, with the sidebar hidden there by default. Dragging it back onto
-the main window's tiles drops it in like any tile drag. (Owner's words: "open a new app tab"; read here as
-a separate window, like tearing off a browser tab. Confirm with the owner before building.)
+the main window's tiles drops it in like any tile drag. Like dragging a tab out of a browser (owner confirmed).
 **Done when:** A playing YouTube tile can be torn off into its own window and back without reloading.
 
 ### - [ ] 2.16 Drag a sidebar app onto the tiles to open it there
 The sidebar's drag-to-reorder also works across into the tile area: while dragging an app icon over a
-tile, show the same drop targets as tile dragging. Near an edge: split that tile in that direction and
-open the app in the new half. Centre of an empty tile: open it there. Centre of a tile with an app:
-open it there instead (the old app closes, as when picking another app from the launcher).
-**Done when:** An app dragged from the sidebar opens exactly where the drop target showed.
+tile, show where it will land. Leaning towards a side (left, right, top, bottom): split that tile on that
+side and open the app there, e.g. leaning right puts it to the right of the hovered tile. Middle of an
+empty tile: open it there. Middle of a tile with an app: ask "Replace <app> with <new app>?" and replace
+only on yes (owner's spec).
+**Done when:** An app dragged from the sidebar opens on the side the drop target showed, and replacing
+a tile always asks first.
 
 ### - [ ] 2.17 Settings in sections, most important first
 The menu has grown one setting at a time. Group it into titled sections ordered by how often people need
