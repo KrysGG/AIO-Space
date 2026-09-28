@@ -60,6 +60,32 @@ jobs:
       - name: Check the release files (fuses, app.asar)
         run: pnpm --filter @aio/desktop verify:release
 
+      # What a user does (ROADMAP 6.4): install, start, uninstall. Silent, per-user, no admin.
+      - name: Install, start and uninstall the Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: apps/desktop/release
+        run: |
+          $setup = (Get-ChildItem spaceaio-*-setup.exe | Select-Object -First 1).FullName
+          Start-Process $setup -ArgumentList '/S' -Wait
+          $dir = "$env:LOCALAPPDATA\Programs\SpaceAIO"
+          $exe = "$dir\SpaceAIO.exe"
+          if (-not (Test-Path $exe)) { throw "Not installed at $exe" }
+          if (-not (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\SpaceAIO.lnk")) { throw 'No Start menu shortcut' }
+          $profileDir = Join-Path $env:RUNNER_TEMP 'spaceaio-profile'
+          $env:AIO_USER_DATA_DIR = $profileDir
+          $app = Start-Process $exe -PassThru
+          Start-Sleep -Seconds 20
+          if ($app.HasExited) { throw "SpaceAIO exited early (code $($app.ExitCode))" }
+          if (-not (Test-Path "$profileDir\Local State")) { throw 'SpaceAIO started but created no profile' }
+          Write-Host "Installed app ran for 20 s and created its profile."
+          taskkill /PID $app.Id /T /F | Out-Null
+          Start-Sleep -Seconds 3
+          Start-Process "$dir\Uninstall SpaceAIO.exe" -ArgumentList '/S' -Wait
+          Start-Sleep -Seconds 5
+          if (Test-Path $exe) { throw 'Uninstalling left SpaceAIO.exe behind' }
+          Write-Host 'Uninstalled cleanly.'
+
       - name: AUR files
         if: runner.os == 'Linux'
         working-directory: apps/desktop/release
