@@ -1,5 +1,6 @@
 appId: com.spaceaio.app
 productName: SpaceAIO
+copyright: Copyright (c) 2026 Christian Giraudo. All rights reserved.
 directories:
   output: release
   buildResources: build
@@ -44,4 +45,4 @@ win:
 publish:
   provider: github
   owner: KrysGG
-  repo: AIO-Space
+  repo: SpaceAIO

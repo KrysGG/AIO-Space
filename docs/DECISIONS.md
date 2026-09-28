@@ -653,3 +653,12 @@ shutdown) ended the app without its quit steps, so updates never installed and "
 closes" never ran; `process.on('SIGTERM', () => app.quit())` fixes both. The updater's cache folder is
 `~/.cache/@aiodesktop-updater` (derived from the npm package name, not configurable).
 
+**D-062: All rights reserved for now; the repo is KrysGG/SpaceAIO.**
+Owner's decision (2026-09-28), before the first release: no open-source license yet. `LICENSE` says all
+rights reserved, source public for viewing only, official builds free to use (not to modify or
+redistribute), no warranty, third-party parts under their own licenses. `package.json` files say
+`UNLICENSED` (npm's term); the AUR package uses `LicenseRef-SpaceAIO` and installs `LICENSE` (fetched from
+the release tag, a fourth checksummed source); electron-builder sets `copyright`. Keeps every option open
+(no GPL or paid dependencies, D-055). The GitHub repo was renamed from `AIO-Space` to `SpaceAIO` (GitHub
+redirects the old URL); homepage, update feed (`publish.repo`) and AUR URLs use the new name.
+

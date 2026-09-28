@@ -62,3 +62,9 @@ aio-space/
 └─ apps/
    └─ desktop/            Electron app (Linux first, then Windows)
 ```
+
+## License
+
+Copyright (c) 2026 Christian Giraudo. All rights reserved: the source is public to read, not to reuse.
+Release builds are free to download and use. See [LICENSE](LICENSE).
+

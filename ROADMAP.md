@@ -481,8 +481,9 @@ Add items found while working on other steps here, with the step where they were
   `SHA256SUMS` once there's a key to keep. The updater cache folder is `~/.cache/@aiodesktop-updater`
   (from the npm package name `@aio/desktop`).
 - (5.5) Dry run passed on GitHub (2026-09-28, run 36360878477): tests, build, verify:release, checksums and
-  AUR files all green; its files re-checked locally. Left: tagging v0.1.0, which publishes a public release
-  (decide the license first, see 5.2).
+  AUR files all green; its files re-checked locally.
+- (5.2) Publishing spaceaio-bin on the AUR is the owner's step (an AUR account and SSH key): copy the
+  release's PKGBUILD, SRCINFO (as .SRCINFO) and packaging/aur/spaceaio.desktop into the AUR git repo.
 - (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
   (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
 - (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.

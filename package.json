@@ -2,6 +2,7 @@
   "name": "spaceaio",
   "private": true,
   "version": "0.1.0",
+  "license": "UNLICENSED",
   "description": "All-in-one tiled workspace for web apps. Make the app your space.",
   "packageManager": "pnpm@10.0.0",
   "engines": {

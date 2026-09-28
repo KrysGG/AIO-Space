@@ -119,11 +119,14 @@ describe('workspace files (ROADMAP 4.6)', () => {
     await uiB.getByRole('button', { name: /menu/i }).first().click();
     await uiB.getByRole('button', { name: 'Import workspace…' }).click();
     await expect.poll(() => uiB.locator('.tile').count(), { timeout: 10_000 }).toBe(3);
+    // The same layout: tiles, apps, accounts, ratios, ids. Not which tile has focus: a page that takes
+    // keyboard focus while loading moves it, as it should.
+    const layouts = (spaces: typeof saved.spaces) => spaces.map((s) => ({ ...s, focusedLeafId: null }));
     await expect
-      .poll(async () => (await uiB.evaluate(() => window.aio.getWorkspace())).spaces, {
+      .poll(async () => layouts((await uiB.evaluate(() => window.aio.getWorkspace())).spaces), {
         timeout: 10_000,
       })
-      .toEqual(saved.spaces);
+      .toEqual(layouts(saved.spaces));
     const loaded = await uiB.evaluate(() => window.aio.getWorkspace());
     expect(loaded.templates).toEqual(saved.templates);
     expect(loaded.ui.theme).toBe('light');

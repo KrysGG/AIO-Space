@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [License] All rights reserved for now (LICENSE; release builds free to use); the repository is now github.com/KrysGG/SpaceAIO (D-062).
 - [Fix] The UI no longer writes the workspace back right after loading it; on slower machines that stale save could overwrite a newer one (made CI fail intermittently since Phase 4, and could lose an import). A test scanning profile files no longer trips over files Chromium deletes mid-scan.
 - [5.4] The AppImage updates itself from GitHub Releases (Menu > Updates: automatic checks on/off, Check now, Restart to update); pacman/AUR installs never check. Quitting at logout/shutdown now runs the quit steps (installs a pending update, "forget on close") (D-061).
 - [5.3] `pnpm verify:release` checks every Linux release file's fuses and app.asar before publishing; verified on the AppImage, pacman and tar.gz builds, and on the packaged binary (no Node mode, no NODE_OPTIONS, no debugger) (D-059).

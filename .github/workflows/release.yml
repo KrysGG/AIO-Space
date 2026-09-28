@@ -51,7 +51,7 @@ jobs:
         run: |
           v=${{ steps.version.outputs.version }}
           sha256sum "spaceaio-$v-x86_64.AppImage" "spaceaio-$v-x64.pacman" "spaceaio-$v-x64.tar.gz" > SHA256SUMS
-          node ../../../packaging/aur/update.cjs "$v" "spaceaio-$v-x64.tar.gz" ../build/icon.svg aur
+          node ../../../packaging/aur/update.cjs "$v" "spaceaio-$v-x64.tar.gz" ../build/icon.svg ../../../LICENSE aur
           cat SHA256SUMS
 
       - name: Keep the files (dry runs and failed publishes)
