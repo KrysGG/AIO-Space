@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { AppImageUpdater } from 'electron-updater';
+import { AppImageUpdater, NsisUpdater, type AppUpdater } from 'electron-updater';
 import type { UpdateStatus } from '../shared/ipc';
 
 /** First check a little after startup, then every 6 hours. */
@@ -7,14 +7,14 @@ const FIRST_CHECK_MS = 15_000;
 const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 
 /**
- * Updates for the AppImage (ROADMAP 5.4, D-061), from GitHub Releases: checked while the setting is
- * on, downloaded in the background (checked against the sha512 in latest-linux.yml), installed on
- * quit or with "Restart to update". pacman and AUR installs update through the package manager, so
- * nothing runs there: the AppImage updater is created explicitly (never the pacman one), and only when
- * running as a packaged AppImage.
+ * Updates for the AppImage (ROADMAP 5.4, D-061) and the Windows installer (6.4, D-063), from GitHub
+ * Releases: checked while the setting is on, downloaded in the background (checked against the sha512
+ * in latest-linux.yml / latest.yml), installed on quit or with "Restart to update". pacman and AUR
+ * installs update through the package manager, so nothing runs there: the updater is created
+ * explicitly (never the auto-detected pacman one), and on Linux only when running as an AppImage.
  */
 export class Updates {
-  private updater: AppImageUpdater | null = null;
+  private updater: AppUpdater | null = null;
   private status: UpdateStatus = { supported: false, state: 'idle' };
 
   constructor(
@@ -23,8 +23,15 @@ export class Updates {
   ) {}
 
   start(): void {
-    if (!app.isPackaged || !process.env['APPIMAGE']) return;
-    const updater = new AppImageUpdater();
+    // The AppImage, and the Windows installer's app (ROADMAP 6.4); never pacman/AUR installs or dev.
+    const updater = !app.isPackaged
+      ? null
+      : process.platform === 'win32'
+        ? new NsisUpdater()
+        : process.env['APPIMAGE']
+          ? new AppImageUpdater()
+          : null;
+    if (!updater) return;
     updater.autoDownload = true;
     updater.autoInstallOnAppQuit = true;
     updater.logger = null; // our own status is enough; its logs include local paths

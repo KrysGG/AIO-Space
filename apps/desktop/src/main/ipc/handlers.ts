@@ -19,6 +19,7 @@ import {
   ExtensionId,
   ExtensionOpenSchema,
   ExtensionStoreInputSchema,
+  TitleBarColorsSchema,
   PluginId,
   ViewsSyncSchema,
   ViewCommandSchema,
@@ -185,6 +186,12 @@ export function registerIpc(
     guard(e);
     await plugins.remove(PluginId.parse(raw));
     views.applyPlugins();
+  });
+
+  ipcMain.on(IPC.windowTitleBar, (e, raw: unknown) => {
+    if (!fromUi(e) || process.platform !== 'win32') return;
+    const parsed = TitleBarColorsSchema.safeParse(raw);
+    if (parsed.success) win.setTitleBarOverlay(parsed.data);
   });
 
   ipcMain.handle(IPC.updatesStatus, (e, raw: unknown) => {

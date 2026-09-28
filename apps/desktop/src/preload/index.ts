@@ -15,6 +15,8 @@ import {
 } from '../shared/ipc';
 
 const api: AioApi = {
+  platform: process.platform,
+  setTitleBarColors: (color, symbolColor) => ipcRenderer.send(IPC.windowTitleBar, { color, symbolColor }),
   getWorkspace: () => ipcRenderer.invoke(IPC.workspaceGet),
   saveWorkspace: (ws) => ipcRenderer.invoke(IPC.workspaceSave, ws),
   getCatalog: () => ipcRenderer.invoke(IPC.catalogGet),

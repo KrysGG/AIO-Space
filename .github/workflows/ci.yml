@@ -34,4 +34,13 @@ jobs:
         run: xvfb-run -a pnpm test
       - if: runner.os == 'Windows'
         run: pnpm test
+        env:
+          SMOKE_SCREENSHOT_DIR: ${{ runner.temp }}
+      - if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-screenshots
+          retention-days: 7
+          path: ${{ runner.temp }}/window-*.png
+          if-no-files-found: ignore
       - run: pnpm lint

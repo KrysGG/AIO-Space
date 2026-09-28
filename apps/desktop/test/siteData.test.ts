@@ -22,7 +22,7 @@ describe('site data (ROADMAP 3.9)', () => {
     expect(partitionsOfApp(ws, 'discord')).toEqual(['persist:app-discord-default', 'persist:app-discord-p2']);
     expect(allAppPartitions(ws)).toContain('persist:app-discord-p2');
     expect(allAppPartitions(ws)).toContain('persist:app-browser-default');
-    expect(partitionDir('/u', 'persist:app-reddit-default')).toBe('/u/Partitions/app-reddit-default');
+    expect(partitionDir('/u', 'persist:app-reddit-default')).toBe(join('/u', 'Partitions', 'app-reddit-default'));
   });
 
   it('deletes queued folders and forget-on-close apps at startup, and nothing else', async () => {

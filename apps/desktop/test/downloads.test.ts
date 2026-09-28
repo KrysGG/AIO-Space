@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { join } from 'node:path';
 import { isRiskyToOpen, safeFilename, uniquePath } from '../src/main/downloads/files';
 
 describe('safeFilename', () => {
@@ -20,17 +21,18 @@ describe('safeFilename', () => {
 });
 
 describe('uniquePath', () => {
-  const taken = (names: string[]) => (p: string) => names.includes(p);
+  // Paths in the platform's own form (backslashes on Windows).
+  const d = (name: string) => join('/d', name);
+  const taken = (names: string[]) => (p: string) => names.map(d).includes(p);
 
   it('uses the name as-is when free', () => {
-    expect(uniquePath('/home/u/Downloads', 'a.pdf', taken([]))).toBe('/home/u/Downloads/a.pdf');
+    expect(uniquePath('/d', 'a.pdf', taken([]))).toBe(d('a.pdf'));
   });
 
   it('numbers duplicates before the extension, never overwriting', () => {
-    const exists = taken(['/d/a.pdf', '/d/a (1).pdf']);
-    expect(uniquePath('/d', 'a.pdf', exists)).toBe('/d/a (2).pdf');
-    expect(uniquePath('/d', 'notes', taken(['/d/notes']))).toBe('/d/notes (1)');
-    expect(uniquePath('/d', 'x.tar.gz', taken(['/d/x.tar.gz']))).toBe('/d/x.tar (1).gz');
+    expect(uniquePath('/d', 'a.pdf', taken(['a.pdf', 'a (1).pdf']))).toBe(d('a (2).pdf'));
+    expect(uniquePath('/d', 'notes', taken(['notes']))).toBe(d('notes (1)'));
+    expect(uniquePath('/d', 'x.tar.gz', taken(['x.tar.gz']))).toBe(d('x.tar (1).gz'));
   });
 });
 

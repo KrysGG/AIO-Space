@@ -44,7 +44,8 @@ describe('workspace files (ROADMAP 4.6)', () => {
   it('round-trips the workspace, private to the user', async () => {
     const file = join(dir, 'ws.json');
     expect(await exportWorkspace(arranged(), file)).toEqual({ ok: true });
-    expect(statSync(file).mode & 0o077).toBe(0);
+    // Owner-only on POSIX; Windows has no such mode bits (the file lives in the user's profile).
+    if (process.platform !== 'win32') expect(statSync(file).mode & 0o077).toBe(0);
     const back = await importWorkspace(file);
     expect(back).toEqual({ ok: true, workspace: JSON.parse(readFileSync(file, 'utf8')) });
     expect(back.ok && back.workspace.spaces[0]!.name).toBe('Work');

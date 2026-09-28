@@ -63,7 +63,8 @@ button { font: inherit; color: inherit; }
 .boot { height: 100%; background: var(--ink); }
 .fatal { padding: 24px; color: var(--text); }
 
-.shell { display: flex; height: 100%; }
+.frame { display: flex; flex-direction: column; height: 100%; }
+.shell { display: flex; flex: 1; min-height: 0; }
 
 /* ---- Rail ---------------------------------------------------------------- */
 .rail {
@@ -881,4 +882,22 @@ button { font: inherit; color: inherit; }
 .extension-row { flex: 1; display: grid; }
 .extension-row small { color: var(--muted); font-size: 11px; }
 .extensions-btn svg path { stroke-linejoin: round; }
+
+/* ---- Windows title strip (ROADMAP 6.2): drags the window; the window controls cover its right end ---- */
+.titlebar {
+  flex: none;
+  height: 32px; /* = TITLE_BAR_HEIGHT in main/window.ts */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Leave room for the controls: Windows reports their area through the window-controls-overlay insets. */
+  padding: 0 calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 140px)) + 12px) 0 14px;
+  background: var(--ink);
+  color: var(--muted);
+  font-size: 12px;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.titlebar-name { color: var(--text); font-weight: 600; }
+.titlebar-space::before { content: '·'; margin-right: 10px; }
 

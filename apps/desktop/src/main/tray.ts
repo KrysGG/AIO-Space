@@ -57,6 +57,49 @@ function drawIcon(unread: boolean): NativeImage {
   return nativeImage.createFromBitmap(buf, { width: SIZE, height: SIZE });
 }
 
+/** Digits and "+" as 3x5 pixel glyphs, for the taskbar badge. */
+const GLYPHS: Record<string, string[]> = {
+  '0': ['111', '101', '101', '101', '111'], '1': ['010', '110', '010', '010', '111'], '2': ['111', '001', '111', '100', '111'],
+  '3': ['111', '001', '111', '001', '111'], '4': ['101', '101', '111', '001', '001'], '5': ['111', '100', '111', '001', '111'],
+  '6': ['111', '100', '111', '101', '111'], '7': ['111', '001', '010', '010', '010'], '8': ['111', '101', '111', '101', '111'],
+  '9': ['111', '101', '111', '001', '111'], '+': ['000', '010', '111', '010', '000'],
+};
+
+/**
+ * Windows taskbar badge (ROADMAP 6.3): a red disc with the unread count ("9+" above 9), drawn like the
+ * tray icon. Windows has no numeric badge API for desktop apps; an overlay icon on the button is the norm.
+ */
+export function drawBadge(text: string): NativeImage {
+  const S = 16;
+  const buf = Buffer.alloc(S * S * 4);
+  const chars = [...text].filter((c) => GLYPHS[c]).slice(0, 2);
+  const scale = chars.length === 1 ? 2 : 1; // one digit big, two digits small
+  const w = chars.length * 3 * scale + (chars.length - 1) * scale;
+  const x0 = Math.floor((S - w) / 2);
+  const y0 = Math.floor((S - 5 * scale) / 2);
+  const lit = (px: number, py: number): boolean => {
+    const gx = Math.floor((px - x0) / scale);
+    const gy = Math.floor((py - y0) / scale);
+    if (gy < 0 || gy > 4 || px < x0) return false;
+    const i = Math.floor(gx / 4);
+    const col = gx % 4;
+    return col < 3 && chars[i] !== undefined && GLYPHS[chars[i]!]![gy]![col] === '1';
+  };
+  for (let py = 0; py < S; py++) {
+    for (let px = 0; px < S; px++) {
+      const d = Math.hypot(px + 0.5 - S / 2, py + 0.5 - S / 2);
+      const alpha = Math.max(0, Math.min(1, S / 2 - d)); // 1px anti-aliased edge
+      const color: RGB = lit(px, py) ? [0xff, 0xff, 0xff] : RED;
+      const i = (py * S + px) * 4;
+      buf[i] = Math.round(color[2] * alpha);
+      buf[i + 1] = Math.round(color[1] * alpha);
+      buf[i + 2] = Math.round(color[0] * alpha);
+      buf[i + 3] = Math.round(alpha * 255);
+    }
+  }
+  return nativeImage.createFromBitmap(buf, { width: S, height: S });
+}
+
 export interface AppTray {
   setUnread(unread: Unread): void;
 }
@@ -90,6 +133,11 @@ export function createTray(win: BrowserWindow): AppTray {
       tray.setToolTip(unread ? `SpaceAIO: ${label ? `${label} unread` : 'new activity'}` : 'SpaceAIO');
       // Launcher badge where the desktop supports it (Unity launcher API; KDE task manager).
       app.setBadgeCount(unread && unread !== 'dot' ? unread.count : 0);
+      // Windows: an overlay on the taskbar button (ROADMAP 6.3); a plain dot for "new activity".
+      if (process.platform === 'win32' && !win.isDestroyed()) {
+        const text = !unread ? '' : unread === 'dot' ? ' ' : unread.count > 9 ? '9+' : String(unread.count);
+        win.setOverlayIcon(unread ? drawBadge(text) : null, unread ? `${label || 'New activity'} unread` : '');
+      }
     },
   };
 }

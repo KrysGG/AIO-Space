@@ -229,7 +229,10 @@ export function App() {
   const systemDark = useSystemDark();
   const theme = ws ? resolveTheme(ws.ui.theme, ws.themes, systemDark) : null;
   useLayoutEffect(() => {
-    if (theme) applyTheme(theme);
+    if (!theme) return;
+    applyTheme(theme);
+    // Windows' window controls sit on our title strip: same colours as the theme (ROADMAP 6.2).
+    if (window.aio.platform === 'win32') window.aio.setTitleBarColors(theme.colors.ink, theme.colors.text);
   }, [theme]);
   const snapshotWaiter = useRef<(() => void) | null>(null);
   /** Logins stored without a system keyring (ROADMAP 3.8); shown in the menu until dismissed. */
@@ -598,6 +601,14 @@ export function App() {
   };
 
   return (
+    <div className="frame">
+      {/* Windows: our own title strip; Windows draws its window controls over its right end (ROADMAP 6.2). */}
+      {window.aio.platform === 'win32' && (
+        <div className="titlebar">
+          <span className="titlebar-name">SpaceAIO</span>
+          {ws.spaces.length > 1 && <span className="titlebar-space">{space.name}</span>}
+        </div>
+      )}
     <div className={`shell${railMoving ? ' is-rail-moving' : ''}`}>
       <Sidebar
         catalog={sidebarApps}
@@ -830,6 +841,7 @@ export function App() {
       )}
       {adding && <AddAppDialog catalog={catalog} onAdd={addApp} onClose={closeAdding} onClosed={refocusTile} />}
       {downloadsOpen && <DownloadsPanel downloads={downloads} onClose={closeDownloads} onClosed={refocusTile} />}
+    </div>
     </div>
   );
 }

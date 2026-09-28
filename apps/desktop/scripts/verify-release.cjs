@@ -1,5 +1,6 @@
-// Checks the Linux release files before they're published (ROADMAP 5.3): every package's binary has the
-// fuses from fuses.cjs, and the app ships only as resources/app.asar. Exits 1 on any problem.
+// Checks the release files before they're published (ROADMAP 5.3; Windows 6.4): every Linux package's
+// binary, and the Windows app the installer packs (win-unpacked/SpaceAIO.exe), has the fuses from
+// fuses.cjs, and the app ships only as resources/app.asar. Exits 1 on any problem.
 // Usage: node scripts/verify-release.cjs [release folder]   (default: release)
 const { execFileSync } = require('node:child_process');
 const { existsSync, mkdtempSync, readdirSync, rmSync, statSync } = require('node:fs');
@@ -38,29 +39,40 @@ function findBinary(root) {
 }
 
 async function check(file) {
-  const problems = [];
   const root = unpack(file);
   try {
     const binary = findBinary(root);
-    if (!binary) return [`no ${EXECUTABLE} binary next to resources/app.asar`];
+    return binary ? await checkBinary(binary) : [`no ${EXECUTABLE} binary next to resources/app.asar`];
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+async function checkBinary(binary) {
+  const problems = [];
+  {
     const wire = await getCurrentFuseWire(binary);
     for (const [option, on] of Object.entries(EXPECTED_FUSES)) {
       const want = on ? FuseState.ENABLE : FuseState.DISABLE;
       if (wire[option] !== want) problems.push(`fuse ${FuseV1Options[option]}: ${FuseState[wire[option]] ?? 'missing'}, expected ${FuseState[want]}`);
     }
     const resources = join(binary, '..', 'resources');
+    if (!existsSync(join(resources, 'app.asar'))) problems.push('no resources/app.asar');
     if (existsSync(join(resources, 'app')) && statSync(join(resources, 'app')).isDirectory()) {
       problems.push('resources/app folder present: the app must load only from app.asar');
     }
-  } finally {
-    rmSync(root, { recursive: true, force: true });
   }
   return problems;
 }
 
 (async () => {
   const files = readdirSync(dir).filter((f) => /\.(AppImage|pacman|tar\.gz)$/.test(f));
-  if (files.length === 0) {
+  const windowsApp = join(dir, 'win-unpacked', 'SpaceAIO.exe'); // what the NSIS installer packs
+  if (existsSync(windowsApp)) {
+    const problems = await checkBinary(windowsApp);
+    console.log(`${problems.length ? '✗' : '✓'} win-unpacked/SpaceAIO.exe${problems.map((p) => `\n    ${p}`).join('')}`);
+    if (problems.length) process.exitCode = 1;
+  } else if (files.length === 0) {
     console.error(`No release files in ${dir}. Run pnpm dist:linux first.`);
     process.exit(1);
   }
@@ -70,5 +82,5 @@ async function check(file) {
     console.log(`${problems.length ? '✗' : '✓'} ${file}${problems.map((p) => `\n    ${p}`).join('')}`);
     failed ||= problems.length > 0;
   }
-  process.exit(failed ? 1 : 0);
+  process.exit(failed || process.exitCode ? 1 : 0);
 })();

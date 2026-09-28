@@ -28,12 +28,17 @@ function onDisk(dir: string, needle: string): boolean {
   if (!existsSync(dir)) return false;
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
+    let st;
     try {
-      const st = statSync(path);
+      st = statSync(path);
       if (st.isDirectory() ? onDisk(path, needle) : st.size < 50_000_000 && readFileSync(path).includes(needle)) return true;
     } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
       // Chromium deletes temporary files (SQLite journals) while we scan: a file that's gone holds nothing.
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      // Windows: LevelDB/SQLite LOCK files are byte-range locked while the app runs; they're empty, so they
+      // can't hold the needle. Any other unreadable file still fails the test.
+      if (code === 'ENOENT' || (code === 'EBUSY' && st?.size === 0)) continue;
+      throw err;
     }
   }
   return false;

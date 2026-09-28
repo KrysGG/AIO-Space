@@ -1,20 +1,26 @@
 name: Release
 
-# ROADMAP 5.5 (D-060). Pushing a tag like v0.1.0 builds, tests, checks and publishes a GitHub release with
-# the AppImage, the pacman package, the tar.gz (for the AUR), SHA256SUMS, latest-linux.yml (for the
-# AppImage updater, 5.4) and the updated AUR files. "Run workflow" by hand does everything except
-# publishing: the files are kept as a workflow artifact for a week.
+# ROADMAP 5.5 / 6.5 (D-060, D-063). Pushing a tag like v0.1.0 builds and checks Linux and Windows, then
+# publishes one GitHub release with: the AppImage, pacman package and tar.gz (for the AUR), the Windows
+# installer, SHA256SUMS, latest-linux.yml / latest.yml (for the updaters) and the updated AUR files.
+# "Run workflow" by hand does everything except publishing: the files are kept as workflow artifacts.
 on:
   push:
     tags: ['v*']
   workflow_dispatch: {}
 
 permissions:
-  contents: write # create the release
+  contents: read
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json
@@ -36,46 +42,63 @@ jobs:
 
       - run: pnpm typecheck
       # Ubuntu 24.04 blocks the unprivileged user namespaces Electron's sandbox needs.
-      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - run: xvfb-run -a pnpm test
+      - if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test
+      - if: runner.os == 'Windows'
+        run: pnpm test
       - run: pnpm lint
 
       # bsdtar is used by electron-builder's pacman target.
-      - run: sudo apt-get install -y --no-install-recommends libarchive-tools
-      - run: pnpm dist:linux
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends libarchive-tools
+      - if: runner.os == 'Linux'
+        run: pnpm dist:linux
+      - if: runner.os == 'Windows'
+        run: pnpm --filter @aio/desktop dist:win
       - name: Check the release files (fuses, app.asar)
         run: pnpm --filter @aio/desktop verify:release
 
-      - name: Checksums and AUR files
+      - name: AUR files
+        if: runner.os == 'Linux'
         working-directory: apps/desktop/release
         run: |
           v=${{ steps.version.outputs.version }}
-          sha256sum "spaceaio-$v-x86_64.AppImage" "spaceaio-$v-x64.pacman" "spaceaio-$v-x64.tar.gz" > SHA256SUMS
           node ../../../packaging/aur/update.cjs "$v" "spaceaio-$v-x64.tar.gz" ../build/icon.svg ../../../LICENSE aur
-          cat SHA256SUMS
+          cp aur/PKGBUILD PKGBUILD && cp aur/.SRCINFO SRCINFO
 
-      - name: Keep the files (dry runs and failed publishes)
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: spaceaio-${{ steps.version.outputs.version }}
+          name: release-${{ runner.os }}
           retention-days: 7
-          include-hidden-files: true # aur/.SRCINFO
+          if-no-files-found: error
           path: |
             apps/desktop/release/spaceaio-*
-            apps/desktop/release/latest-linux.yml
-            apps/desktop/release/SHA256SUMS
-            apps/desktop/release/aur/
+            apps/desktop/release/latest*.yml
+            apps/desktop/release/PKGBUILD
+            apps/desktop/release/SRCINFO
 
-      - name: Publish the release
-        if: github.ref_type == 'tag'
-        working-directory: apps/desktop/release
+  publish:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - name: Checksums and release
+        working-directory: files
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          v=${{ steps.version.outputs.version }}
-          cp aur/PKGBUILD PKGBUILD && cp aur/.SRCINFO SRCINFO
-          gh release create "$GITHUB_REF_NAME" \
+          v=${GITHUB_REF_NAME#v}
+          sha256sum spaceaio-* > SHA256SUMS
+          cat SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
             --title "SpaceAIO $v" \
             --generate-notes \
-            "spaceaio-$v-x86_64.AppImage" "spaceaio-$v-x64.pacman" "spaceaio-$v-x64.tar.gz" \
-            latest-linux.yml SHA256SUMS PKGBUILD SRCINFO
+            spaceaio-* latest-linux.yml latest.yml SHA256SUMS PKGBUILD SRCINFO

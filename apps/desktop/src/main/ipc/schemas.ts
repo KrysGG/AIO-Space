@@ -282,6 +282,9 @@ export const PluginManifestSchema = z
   .refine((m) => m.scripts.length + m.styles.length > 0, 'a plugin needs at least one script or style');
 export type PluginManifest = z.infer<typeof PluginManifestSchema>;
 
+/** window:title-bar (ROADMAP 6.2): theme colours for the Windows window controls. */
+export const TitleBarColorsSchema = z.object({ color: ThemeColor, symbolColor: ThemeColor }).strict();
+
 /* ---- Chrome extensions (ROADMAP 4.5) -------------------------------------------------------- */
 
 /** extensions:install-store: a store link or id (main extracts and checks the id). */

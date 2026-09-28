@@ -43,6 +43,19 @@ describe('desktop smoke test', () => {
     await ui.reload();
   });
 
+  it('draws its own title strip on Windows only (ROADMAP 6.2)', async () => {
+    await tiles().first().waitFor();
+    const platform = await ui.evaluate(() => window.aio.platform);
+    expect(platform).toBe(process.platform);
+    expect(await ui.locator('.titlebar').count()).toBe(platform === 'win32' ? 1 : 0);
+    if (platform === 'win32') {
+      expect(await ui.locator('.titlebar').evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region'))).toBe('drag');
+    }
+    // CI keeps a picture of the window per platform, to review the look without that machine.
+    const dir = process.env['SMOKE_SCREENSHOT_DIR'];
+    if (dir) await ui.screenshot({ path: join(dir, `window-${platform}.png`) });
+  });
+
   it('opens with one empty tile showing the launcher', async () => {
     await expect.poll(() => tiles().count()).toBe(1);
     for (const name of ['Discord', 'YouTube', 'Twitch', 'Reddit', 'X', 'Instagram', 'Browser']) {

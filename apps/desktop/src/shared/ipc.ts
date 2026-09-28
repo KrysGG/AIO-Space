@@ -38,6 +38,7 @@ export const IPC = {
   updatesState: 'updates:state',
   updatesCheck: 'updates:check',
   updatesInstall: 'updates:install',
+  windowTitleBar: 'window:title-bar',
   pluginsList: 'plugins:list',
   pluginsInstall: 'plugins:install',
   pluginsRemove: 'plugins:remove',
@@ -218,6 +219,10 @@ export type ShortcutAction =
 
 /** Exposed on window.aio by the preload script. */
 export interface AioApi {
+  /** process.platform, e.g. 'linux' or 'win32' (the UI draws a title strip on Windows). */
+  platform: string;
+  /** Windows: the colours of the window controls drawn over the title strip, from the theme (ROADMAP 6.2). */
+  setTitleBarColors(color: string, symbolColor: string): void;
   getWorkspace(): Promise<Workspace>;
   saveWorkspace(ws: Workspace): Promise<void>;
   getCatalog(): Promise<WebAppDef[]>;

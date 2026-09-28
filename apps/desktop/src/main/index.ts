@@ -24,6 +24,10 @@ import { IPC } from '../shared/ipc';
 // ---- Before ready -----------------------------------------------------------
 app.enableSandbox();
 
+// Windows ties notifications and taskbar grouping to this id; it must match the installer's shortcut
+// (electron-builder uses appId), or toasts show no app name or don't show at all (ROADMAP 6.3).
+if (process.platform === 'win32') app.setAppUserModelId('com.spaceaio.app');
+
 // Tests run against a throwaway profile so they never touch the real workspace or logins.
 // Must come before the single-instance lock, which is tied to the userData path.
 const userDataOverride = process.env['AIO_USER_DATA_DIR'];

@@ -5,6 +5,8 @@ import { forwardShortcuts } from './shortcuts';
 import { uiIndexUrl } from './security/uiProtocol';
 
 const BG = '#161B26';
+/** Height of the UI's title strip on Windows, where the window controls are drawn over it (ROADMAP 6.2). */
+export const TITLE_BAR_HEIGHT = 32;
 
 export function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -16,6 +18,12 @@ export function createMainWindow(): BrowserWindow {
     backgroundColor: BG,
     autoHideMenuBar: true,
     title: 'SpaceAIO',
+    // Windows: no system title bar. Windows draws its minimize/maximize/close buttons (with Windows 11's
+    // Snap Layouts) over the UI's own title strip, in the theme's colours (set from the UI). Linux keeps
+    // its native decorations.
+    ...(process.platform === 'win32'
+      ? { titleBarStyle: 'hidden' as const, titleBarOverlay: { color: BG, symbolColor: '#E4E8F0', height: TITLE_BAR_HEIGHT } }
+      : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

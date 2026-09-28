@@ -40,6 +40,20 @@ pacman:
   depends: [gtk3, nss, alsa-lib, libxss, libxtst, libnotify, libsecret, at-spi2-core, xdg-utils]
 win:
   target: nsis
+  # electron-builder turns this into the .ico for the exe, installer and shortcuts.
+  icon: build/icons/512x512.png
+  artifactName: spaceaio-${version}-setup.${ext}
+  # Unsigned for now (ROADMAP 6.4, D-063): Windows SmartScreen warns on first runs. A certificate or a
+  # signing service plugs in here (win.signtoolOptions / azureSignOptions) without other changes.
+nsis:
+  # Per-user install, no admin prompt, like most apps of this kind; updates install the same way.
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: SpaceAIO
+  # Uninstalling keeps logins and settings (%APPDATA%\SpaceAIO), like on Linux.
+  deleteAppDataOnUninstall: false
 # Where releases live (ROADMAP 5.4/5.5): electron-builder writes latest-linux.yml and the app's
 # update config from this. It never uploads anything itself (`--publish never`); the release workflow does.
 publish:
