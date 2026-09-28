@@ -229,6 +229,13 @@ UI state (2.13), filter or scriptlet data duplicated per session, per-view prelo
 busy during resize (a freeze with a responsive CPU points there). Fix the causes; keep the script as a test.
 **Done when:** 200 open/close/resize cycles leave memory within 10% of where it settled, the UI never
 stops responding, and YouTube + X stay under ~1.5 GB total after an hour of normal use on Windows.
+(Measured 2026-09-28, Windows 11, 5120x1440 at 125%: no leak. YouTube + X in one instance settle at
+1.7-2.1 GB (GPU ~190 -> ~480 MB, then flat) and stay there over 200 cycles of tabs, tile splits, divider
+drags and window resizes; snapshots stall main for 30-50 ms at most; the UI answers in ~1 ms. The
+owner then found a second instance had been running, which explains ~4 GB (two instances can't share a
+profile: the single-instance lock was checked both ways). `test/memory.test.ts` guards it in CI (fails
+with 43 leftover pages when views aren't closed). Left: the owner's hour of normal use with one
+instance, and whether the freeze comes back.)
 
 ### - [ ] 2.15 Drag a tile out of the window into its own window
 Dragging a tile's header outside the SpaceAIO window opens that app (same page, same account, no reload
