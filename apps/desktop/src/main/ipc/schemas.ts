@@ -251,6 +251,13 @@ export const ViewNavigateSchema = z.object({
 /** A link for the system browser. Only http(s) URLs. */
 export const OpenExternalSchema = z.object({ url: z.string().max(8192).refine(isWebUrl, 'only http(s) URLs') });
 
+/** The screen-share picker's answer (ROADMAP 2.11); main also checks the source was offered. */
+export const ScreenShareChoiceSchema = z.object({
+  id: z.string().uuid(),
+  sourceId: z.string().max(200).nullable(),
+  audio: z.boolean(),
+});
+
 export const DownloadActionSchema = z.object({
   id: Id,
   action: z.enum(['open', 'show', 'cancel', 'clear']),

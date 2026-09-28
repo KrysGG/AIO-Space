@@ -17,6 +17,8 @@ export const IPC = {
   viewFocus: 'view:focus',
   viewNavigate: 'view:navigate',
   linkOpenExternal: 'link:open-external',
+  screenSharePick: 'screenshare:pick',
+  screenShareChoose: 'screenshare:choose',
   openInNewTile: 'view:open-in-new-tile',
   downloadsUpdate: 'downloads:update',
   downloadsAction: 'downloads:action',
@@ -190,6 +192,15 @@ export interface OpenInNewTile {
   external?: boolean;
 }
 
+/** A page asked to share the screen (ROADMAP 2.11): main's offer for the UI's picker. */
+export interface ScreenShareRequest {
+  id: string;
+  appName: string;
+  /** The page asked for audio and this platform can share system audio (Windows). */
+  audio: boolean;
+  sources: Array<{ id: string; name: string; kind: 'screen' | 'window'; /** data: URL, or '' */ thumbnail: string }>;
+}
+
 /** One download as the UI shows it. Paths stay in main; the UI only gets the file name. */
 export interface DownloadInfo {
   id: string;
@@ -242,6 +253,10 @@ export interface AioApi {
   navigate(leafId: string, url: string): void;
   /** Hand an http(s) link to the system browser (when the UI has no room for a Browser tile). */
   openExternal(url: string): void;
+  /** A page wants to share the screen: show the picker. Returns an unsubscribe function. */
+  onScreenSharePick(cb: (request: ScreenShareRequest) => void): () => void;
+  /** The picker's answer; `sourceId` null cancels. */
+  chooseScreenShare(id: string, sourceId: string | null, audio: boolean): void;
   /** Returns an unsubscribe function. */
   onViewState(cb: (state: ViewState) => void): () => void;
   onViewFocused(cb: (leafId: string) => void): () => void;

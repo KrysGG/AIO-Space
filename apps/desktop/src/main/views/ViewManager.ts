@@ -28,6 +28,7 @@ import {
 } from '@aio/core';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
+import { ScreenShare } from './screenShare';
 import { IPC, TILE_GUTTER, tileHeaderHeight, VIEW_INSET, VIEW_RADIUS, type ViewFrame, type OpenInNewTile, type ViewCommand, type ViewPlacement, type ViewState } from '../../shared/ipc';
 import type { DownloadManager } from '../downloads/DownloadManager';
 import type { FilterLists } from '../privacy/filterLists';
@@ -105,6 +106,8 @@ interface Entry {
  * (menus, dialogs, divider drags) has to call setHidden(true) first.
  */
 export class ViewManager {
+  /** Screen sharing for apps with `display-capture` (ROADMAP 2.11). */
+  readonly screenShare: ScreenShare;
   /** Keyed by instance id. */
   private readonly views = new Map<string, Entry>();
   private hidden = false;
@@ -135,6 +138,7 @@ export class ViewManager {
     private readonly plugins?: PluginStore,
     private readonly extensions?: ExtensionHost,
   ) {
+    this.screenShare = new ScreenShare(win);
     setInterval(() => this.sleepIdle(), SLEEP_CHECK_MS).unref();
     // Wayland/Chromium sometimes leaves a stale, smeared frame on a view after another window is
     // dragged over ours and away again (a compositor damage-tracking quirk, not our layout code).
@@ -423,6 +427,7 @@ export class ViewManager {
       this.signIn,
     );
     this.downloads.attach(ses);
+    if (def.permissions.includes('display-capture')) this.screenShare.attach(ses, def.name);
 
     const preloadArgs = this.preloadArgsFor(appId, profile);
     const view = new WebContentsView({

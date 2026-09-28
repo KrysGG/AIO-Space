@@ -207,6 +207,8 @@ Implement `session.setDisplayMediaRequestHandler` for apps with `display-capture
 built from `desktopCapturer`. On Wayland this goes through the xdg-desktop-portal / PipeWire
 picker; verify on KDE and GNOME.
 **Done when:** Screen share works in a Discord call on CachyOS Wayland.
+(Built, D-068: the UI's picker (screens, windows, thumbnails; system audio on Windows), tested end to end
+with a local app on Windows. Left: a real Discord call, and the Wayland portal on KDE/GNOME.)
 
 ### - [x] 2.12 Multiple accounts per app
 Profiles per app (`partitionFor(appId, profile)`), picker in the tile header.
@@ -456,6 +458,11 @@ Add items found while working on other steps here, with the step where they were
   showed 8 requests blocked, no crash, no fingerprinting-related breakage). The owner separately
   confirmed Google sign-in, Reddit and Instagram work this session. Discord and X weren't separately
   re-confirmed against fingerprinting specifically; worth a check if anything looks off.
+- (3.3/3.4/3.6, owner's decision) Script-set third-party cookies, farbling and ad hiding in subframes all
+  need our preload in every frame (`nodeIntegrationInSubFrames`, still sandboxed, no IPC), or an IPC channel
+  from web views, which SECURITY.md forbids. Every frame would include captcha frames (hCaptcha,
+  Turnstile, reCAPTCHA), where farbling may cause more challenges. Network blocking and HTTP cookie
+  stripping already cover frames. Decide whether the gain is worth that before building it.
 - (3.4) Farbling covers main frames only. Cross-origin iframes (preload with
   `nodeIntegrationInSubFrames`, which with sandbox gives no Node), same-origin `about:blank` iframes
   (their fresh prototypes are unpatched), workers and `OffscreenCanvas` are not covered yet.
@@ -500,8 +507,8 @@ Add items found while working on other steps here, with the step where they were
   covers all of this. Google Translate hung with the API stand-ins; check why.
 - (4.4) Plugins have no permissions and no message channel to main yet: a manifest asking for any is refused.
   Build the channel from the design in D-052 when a real plugin needs data from main.
-- (2.11) Deferred by the owner: screen sharing needs a real Discord call with someone. Implement and
-  test together when a second person is available (also covers 2.5's real-message check).
+- (2.11) Built (D-068). Owner: share a screen in a real Discord call (Go Live works alone in a voice
+  channel too), on Windows and on CachyOS Wayland; also covers 2.5's real-message check if someone joins.
 - (1.6, for Phase 7) Sign-in popups (e.g. Reddit "Continue with Google") work on desktop as a
   second window. On mobile they should probably become a redirect in the same WebView (or the system
   browser, see 7.4) rather than a second window. Owner's request.

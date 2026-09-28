@@ -9,6 +9,7 @@ import {
   type AioApi,
   type DownloadInfo,
   type OpenInNewTile,
+  type ScreenShareRequest,
   type ShortcutAction,
   type UpdateStatus,
   type ViewState,
@@ -26,6 +27,12 @@ const api: AioApi = {
   focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
   navigate: (leafId, url) => ipcRenderer.send(IPC.viewNavigate, { leafId, url }),
   openExternal: (url) => ipcRenderer.send(IPC.linkOpenExternal, { url }),
+  onScreenSharePick: (cb) => {
+    const listener = (_e: IpcRendererEvent, request: ScreenShareRequest): void => cb(request);
+    ipcRenderer.on(IPC.screenSharePick, listener);
+    return () => ipcRenderer.removeListener(IPC.screenSharePick, listener);
+  },
+  chooseScreenShare: (id, sourceId, audio) => ipcRenderer.send(IPC.screenShareChoose, { id, sourceId, audio }),
   downloadAction: (id, action) => ipcRenderer.send(IPC.downloadsAction, { id, action }),
   getFilterListStatus: () => ipcRenderer.invoke(IPC.filtersStatus),
   updateFilterLists: () => ipcRenderer.invoke(IPC.filtersUpdate),

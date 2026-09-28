@@ -65,8 +65,11 @@ export function getAppSession(
   ses.setSpellCheckerDictionaryDownloadURL(NO_DICTIONARY_DOWNLOADS);
 
   const allowed = new Set<string>(def.permissions satisfies AppPermission[]);
-  ses.setPermissionRequestHandler((wc, permission, callback) => {
-    const ok = allowed.has(permission);
+  ses.setPermissionRequestHandler((wc, permission, callback, details) => {
+    // getDisplayMedia asks for 'media' with no media types: that's screen sharing, which needs
+    // 'display-capture' (camera and microphone requests list 'video'/'audio' and need 'media').
+    const screen = permission === 'media' && 'mediaTypes' in details && (details.mediaTypes ?? []).length === 0;
+    const ok = allowed.has(screen ? 'display-capture' : permission);
     if (ok && (permission === 'media' || permission === 'display-capture')) mediaUsers.add(wc);
     callback(ok);
   });

@@ -727,3 +727,15 @@ files need no migration; the schema allows that id once and rejects duplicate id
 removes an added account (never the first): its tiles in every space go back to the first account, and
 the UI clears its data through the existing clear-data path (3.9), which deletes its folder at the next
 start. Both live in the Shields panel next to "Clear data", where the tile's account is already shown.
+
+**D-068: Screen sharing through the UI's own picker; screen share is its own permission.**
+Apps with `display-capture` get `setDisplayMediaRequestHandler` (`views/screenShare.ts`): `desktopCapturer`
+lists screens and windows with thumbnails, the UI shows a picker (views hidden, like the other panels),
+and main answers the page only with a source it offered for that request (`screenshare:choose`,
+zod-checked). System audio is offered on Windows when the page asks for audio (`loopback`). macOS 15+
+uses its system picker (`useSystemPicker`); on Wayland Chromium shows the portal's picker and
+`getSources` returns just that choice, used as is. Electron sends getDisplayMedia to the permission
+handler as `media` with no media types; that is now checked against `display-capture` (camera and
+microphone requests list `video`/`audio` and still need `media`), so neither permission implies the
+other. Electron has no "deny" answer: an empty one refuses the page (AbortError) and then throws, so
+refusals go through `deny()`, which catches it.

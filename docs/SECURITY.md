@@ -69,6 +69,9 @@ These are enforced by review, and several by ESLint. Do not break them.
 18. Spellcheck (D-066) never downloads dictionaries. Chromium's Hunspell spellchecker (Linux; Windows for
     languages Windows can't check) would fetch them from Google's CDN; the app ships US English
     (`vendor/hunspell`) and points every session's dictionary downloads at a scheme that loads nothing.
+19. Screen sharing (D-068) only for apps with `display-capture`, which is separate from `media` (camera and
+    microphone). Only the user's pick in the UI's picker is shared, and main accepts only a source it offered
+    for that very request; cancelling, closing or a newer request refuses the page.
 
 ## Packaging hardening (ROADMAP 3.7, release builds in 5.3)
 

@@ -66,7 +66,7 @@ import {
   type WebAppDef,
   type Workspace,
 } from '@aio/core';
-import type { DownloadInfo, ExtensionInfo, OpenInNewTile, ShortcutAction, UpdateStatus, ViewState } from '../../shared/ipc';
+import type { DownloadInfo, ExtensionInfo, OpenInNewTile, ScreenShareRequest, ShortcutAction, UpdateStatus, ViewState } from '../../shared/ipc';
 import { AddAppDialog } from './components/AddAppDialog';
 import { AppStore } from './components/AppStore';
 import { CssEditor } from './components/CssEditor';
@@ -79,6 +79,7 @@ import type { MediaInUse } from '../../shared/webapp';
 import { DownloadsPanel } from './components/DownloadsPanel';
 import { MenuPanel } from './components/MenuPanel';
 import { ShieldsPanel } from './components/ShieldsPanel';
+import { SharePicker } from './components/SharePicker';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { Sidebar } from './components/Sidebar';
 import { TileLayout } from './components/TileLayout';
@@ -215,6 +216,7 @@ export function App() {
   const refreshExtensions = useCallback(() => void window.aio.listExtensions().then(setExtensions), []);
   useEffect(refreshExtensions, [refreshExtensions]);
   const [extensionsLeaf, setExtensionsLeaf] = useState<string | null>(null);
+  const [shareRequest, setShareRequest] = useState<ScreenShareRequest | null>(null);
   const closeExtensions = useCallback(() => setExtensionsLeaf(null), []);
   /** App whose custom CSS editor is docked beside the tiles (ROADMAP 4.3). */
   const [cssFor, setCssFor] = useState<string | null>(null);
@@ -271,6 +273,7 @@ export function App() {
     );
     const offShortcut = window.aio.onShortcut((action) => shortcutRef.current(action));
     const offNewTile = window.aio.onOpenInNewTile((request) => openInNewTileRef.current(request));
+    const offShare = window.aio.onScreenSharePick(setShareRequest);
     const offDownloads = window.aio.onDownloads(setDownloads);
     const offSnapshots = window.aio.onViewSnapshots((shots) => {
       setSnapshots(shots);
@@ -300,6 +303,7 @@ export function App() {
       offFocus();
       offShortcut();
       offNewTile();
+      offShare();
     };
   }, []);
 
@@ -764,6 +768,16 @@ export function App() {
           }}
           onClose={closeShields}
           onClosed={refocusTile}
+        />
+      )}
+      {shareRequest && (
+        <SharePicker
+          key={shareRequest.id}
+          request={shareRequest}
+          onChoose={(sourceId, audio) => {
+            window.aio.chooseScreenShare(shareRequest.id, sourceId, audio);
+            setShareRequest(null);
+          }}
         />
       )}
       {extensionsLeaf && (() => {

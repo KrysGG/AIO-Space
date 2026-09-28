@@ -26,6 +26,7 @@ import {
   ViewFocusSchema,
   ViewNavigateSchema,
   OpenExternalSchema,
+  ScreenShareChoiceSchema,
   WorkspaceSchema,
 } from './schemas';
 
@@ -105,6 +106,12 @@ export function registerIpc(
     if (!fromUi(e)) return;
     const parsed = OpenExternalSchema.safeParse(raw);
     if (parsed.success) void shell.openExternal(parsed.data.url);
+  });
+
+  ipcMain.on(IPC.screenShareChoose, (e, raw: unknown) => {
+    if (!fromUi(e)) return;
+    const parsed = ScreenShareChoiceSchema.safeParse(raw);
+    if (parsed.success) views.screenShare.choose(parsed.data.id, parsed.data.sourceId, parsed.data.audio);
   });
 
   ipcMain.on(IPC.downloadsAction, (e, raw: unknown) => {

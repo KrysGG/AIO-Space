@@ -903,3 +903,15 @@ button { font: inherit; color: inherit; }
 .titlebar-name { color: var(--text); font-weight: 600; }
 .titlebar-space::before { content: '·'; margin-right: 10px; }
 
+
+/* ---- Screen-share picker (ROADMAP 2.11) ------------------------------------- */
+.share-picker { width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; display: grid; gap: 12px; }
+.share-group h3 { margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.share-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.share-source { display: grid; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius-ctl); background: var(--ink); color: var(--text); cursor: pointer; text-align: left; }
+.share-source:hover { border-color: var(--muted); }
+.share-source.is-picked { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+.share-source img, .share-thumb-empty { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 4px; background: rgb(0 0 0 / 0.25); }
+.share-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.share-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.share-audio { margin-right: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; }
