@@ -361,13 +361,21 @@ GitHub Actions on tag: build, test, package, attach to release, checksums.
 ### - [ ] 6.1 Run on Windows
 Fix path and platform assumptions; skip Linux-only switches. Test mixed-DPI multi-monitor setups:
 move the window between a 100% and 150% monitor and confirm views stay aligned.
+(Built, D-063: the whole test suite passes on Windows in CI. Left: the mixed-DPI check on a real Windows 11.)
 ### - [ ] 6.2 Windows look and feel
 `titleBarOverlay` or custom title bar, Snap Layouts support, Mica/acrylic optional.
+(Built: title strip + titleBarOverlay in theme colours, checked by screenshot in CI. Left: Snap Layouts
+flyout on hovering maximize, on Windows 11. Mica skipped: the UI is opaque, so it would never show.)
 ### - [ ] 6.3 Notifications
 Set `app.setAppUserModelId`; verify toast notifications and taskbar badge counts.
+(Built: AppUserModelId = appId; unread count as a taskbar overlay badge. Left: see a toast and the badge on
+Windows 11.)
 ### - [ ] 6.4 Installer and signing
 NSIS installer; code signing (a certificate or a cloud signing service) to avoid SmartScreen warnings.
-### - [ ] 6.5 Windows CI and release
+(Built: per-user NSIS installer, installed, started and uninstalled on every release build in CI;
+Windows updates. Unsigned by the owner's choice for now, so SmartScreen warns; signing plugs into
+electron-builder's `win` config.)
+### - [x] 6.5 Windows CI and release
 Add `windows-latest` to CI and the release pipeline.
 **Phase 6 done when:** A signed installer from CI installs and passes the Phase 1 checks on Windows 11.
 
@@ -485,6 +493,11 @@ Add items found while working on other steps here, with the step where they were
   the live URLs. To release: bump apps/desktop/package.json's version, commit, tag vX.Y.Z, push the tag.
 - (5.2) Publishing spaceaio-bin on the AUR is the owner's step (an AUR account and SSH key): copy the
   release's PKGBUILD, SRCINFO (as .SRCINFO) and packaging/aur/spaceaio.desktop into the AUR git repo.
+- (6.x) Windows 11 checklist for someone with a Windows 11 PC, on the installer from a release: install
+  (SmartScreen: More info > Run anyway), start from the Start menu; move the window between a 100% and a
+  150% monitor and back (pages stay inside their tiles); hover the maximize button (Snap Layouts appear);
+  switch theme (the window buttons follow); get a message in a background app (toast with "SpaceAIO" and
+  the taskbar badge); quit, uninstall (Settings > Apps), reinstall (logins kept).
 - (5.1) `fingerprint.test.ts` "turning fingerprinting off gives the page its real values" timed out
   (20 s) once in a full run on 2026-09-27, then passed 3 times in a row. Intermittent; find the wait.
 - (5.1) AppImages need FUSE 2 (`fuse2`), missing on a default CachyOS install; the pacman package doesn't.

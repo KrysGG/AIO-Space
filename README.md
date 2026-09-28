@@ -36,6 +36,12 @@ after copying the release's `spaceaio-<version>-x64.tar.gz` next to the PKGBUILD
 Remove the pacman package with `sudo pacman -R spaceaio`; your logins and settings stay in
 `~/.config/SpaceAIO`. Coming from a build named AIO Space? SpaceAIO moves your data and logins over on first start (D-058).
 
+## Install on Windows
+
+Download `spaceaio-<version>-setup.exe` from the latest release and run it: it installs for your user
+only (no admin), adds Start menu and desktop shortcuts, and updates itself. The installer isn't signed yet,
+so Windows SmartScreen says "Windows protected your PC": click **More info**, then **Run anyway**.
+
 ## Commands
 
 | Command | What it does |

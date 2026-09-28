@@ -2,6 +2,8 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [6.5] CI and the release pipeline run on Windows too: full test suite, Windows installer built, checked (fuses), installed, started and uninstalled on every release build (D-063).
+- [6.1-6.4 built] Windows: own title strip with Windows' controls and Snap Layouts in theme colours, notification id and taskbar unread badge, per-user NSIS installer (unsigned for now) with updates, Windows download rules (never open shortcuts, scripts, installers or disk images; Windows-safe file names), views re-placed on DPI changes. Waiting for a Windows 11 check (Backlog).
 - [5.5] First release, v0.1.0, published by the tag workflow: AppImage, pacman package, tar.gz, SHA256SUMS, latest-linux.yml and AUR files; verified after download and with makepkg from the live URLs (D-060).
 - [License] All rights reserved for now (LICENSE; release builds free to use); the repository is now github.com/KrysGG/SpaceAIO (D-062).
 - [Fix] The UI no longer writes the workspace back right after loading it; on slower machines that stale save could overwrite a newer one (made CI fail intermittently since Phase 4, and could lose an import). A test scanning profile files no longer trips over files Chromium deletes mid-scan.

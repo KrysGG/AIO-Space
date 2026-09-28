@@ -662,3 +662,22 @@ the release tag, a fourth checksummed source); electron-builder sets `copyright`
 (no GPL or paid dependencies, D-055). The GitHub repo was renamed from `AIO-Space` to `SpaceAIO` (GitHub
 redirects the old URL); homepage, update feed (`publish.repo`) and AUR URLs use the new name.
 
+**D-063: Windows: verified in CI, unsigned per-user NSIS installer, own title strip.**
+ROADMAP 6.x, owner's choices (2026-09-28): no Windows machine, so everything is checked on GitHub's
+Windows runners, and hands-on checks wait for a Windows 11 user (Backlog checklist); installers are
+unsigned for now (SmartScreen warns). CI runs the full test suite on `windows-latest` (tests made
+path-neutral; aio:// is also tested against backslash, `%5c`, drive-letter and UNC escapes; the
+on-disk scan skips only empty locked files). The release workflow builds on Linux and Windows and
+publishes once; on Windows it also installs the NSIS installer silently, starts the installed app
+(20 s, profile created) and uninstalls it. Window: `titleBarStyle: 'hidden'` + `titleBarOverlay` on
+Windows only; the UI draws a 32 px draggable title strip (`window.aio.platform`) and sends the theme's
+ink/text colours (`window:title-bar`, zod-checked colours). `setAppUserModelId('com.spaceaio.app')`
+matches the installer's shortcuts (toasts need it). Taskbar badge: `setOverlayIcon` with a red disc and
+the count drawn in code (no numeric badge API for desktop apps). NSIS: one-click, per-user, no admin,
+shortcuts, keeps app data on uninstall; `extraMetadata.name: spaceaio` so the install folder is
+`%LOCALAPPDATA%\Programs\spaceaio` and the updater cache `spaceaio-updater` (not `@aiodesktop`).
+Updates: `NsisUpdater` on Windows (latest.yml; unsigned, so no publisher check). Downloads: Windows-runnable
+types added to "never open" (shortcuts, HTA, registry, MSIX, disk images...), and file names made valid on
+Windows (no `<>:"|?*`, no reserved device names, no trailing dots/spaces, which Windows drops, so "a.exe." is
+saved and checked as a.exe). Views are re-placed on window moves and display-scale changes.
+
