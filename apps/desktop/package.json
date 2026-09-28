@@ -1,7 +1,7 @@
 {
   "name": "@aio/desktop",
   "productName": "SpaceAIO",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "UNLICENSED",
   "private": true,
   "description": "SpaceAIO desktop shell (Electron). Linux first, Windows in Phase 6.",

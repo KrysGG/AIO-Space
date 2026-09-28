@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Release] v0.1.2: Windows hotfixes for testing: Google sign-in (and "Continue with Google" on X/Reddit), no passkey pop-ups, outside links open in a Browser tile, account rename/remove, screen sharing, spellcheck without Google.
 - [2.11 built] Screen sharing: a page's "share screen" shows SpaceAIO's picker (screens and windows, system audio on Windows); only apps allowed to share the screen get it. Waiting for a real Discord call (D-068).
 - [2.12] Accounts can be renamed (the first one too) and removed from the Shields panel; removing logs it out, deletes its data and moves its tiles to the first account (D-067).
 - [Privacy] Spellcheck never downloads dictionaries from Google: US English ships with the app, other languages get none (D-066).
