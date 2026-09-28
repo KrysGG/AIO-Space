@@ -153,6 +153,20 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
   return (
     <div className="popover-backdrop" onPointerDown={onClose}>
       <div className="popover menu-panel" role="dialog" aria-label="Menu" onPointerDown={(e) => e.stopPropagation()}>
+        {keyringNotice && (
+          <div className="notice" role="alert">
+            <strong>Your logins aren’t protected by a keyring</strong>
+            <p>
+              SpaceAIO couldn’t use KWallet or GNOME Keyring, so cookies and logins are saved with a fixed key. Anyone who can read
+              your files could use them. Install and unlock KWallet (KDE) or GNOME Keyring (<code>gnome-keyring</code>,{' '}
+              <code>libsecret</code>), then restart SpaceAIO.
+            </p>
+            <button className="text-btn" onClick={onDismissKeyring}>
+              Got it
+            </button>
+          </div>
+        )}
+
         <section>
           <h2 className="popover-title">Spaces</h2>
           <p className="popover-hint">Each space has its own tiles. Apps in other spaces keep running, so switching is instant.</p>
@@ -252,144 +266,7 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
         </section>
 
         <section>
-          <h2 className="popover-title">Move to another computer</h2>
-          <p className="popover-hint">
-            A file with your spaces, apps and settings. Logins, cookies and site data aren’t in it, so you sign in again there.
-          </p>
-          <div className="site-data-row">
-            <button className="text-btn" onClick={() => void exportFile()}>
-              Export workspace…
-            </button>
-            <button className="text-btn" onClick={() => void importFile()}>
-              Import workspace…
-            </button>
-          </div>
-          {fileMessage && (
-            <p className={fileMessage.error ? 'form-error' : 'popover-hint'} role={fileMessage.error ? 'alert' : 'status'}>
-              {fileMessage.text}
-            </p>
-          )}
-        </section>
-
-        <section>
-          <h2 className="popover-title">Appearance</h2>
-          <label className="setting">
-            <span>Theme</span>
-            <select value={ws.ui.theme} onChange={(e) => onTheme(e.target.value)}>
-              <option value={SYSTEM_THEME}>Match system (light or dark)</option>
-              {[...BUILTIN_THEMES, ...ws.themes].map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="site-data-row">
-            <button className="text-btn" disabled={ws.themes.length >= MAX_USER_THEMES} onClick={() => themeFile.current?.click()}>
-              Import theme…
-            </button>
-            {userTheme && (
-              <button className="text-btn" onClick={() => onRemoveTheme(userTheme.id)}>
-                Remove “{userTheme.name}”
-              </button>
-            )}
-            <input
-              ref={themeFile}
-              type="file"
-              accept=".json,application/json"
-              hidden
-              onChange={(e) => {
-                void importTheme(e.target.files?.[0]);
-                e.target.value = '';
-              }}
-            />
-          </div>
-          {themeError && (
-            <p className="form-error" role="alert">
-              {themeError}
-            </p>
-          )}
-          <p className="popover-hint">
-            A theme file is JSON with a name and colours, e.g. <code>{'{ "name": "Mine", "scheme": "dark", "colors": { "ink": "#101418" } }'}</code>.
-            Colours you leave out come from Dark or Light.
-          </p>
-          <label className="setting">
-            <span>Custom CSS for an app</span>
-            <select value="" onChange={(e) => e.target.value && onCustomCss(e.target.value)} aria-label="Edit custom CSS for an app">
-              <option value="">Pick an app…</option>
-              {apps.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                  {ws.appCss[a.id] ? (ws.appCss[a.id]!.enabled ? ' (on)' : ' (off)') : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
-
-        <ExtensionsSection
-          installed={extensions}
-          usedBy={Object.fromEntries(extensions.map((x) => [x.id, Object.keys(ws.extensions).filter((appId) => ws.extensions[appId]!.includes(x.id))]))}
-          apps={apps}
-          onChanged={onExtensionsChanged}
-          onRemoved={onExtensionRemoved}
-        />
-
-        <PluginsSection enabled={ws.enabledPlugins} apps={apps} onEnabled={onPluginEnabled} />
-
-        {updateStatus.supported && (
-          <section>
-            <h2 className="popover-title">Updates</h2>
-            {updateStatus.state === 'ready' ? (
-              <div className="notice" role="status">
-                <strong>SpaceAIO {updateStatus.version} is ready</strong>
-                <p>Restart to use it. It’s also installed the next time you quit.</p>
-                <button className="text-btn" onClick={() => window.aio.installUpdate()}>
-                  Restart to update
-                </button>
-              </div>
-            ) : (
-              <div className="site-data-row">
-                <button
-                  className="text-btn"
-                  disabled={updateStatus.state === 'checking' || updateStatus.state === 'downloading'}
-                  onClick={() => window.aio.checkForUpdates()}
-                >
-                  Check now
-                </button>
-                <small role="status">
-                  {updateStatus.state === 'checking' && 'Checking…'}
-                  {updateStatus.state === 'none' && 'You have the latest version.'}
-                  {updateStatus.state === 'downloading' && `Downloading ${updateStatus.version} (${updateStatus.percent ?? 0}%)…`}
-                  {updateStatus.state === 'error' && `Couldn’t check for updates: ${updateStatus.error}. Try again later.`}
-                </small>
-              </div>
-            )}
-            <label className="shield-switch">
-              <span>
-                Check for updates automatically
-                <small>Asks GitHub for new releases a little after start and every 6 hours, and downloads them in the background.</small>
-              </span>
-              <input type="checkbox" checked={ws.updates.auto} onChange={(e) => onAutoUpdates(e.target.checked)} />
-            </label>
-          </section>
-        )}
-
-        <section>
-          <h2 className="popover-title">Settings</h2>
-          {keyringNotice && (
-            <div className="notice" role="alert">
-              <strong>Your logins aren’t protected by a keyring</strong>
-              <p>
-                SpaceAIO couldn’t use KWallet or GNOME Keyring, so cookies and logins are saved with a fixed key. Anyone who can read
-                your files could use them. Install and unlock KWallet (KDE) or GNOME Keyring (<code>gnome-keyring</code>,{' '}
-                <code>libsecret</code>), then restart SpaceAIO.
-              </p>
-              <button className="text-btn" onClick={onDismissKeyring}>
-                Got it
-              </button>
-            </div>
-          )}
+          <h2 className="popover-title">Apps and accounts</h2>
           {hiddenApps.length > 0 && (
             <div className="hidden-apps">
               <span>Hidden from the sidebar (still in the launcher)</span>
@@ -415,44 +292,10 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
             </span>
             <input type="checkbox" checked={ws.identity.shareGoogle} onChange={(e) => onShareGoogle(e.target.checked)} />
           </label>
-          <label className="shield-switch">
-            <span>
-              Reduce animations and effects
-              <small>Instant transitions, no glass blur or page previews. Saves CPU and GPU on slower machines.</small>
-            </span>
-            <input type="checkbox" checked={ws.ui.reduceMotion} onChange={(e) => onReduceMotion(e.target.checked)} />
-          </label>
-          <label className="setting">
-            <span>Search engine for the Browser tile</span>
-            <select value={ws.browser.searchEngine} onChange={(e) => onSearchEngine(e.target.value as SearchEngineId)}>
-              {Object.values(SEARCH_ENGINES).map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="setting">
-            <span>Sleep apps hidden in other spaces</span>
-            <select
-              value={String(ws.performance.sleepAfterMinutes)}
-              onChange={(e) => onSleepAfter(e.target.value === 'null' ? null : (Number(e.target.value) as SleepAfterMinutes))}
-            >
-              {SLEEP_CHOICES.map((m) => (
-                <option key={String(m)} value={String(m)}>
-                  {m === null ? 'Never' : m < 60 ? `After ${m} minutes` : 'After 1 hour'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="popover-hint">
-            Sleeping apps free memory and reload when you open their space. Apps that play audio, use your camera or microphone, or can send
-            notifications stay awake.
-          </p>
         </section>
 
         <section>
-          <h2 className="popover-title">Shields defaults</h2>
+          <h2 className="popover-title">Privacy</h2>
           <p className="popover-hint">For every app. Use the shield in a tile to change one app, or turn its Shields off.</p>
           {SHIELD_SWITCHES.map((s) => (
             <label key={s.key} className="shield-switch">
@@ -500,12 +343,6 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
             </select>
           </label>
           <FilterListStatus />
-          <div className="site-data-row">
-            <button className="btn btn-danger" onClick={clearAll} disabled={clearedAll === 'busy'}>
-              {clearedAll === 'busy' ? 'Clearing…' : 'Clear data for all apps…'}
-            </button>
-            {clearedAll === 'done' && <small role="status">Cleared. Every app starts fresh.</small>}
-          </div>
           {ws.httpAllowedHosts.length > 0 && (
             <div className="http-allowed">
               <span>Sites allowed without HTTPS</span>
@@ -523,6 +360,182 @@ export function MenuPanel({ ws, onSwitch, onAdd, onRename, onRemove, onSearchEng
               </ul>
             </div>
           )}
+        </section>
+
+        <section>
+          <h2 className="popover-title">Appearance</h2>
+          <label className="setting">
+            <span>Theme</span>
+            <select value={ws.ui.theme} onChange={(e) => onTheme(e.target.value)}>
+              <option value={SYSTEM_THEME}>Match system (light or dark)</option>
+              {[...BUILTIN_THEMES, ...ws.themes].map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="site-data-row">
+            <button className="text-btn" disabled={ws.themes.length >= MAX_USER_THEMES} onClick={() => themeFile.current?.click()}>
+              Import theme…
+            </button>
+            {userTheme && (
+              <button className="text-btn" onClick={() => onRemoveTheme(userTheme.id)}>
+                Remove “{userTheme.name}”
+              </button>
+            )}
+            <input
+              ref={themeFile}
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={(e) => {
+                void importTheme(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          {themeError && (
+            <p className="form-error" role="alert">
+              {themeError}
+            </p>
+          )}
+          <p className="popover-hint">
+            A theme file is JSON with a name and colours, e.g. <code>{'{ "name": "Mine", "scheme": "dark", "colors": { "ink": "#101418" } }'}</code>.
+            Colours you leave out come from Dark or Light.
+          </p>
+          <label className="shield-switch">
+            <span>
+              Reduce animations and effects
+              <small>Instant transitions, no glass blur or page previews. Saves CPU and GPU on slower machines.</small>
+            </span>
+            <input type="checkbox" checked={ws.ui.reduceMotion} onChange={(e) => onReduceMotion(e.target.checked)} />
+          </label>
+        </section>
+
+        <section>
+          <h2 className="popover-title">Performance</h2>
+          <label className="setting">
+            <span>Sleep apps hidden in other spaces</span>
+            <select
+              value={String(ws.performance.sleepAfterMinutes)}
+              onChange={(e) => onSleepAfter(e.target.value === 'null' ? null : (Number(e.target.value) as SleepAfterMinutes))}
+            >
+              {SLEEP_CHOICES.map((m) => (
+                <option key={String(m)} value={String(m)}>
+                  {m === null ? 'Never' : m < 60 ? `After ${m} minutes` : 'After 1 hour'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="popover-hint">
+            Sleeping apps free memory and reload when you open their space. Apps that play audio, use your camera or microphone, or can send
+            notifications stay awake.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="popover-title">Browser</h2>
+          <label className="setting">
+            <span>Search engine for the Browser tile</span>
+            <select value={ws.browser.searchEngine} onChange={(e) => onSearchEngine(e.target.value as SearchEngineId)}>
+              {Object.values(SEARCH_ENGINES).map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        {updateStatus.supported && (
+          <section>
+            <h2 className="popover-title">Updates</h2>
+            {updateStatus.state === 'ready' ? (
+              <div className="notice" role="status">
+                <strong>SpaceAIO {updateStatus.version} is ready</strong>
+                <p>Restart to use it. It’s also installed the next time you quit.</p>
+                <button className="text-btn" onClick={() => window.aio.installUpdate()}>
+                  Restart to update
+                </button>
+              </div>
+            ) : (
+              <div className="site-data-row">
+                <button
+                  className="text-btn"
+                  disabled={updateStatus.state === 'checking' || updateStatus.state === 'downloading'}
+                  onClick={() => window.aio.checkForUpdates()}
+                >
+                  Check now
+                </button>
+                <small role="status">
+                  {updateStatus.state === 'checking' && 'Checking…'}
+                  {updateStatus.state === 'none' && 'You have the latest version.'}
+                  {updateStatus.state === 'downloading' && `Downloading ${updateStatus.version} (${updateStatus.percent ?? 0}%)…`}
+                  {updateStatus.state === 'error' && `Couldn’t check for updates: ${updateStatus.error}. Try again later.`}
+                </small>
+              </div>
+            )}
+            <label className="shield-switch">
+              <span>
+                Check for updates automatically
+                <small>Asks GitHub for new releases a little after start and every 6 hours, and downloads them in the background.</small>
+              </span>
+              <input type="checkbox" checked={ws.updates.auto} onChange={(e) => onAutoUpdates(e.target.checked)} />
+            </label>
+          </section>
+        )}
+
+        <section>
+          <h2 className="popover-title">Customize</h2>
+          <label className="setting">
+            <span>Custom CSS for an app</span>
+            <select value="" onChange={(e) => e.target.value && onCustomCss(e.target.value)} aria-label="Edit custom CSS for an app">
+              <option value="">Pick an app…</option>
+              {apps.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {ws.appCss[a.id] ? (ws.appCss[a.id]!.enabled ? ' (on)' : ' (off)') : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        <ExtensionsSection
+          installed={extensions}
+          usedBy={Object.fromEntries(extensions.map((x) => [x.id, Object.keys(ws.extensions).filter((appId) => ws.extensions[appId]!.includes(x.id))]))}
+          apps={apps}
+          onChanged={onExtensionsChanged}
+          onRemoved={onExtensionRemoved}
+        />
+
+        <PluginsSection enabled={ws.enabledPlugins} apps={apps} onEnabled={onPluginEnabled} />
+
+        <section>
+          <h2 className="popover-title">Your data</h2>
+          <p className="popover-hint">
+            A file with your spaces, apps and settings. Logins, cookies and site data aren’t in it, so you sign in again there.
+          </p>
+          <div className="site-data-row">
+            <button className="text-btn" onClick={() => void exportFile()}>
+              Export workspace…
+            </button>
+            <button className="text-btn" onClick={() => void importFile()}>
+              Import workspace…
+            </button>
+          </div>
+          {fileMessage && (
+            <p className={fileMessage.error ? 'form-error' : 'popover-hint'} role={fileMessage.error ? 'alert' : 'status'}>
+              {fileMessage.text}
+            </p>
+          )}
+          <div className="site-data-row">
+            <button className="btn btn-danger" onClick={clearAll} disabled={clearedAll === 'busy'}>
+              {clearedAll === 'busy' ? 'Clearing…' : 'Clear data for all apps…'}
+            </button>
+            {clearedAll === 'done' && <small role="status">Cleared. Every app starts fresh.</small>}
+          </div>
         </section>
       </div>
     </div>

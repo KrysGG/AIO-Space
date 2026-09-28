@@ -254,12 +254,15 @@ a tile always asks first.
 (Within 30% of an edge counts as leaning; at the tile limit only the middle is offered. Tested with
 dispatched drag events in `test/dropApp.test.ts`; a real mouse drag is the owner's check.)
 
-### - [ ] 2.17 Settings in sections, most important first
+### - [x] 2.17 Settings in sections, most important first
 The menu has grown one setting at a time. Group it into titled sections ordered by how often people need
 them, e.g.: Spaces and layout; Apps and accounts; Privacy (Shields defaults); Appearance (theme, motion);
 Performance (sleep); Browser (search engine); Updates; Customize (CSS, plugins, extensions); Data (import,
 export, clear all); About. Collapsible sections or a short search if it's still long. Owner to confirm the order.
 **Done when:** Every setting sits in a titled section in that order, and nothing was lost (smoke test).
+(Order used: a keyring warning first when needed, then Spaces; Apps and accounts; Privacy; Appearance;
+Performance; Browser; Updates; Customize with Extensions and Plugins; Your data. Every control, label and
+handler checked against the old menu. Not collapsible: titles were enough. Owner can still reorder.)
 
 ---
 
