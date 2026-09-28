@@ -474,6 +474,9 @@ Share settings model with desktop.
 
 Add items found while working on other steps here, with the step where they were found.
 
+- (2.15, found in CI) On Linux CI, reloading the UI page (`ui.reload()` in a test) left a test's app view
+  gone or replaced (a fixed webContents id no longer existed); Windows kept it. No user action reloads the
+  UI page, but a UI crash recovery would: check that views survive a UI reload on Linux.
 - (6.1) D-064 checked up to Google's password step (Gmail and X's "Continue with Google"). The owner to
   confirm a full sign-in, and X's own email/username login (untested).
 - (2.5) Built and tested with simulated titles (badges, tray, notification permissions), but not yet

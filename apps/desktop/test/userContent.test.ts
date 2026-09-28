@@ -46,12 +46,15 @@ describe('user content in app pages', () => {
       [viewId, base + path] as const,
     );
   /** Save the workspace with some top-level fields replaced. */
-  // Saved behind the UI's back, so the UI reloads to match: its old copy would be saved over this
-  // one at its next change (a focus change when the app reloads was enough on Windows CI).
+  // Saved behind the UI's back: tell the UI, as main does when another window saves, so its old copy
+  // isn't saved over this one at its next change (a focus change when the app reloads did it on CI).
   const editWorkspace = async (patch: Partial<Workspace>) => {
-    await ui.evaluate(async (p) => window.aio.saveWorkspace({ ...(await window.aio.getWorkspace()), ...p }), patch);
-    await ui.reload();
-    await ui.locator('.tile').first().waitFor();
+    const ws = await ui.evaluate(async (p) => {
+      const next = { ...(await window.aio.getWorkspace()), ...p };
+      await window.aio.saveWorkspace(next);
+      return next;
+    }, patch);
+    await app.evaluate(({ BrowserWindow }, w) => BrowserWindow.getAllWindows()[0]!.webContents.send('workspace:changed', w), ws);
   };
   const cssOf = (css: string, enabled: boolean): Partial<Workspace> => ({
     appCss: { [APP]: { css, enabled } },
