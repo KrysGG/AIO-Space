@@ -33,7 +33,7 @@ describe('ad and tracker blocking', () => {
   const inPage = (js: string) =>
     app.evaluate(async ({ webContents }, [u, code]) => {
       const wc = webContents.getAllWebContents().find((w) => w.getURL() === u && !w.isLoading());
-      return wc ? wc.executeJavaScript(code) : undefined;
+      return wc ? Promise.race([wc.executeJavaScript(code), new Promise((r) => setTimeout(r, 2000))]) : undefined; // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
     }, [url, js] as const);
   const visible = (selector: string) => inPage(`document.querySelector('${selector}').offsetHeight > 0`);
 
@@ -128,7 +128,7 @@ describe('ad and tracker blocking', () => {
     const read = (js: string) =>
       app.evaluate(async ({ webContents }, [u, code]) => {
         const wc = webContents.getAllWebContents().find((w) => w.getURL() === u && !w.isLoading());
-        return wc ? wc.executeJavaScript(code) : undefined;
+        return wc ? Promise.race([wc.executeJavaScript(code), new Promise((r) => setTimeout(r, 2000))]) : undefined; // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
       }, [page, js] as const);
     await expect.poll(() => read('document.title'), { timeout: 20_000 }).toBe('yt');
     expect(await read('window.seenAtStart')).toBe('yes');

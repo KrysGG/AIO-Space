@@ -34,7 +34,7 @@ describe('sign-in popups and redirects stay in the app', () => {
   const inPage = (js: string) =>
     app.evaluate(async ({ webContents }, code) => {
       const wc = webContents.getAllWebContents().find((w) => w.getURL().includes('aio-signin.test') && !w.isLoading());
-      return wc ? wc.executeJavaScript(code, true) : undefined;
+      return wc ? Promise.race([wc.executeJavaScript(code, true), new Promise((r) => setTimeout(r, 2000))]) : undefined; // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
     }, js);
   const external = () => app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened);
 

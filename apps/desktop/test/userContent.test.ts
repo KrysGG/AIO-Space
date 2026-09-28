@@ -34,8 +34,9 @@ describe('user content in app pages', () => {
 
   const inPage = (js: string) =>
     app.evaluate(
+      // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
       ({ webContents }, [id, code]) =>
-        webContents.fromId(id as number)!.executeJavaScript(code as string, true),
+        Promise.race([webContents.fromId(id as number)!.executeJavaScript(code as string, true), new Promise((r) => setTimeout(r, 2000))]),
       [viewId, js] as const,
     );
   const sideDisplay = () => inPage("getComputedStyle(document.getElementById('side')).display");

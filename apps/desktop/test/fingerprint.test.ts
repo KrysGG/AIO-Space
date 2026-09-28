@@ -35,7 +35,7 @@ describe('fingerprinting protection', () => {
   const inPage = (js: string) =>
     app.evaluate(async ({ webContents }, [u, code]) => {
       const wc = webContents.getAllWebContents().find((w) => w.getURL() === u && !w.isLoading());
-      return wc ? wc.executeJavaScript(code) : undefined;
+      return wc ? Promise.race([wc.executeJavaScript(code), new Promise((r) => setTimeout(r, 2000))]) : undefined; // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
     }, [url, js] as const);
   const openPage = async (): Promise<void> => {
     const browser = ui.locator('.tile-body button', { hasText: 'Browser' });

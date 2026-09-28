@@ -82,7 +82,7 @@ describe('clear data and forget mode', () => {
   const state = () =>
     app.evaluate(async ({ webContents }, o) => {
       const wc = webContents.getAllWebContents().find((w) => w.getURL().startsWith(o) && !w.isLoading());
-      return wc ? (wc.executeJavaScript('window.state') as Promise<{ cookie: string; token: string | null }>) : undefined;
+      return wc ? (Promise.race([wc.executeJavaScript('window.state'), new Promise((r) => setTimeout(r, 2000))]) as Promise<{ cookie: string; token: string | null } | undefined>) : undefined; // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
     }, origin);
   const logIn = async (): Promise<void> => {
     await go('/login');

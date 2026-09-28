@@ -35,7 +35,7 @@ describe('microphone and camera indicators', () => {
   const inPage = (js: string) =>
     app.evaluate(async ({ webContents }, [u, code]) => {
       const wc = webContents.getAllWebContents().find((w) => w.getURL() === u && !w.isLoading());
-      return wc ? wc.executeJavaScript(code) : undefined;
+      return wc ? Promise.race([wc.executeJavaScript(code), new Promise((r) => setTimeout(r, 2000))]) : undefined; // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
     }, [page, js] as const);
   const header = () => ui.locator('.tile').first().locator('.tile-media');
   const railDot = () => ui.getByRole('button', { name: 'Open Media test' }).locator('.media-dot');

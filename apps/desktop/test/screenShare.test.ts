@@ -23,7 +23,7 @@ describe('screen sharing', () => {
     app.evaluate(
       ({ webContents }, [u, c, g]) => {
         const wc = webContents.getAllWebContents().find((w) => w.getURL().startsWith(u as string) && !w.isLoading());
-        return wc?.executeJavaScript(c as string, g as boolean);
+        return wc ? Promise.race([wc.executeJavaScript(c as string, g as boolean), new Promise((r) => setTimeout(r, 2000))]) : undefined; // A page that unloads mid-call never answers: wait 2 s at most (polls retry).
       },
       [`https://www.${site}.test/`, code, gesture] as const,
     );
