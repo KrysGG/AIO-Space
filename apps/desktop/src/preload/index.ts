@@ -25,6 +25,7 @@ const api: AioApi = {
   viewCommand: (leafId, command) => ipcRenderer.send(IPC.viewCommand, { leafId, command }),
   focusView: (leafId) => ipcRenderer.send(IPC.viewFocus, { leafId }),
   navigate: (leafId, url) => ipcRenderer.send(IPC.viewNavigate, { leafId, url }),
+  openExternal: (url) => ipcRenderer.send(IPC.linkOpenExternal, { url }),
   downloadAction: (id, action) => ipcRenderer.send(IPC.downloadsAction, { id, action }),
   getFilterListStatus: () => ipcRenderer.invoke(IPC.filtersStatus),
   updateFilterLists: () => ipcRenderer.invoke(IPC.filtersUpdate),

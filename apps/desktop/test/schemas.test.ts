@@ -10,6 +10,7 @@ import {
   ViewCommandSchema,
   ViewFocusSchema,
   ViewNavigateSchema,
+  OpenExternalSchema,
   ViewsSyncSchema,
   WorkspaceSchema,
   NoPayloadSchema,
@@ -128,6 +129,16 @@ describe('ViewFocusSchema', () => {
     expect(ViewFocusSchema.safeParse({}).success).toBe(false);
     expect(ViewFocusSchema.safeParse({ leafId: '<script>' }).success).toBe(false);
     expect(ViewFocusSchema.safeParse({ leafId: 5 }).success).toBe(false);
+  });
+});
+
+describe('OpenExternalSchema', () => {
+  it('accepts http(s) URLs only (D-065)', () => {
+    expect(OpenExternalSchema.safeParse({ url: 'https://example.com/' }).success).toBe(true);
+    for (const url of ['javascript:alert(1)', 'file:///C:/Windows/system32/calc.exe', 'ms-settings:', 'data:text/html,x', '', 5]) {
+      expect(OpenExternalSchema.safeParse({ url }).success).toBe(false);
+    }
+    expect(OpenExternalSchema.safeParse({ url: 'https://x.example/' + 'a'.repeat(9000) }).success).toBe(false);
   });
 });
 

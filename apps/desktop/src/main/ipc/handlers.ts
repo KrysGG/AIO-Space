@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { app, dialog, ipcMain, shell, type BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { BUILTIN_APPS, partitionFor } from '@aio/core';
 import { IPC, type ExtensionInstallResult, type PluginInstallResult, type WorkspaceFileResult } from '../../shared/ipc';
 import { exportWorkspace, importWorkspace } from '../store/workspaceFile';
@@ -25,6 +25,7 @@ import {
   ViewCommandSchema,
   ViewFocusSchema,
   ViewNavigateSchema,
+  OpenExternalSchema,
   WorkspaceSchema,
 } from './schemas';
 
@@ -98,6 +99,12 @@ export function registerIpc(
     if (!fromUi(e)) return;
     const parsed = ViewNavigateSchema.safeParse(raw);
     if (parsed.success) views.navigate(parsed.data.leafId, parsed.data.url);
+  });
+
+  ipcMain.on(IPC.linkOpenExternal, (e, raw: unknown) => {
+    if (!fromUi(e)) return;
+    const parsed = OpenExternalSchema.safeParse(raw);
+    if (parsed.success) void shell.openExternal(parsed.data.url);
   });
 
   ipcMain.on(IPC.downloadsAction, (e, raw: unknown) => {

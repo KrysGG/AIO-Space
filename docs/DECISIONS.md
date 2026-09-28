@@ -700,3 +700,12 @@ UA and no switch to turn it off; on Windows, every page and frame gets
 as one site: Google's sign-in sets its cookies across them (accounts.youtube.com CheckConnection, the
 country-domain hop), and stripping them broke "Sign in with Google" consent with a 400 (seen with
 Reddit). If Google starts rejecting the token too, revisit here first.
+
+**D-065: Links that leave an app open in a Browser tile, not the system browser.**
+Owner's choice: nothing leaves SpaceAIO by itself. A link (or full-page navigation) outside an app's
+own sites (`navigationDecision`/`windowDecision` = 'external') opens as a new tab in the current
+space's Browser tile, which gets focus; with none, a new Browser tile beside the app; with no room
+(16 tiles) and no Browser tile, the system browser, via `link:open-external` (UI -> main, http(s) only,
+zod-checked). Always the Browser tile, even when another app matches the site (the owner chose this
+over routing to the matching app). Sign-in popups (D-044) and the context menu's "Open link in system
+browser" are unchanged.

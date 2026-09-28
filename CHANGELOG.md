@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Links] Links that leave an app open in the space's Browser tile (a new tab, focused) or a new Browser tile beside it, instead of the system browser (D-065).
 - [Fix] Google sign-in works again (no "browser may not be secure"): its sign-in pages see Chrome's UA plus SpaceAIO's name instead of a Firefox UA; also fixes X's "Continue with Google". Third-party cookie blocking no longer splits Google's own domains (google.com.pr, youtube.com), which broke "Sign in with Google" consent. No more automatic Windows passkey dialog on any page (D-064).
 - [6.1, 6.2] Checked on Windows 11: views stay aligned moving between 125% and 150% monitors; Snap Layouts flyout on maximize. Tests no longer fail on Windows without admin/Developer Mode (symlink cases skipped there).
 - [Release] v0.1.1: first Windows installer (unsigned), Windows download rules and title strip, the fix for the stale workspace save, SIGTERM quit steps.

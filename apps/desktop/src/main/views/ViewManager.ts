@@ -795,12 +795,17 @@ export class ViewManager {
     this.updateUnread();
   }
 
-  /** Keep each app inside its own sites; everything else opens in the system browser. */
-  /** Keep each app inside its own sites (sign-in pages included, D-044); other links open outside. */
+  /** Keep each app inside its own sites (sign-in pages included, D-044); other links open in a Browser tile. */
   private guardNavigation(def: WebAppDef, view: WebContentsView): void {
     const wc = view.webContents;
     const openOutside = (url: string): void => {
-      if (isWebUrl(url)) void shell.openExternal(url);
+      if (!isWebUrl(url)) return;
+      const leafId = this.leafOf(wc);
+      // The UI puts it in the space's Browser tile, or a new one beside this app (D-065).
+      if (leafId && !this.win.isDestroyed()) {
+        const request: OpenInNewTile = { fromLeafId: leafId, url, background: false, external: true };
+        this.win.webContents.send(IPC.openInNewTile, request);
+      } else void shell.openExternal(url);
     };
 
     wc.on('will-navigate', (e) => {

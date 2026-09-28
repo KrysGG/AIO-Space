@@ -16,6 +16,7 @@ export const IPC = {
   viewFocused: 'view:focused',
   viewFocus: 'view:focus',
   viewNavigate: 'view:navigate',
+  linkOpenExternal: 'link:open-external',
   openInNewTile: 'view:open-in-new-tile',
   downloadsUpdate: 'downloads:update',
   downloadsAction: 'downloads:action',
@@ -185,6 +186,8 @@ export interface OpenInNewTile {
   url: string;
   background: boolean;
   tab?: boolean;
+  /** A link that left its app's sites: open it in a Browser tile, not beside it as the same app. */
+  external?: boolean;
 }
 
 /** One download as the UI shows it. Paths stay in main; the UI only gets the file name. */
@@ -237,6 +240,8 @@ export interface AioApi {
   focusView(leafId: string | null): void;
   /** Browser tiles only; http(s) only. Works before the tile's view exists (it starts there). */
   navigate(leafId: string, url: string): void;
+  /** Hand an http(s) link to the system browser (when the UI has no room for a Browser tile). */
+  openExternal(url: string): void;
   /** Returns an unsubscribe function. */
   onViewState(cb: (state: ViewState) => void): () => void;
   onViewFocused(cb: (leafId: string) => void): () => void;

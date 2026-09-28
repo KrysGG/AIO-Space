@@ -103,10 +103,15 @@ describe('sign-in popups and redirects stay in the app', () => {
     expect(await external()).toEqual([]);
   });
 
-  it('still sends ordinary outside links to the system browser', async () => {
+  it('opens ordinary outside links in a Browser tile beside the app, not the system browser (D-065)', async () => {
     await app.evaluate(({ webContents }, [i, u]) => void webContents.fromId(i as number)!.loadURL(u as string), [viewId, page] as const);
     await until(async () => (await inPage('document.title')) === 'signin');
     await inPage("location.href = 'https://example.com/'");
-    await until(async () => (await external()).includes('https://example.com/'));
+    await until(() =>
+      app.evaluate(({ webContents }) => webContents.getAllWebContents().some((w) => w.getURL().startsWith('https://example.com/'))),
+    );
+    // The app's own tile stays on its page, and nothing went to the system browser.
+    expect(await app.evaluate(({ webContents }, i) => webContents.fromId(i)!.getURL(), viewId)).toBe(page);
+    expect(await external()).toEqual([]);
   });
 });

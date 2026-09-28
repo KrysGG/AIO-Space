@@ -7,7 +7,7 @@ export { SIGN_IN_HOSTS };
  * Where an app's navigations and new windows go (ROADMAP 1.6, D-044). Pure, so the rules are tested
  * without Electron; ViewManager acts on the answers.
  *
- * Apps stay on their own sites; other links open in the system browser. Sign-in is the exception:
+ * Apps stay on their own sites; other links ('external') open in a Browser tile (D-065). Sign-in is the exception:
  * "Continue with Google/Apple/Microsoft" either opens a popup or sends the whole page to the provider
  * and back, and both must stay inside the app (in its own session), or the login ends up in the
  * system browser where the app can't see it.

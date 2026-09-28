@@ -11,7 +11,7 @@ const custom = (() => {
 })();
 
 describe('navigation policy (D-044)', () => {
-  it('keeps apps on their own sites and sends other links to the system browser', () => {
+  it('keeps apps on their own sites and sends other links out (to a Browser tile, D-065)', () => {
     expect(navigationDecision(twitch, 'https://www.twitch.tv/somechannel')).toBe('allow');
     expect(navigationDecision(twitch, 'https://example.com/')).toBe('external');
     expect(navigationDecision(twitch, 'javascript:alert(1)')).toBe('block');

@@ -429,11 +429,21 @@ export function App() {
     };
 
     // A Browser tile link asked for a new tab: open it in a new Browser tile to the right (D-015).
-    openInNewTileRef.current = ({ fromLeafId, url, background, tab }) => {
+    openInNewTileRef.current = ({ fromLeafId, url, background, tab, external }) => {
       if (!ws) return;
       const space = activeSpace(ws);
       const from = findLeaf(space.layout, fromLeafId);
       if (!from) return;
+      // A link that left its app: a new tab in this space's Browser tile, else a Browser tile beside
+      // the app, else (no room) the system browser (D-065).
+      if (external) {
+        const browser = listLeaves(space.layout).find((l) => l.appId === 'browser');
+        if (browser && tabActions(ws, edit).newTab(browser.id, url)) return;
+        if (listLeaves(space.layout).length >= MAX_TILES) {
+          window.aio.openExternal(url);
+          return;
+        }
+      }
       // Browser links asking for a new tab open as a tab of the same tile (D-049).
       if (tab && from.appId === 'browser' && tabActions(ws, edit).newTab(fromLeafId, url, background)) return;
       if (listLeaves(space.layout).length >= MAX_TILES) {
