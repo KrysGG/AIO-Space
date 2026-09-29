@@ -2,6 +2,7 @@
 
 One line per completed roadmap step, newest first. Format: `- [x.y] what changed`.
 
+- [Release] v0.1.4: fix for the Gmail sign-in loop with shared Google sign-in on (D-070).
 - [Fix] Gmail (and other Google sign-ins) no longer bounce back to the sign-in page with "Share Google sign-in" on: copied cookies were echoed back over newer ones (D-070).
 - [Release] v0.1.3: tear tiles off into their own windows and dock them back, drag sidebar apps onto tiles, settings in sections, memory test, fixes for lost workspace changes and hanging tests.
 - [2.15] Drag a tile out of the window to open it in its own window (sidebar hidden), like a browser tab; drag it onto a SpaceAIO window to dock it back on the side you lean to. Pages don't reload; torn-off windows reopen after a restart (D-069). Also fixed: a pending save could overwrite a workspace the window had just received.
